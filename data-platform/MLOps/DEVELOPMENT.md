@@ -76,8 +76,19 @@ Com PostgreSQL e artefato disponíveis, crie o ambiente e inicie a API:
 cd data-platform
 python3 -m venv MLOps/.venv
 MLOps/.venv/bin/python -m pip install -r MLOps/app/api/requirements.txt
+set -a
+source .env
+set +a
+export DATABASE_URL="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DATA_DB}"
+export MODEL_PATH="$(pwd)/Model/artifacts/lightgbm_abt.pkl"
 MLOps/.venv/bin/python -m uvicorn MLOps.app.api.main:app --reload
 ```
+
+O arquivo `.env` fornece as credenciais, os nomes dos bancos e a configuração
+da política. Na execução local, `DATABASE_URL` usa `localhost` porque a API roda
+fora da rede do Docker, enquanto `MODEL_PATH` aponta para o artefato no sistema de
+arquivos local. Esses dois valores substituem os caminhos internos usados pelos
+containers.
 
 Em outro terminal, inicie o frontend:
 

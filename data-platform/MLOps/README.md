@@ -69,15 +69,25 @@ docker compose logs -f credit-api credit-frontend
 
 Build, execução local e testes estão documentados em [DEVELOPMENT.md](DEVELOPMENT.md).
 
-## Estado atual dos artefatos
+## Artefatos de execução
 
 ```text
 Model/artifacts/
-├── lightgbm_abt.pkl
+├── lightgbm_abt.pkl       # gerado pelo treinamento
 ├── metrics.json
 ├── feature_reference.json
 └── model_comparison.csv
 ```
+
+O arquivo `lightgbm_abt.pkl` é gerado por `Model/train.py`. Na execução oficial,
+o treinamento é a última tarefa da DAG `pipeline_orchestration` do Airflow. Como
+o arquivo é um artefato binário reproduzível e não é versionado, ele pode não
+estar presente em uma nova cópia do repositório.
+
+Se `lightgbm_abt.pkl` não estiver em `Model/artifacts`, execute a DAG até a tarefa
+`train_machine_learning_model`. Se o arquivo continuar ausente, verifique o estado
+e os logs dessa tarefa no Airflow e os logs do `airflow-scheduler` para identificar
+falhas de dados, conexão ou treinamento.
 
 O diretório é compartilhado entre os containers por *bind mounts*. Cada treinamento sobrescreve os arquivos, sem histórico físico de versões ou *model registry*. A API verifica os arquivos a cada requisição e recarrega automaticamente o modelo e suas referências quando os dois pertencem ao mesmo treinamento; durante uma atualização parcial, mantém em memória a última versão válida.
 

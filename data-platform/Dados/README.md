@@ -4,6 +4,8 @@ Esta pasta representa o local previsto na estrutura de entrega para os artefatos
 
 Essa organização preserva separadamente as quatro fontes do projeto, em vez de condensá-las em um único arquivo, e mantém no mesmo local os dados usados na entrada e os arquivos materializados manualmente para a entrega.
 
+> **Observação:** para que os links abaixo funcionem, os arquivos precisam estar presentes em `airflow/data/csv`. As fontes brutas devem ser baixadas e colocadas nesse diretório antes da execução da pipeline. As bases tratadas e a ABT ficam disponíveis como CSV depois que a pipeline materializa as tabelas no PostgreSQL e o script `export_data.py` realiza a exportação.
+
 ## Arquivos brutos
 
 | Arquivo | Conteúdo |

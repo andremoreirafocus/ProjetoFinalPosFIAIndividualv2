@@ -160,8 +160,15 @@ O PostgreSQL deve estar disponível e a ABT `application_abt` deve ter sido cria
 
 ```bash
 cd data-platform
+set -a
+source .env
+set +a
 PYTHONPATH=DataPipeline Model/.venv/bin/python Model/train.py
 ```
+
+O carregamento de `.env` exporta para o processo local as variáveis de conexão
+com o PostgreSQL usadas por `DataPipeline/utils.py`. No Airflow, a conexão é
+fornecida pelo `PostgresHook` e essa preparação manual não é necessária.
 
 Treinamento reduzido para validação rápida:
 

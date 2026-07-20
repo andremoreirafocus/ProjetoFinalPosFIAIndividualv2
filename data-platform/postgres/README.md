@@ -49,7 +49,7 @@ O serviço publica a porta `5432` e possui verificação de saúde com `pg_isrea
 | Metadados do Airflow | `airflow` | `postgres` | `localhost` | `5432` |
 | Dados do projeto | `data` | `postgres` | `localhost` | `5432` |
 
-As credenciais do ambiente acadêmico estão definidas no [`docker-compose.yml`](../docker-compose.yml). Em outro ambiente, devem ser substituídas por variáveis e segredos próprios.
+As credenciais e os nomes dos bancos do ambiente acadêmico estão definidos no arquivo [`.env`](../.env), lido pelo Docker Compose. Em outro ambiente, devem ser substituídos por variáveis e segredos próprios.
 
 ## Ciclo das tabelas no banco `data`
 
@@ -90,7 +90,10 @@ Remover containers com `docker compose down` preserva o volume. O uso de `docker
 Para abrir um terminal SQL no banco de dados do projeto:
 
 ```bash
-docker compose exec postgres psql -U airflow -d data
+set -a
+source .env
+set +a
+docker compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DATA_DB"
 ```
 
 Consultas úteis para inspeção:

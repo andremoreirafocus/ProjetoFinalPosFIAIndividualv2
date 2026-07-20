@@ -272,8 +272,14 @@ Entre na pasta `DataPipeline` para que o caminho relativo de saída seja resolvi
 
 ```bash
 cd data-platform/DataPipeline
+set -a
+source ../.env
+set +a
 .venv/bin/python export_data.py
 ```
+
+O carregamento de `../.env` exporta para o processo local as variáveis de conexão
+com o PostgreSQL usadas por `utils.py`.
 
 Na configuração atual do bloco `__main__`, o comando exporta:
 
