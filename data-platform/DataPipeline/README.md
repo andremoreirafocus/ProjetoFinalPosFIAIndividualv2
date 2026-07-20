@@ -305,11 +305,11 @@ from export_data import run_postgres_to_csv_export
 run_postgres_to_csv_export(
     conn_id="postgres_data_db",
     source_table="application_clean",
-    output_dir_path="./data-platform/Dados",
+    output_dir_path="../airflow/data/csv",
 )
 ```
 
-Esse exemplo gera `data-platform/Dados/application_clean.csv`. A função exporta uma tabela por chamada e usa o nome da tabela para identificar claramente o conteúdo do arquivo.
+Esse exemplo, executado a partir de `data-platform/DataPipeline`, gera `data-platform/airflow/data/csv/application_clean.csv`. A função exporta uma tabela por chamada e usa o nome da tabela para identificar claramente o conteúdo do arquivo.
 
 ## Execução
 

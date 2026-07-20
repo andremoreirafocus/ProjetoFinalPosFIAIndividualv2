@@ -173,10 +173,12 @@ data-platform/
 ├── MLOps/               # aplicações, testes e propostas arquiteturais
 ├── Model/               # treinamento, avaliação e artefatos
 ├── postgres/            # inicialização do banco data
-├── Dados/               # pasta reservada aos CSVs da entrega acadêmica
+├── Dados/               # referência da entrega; CSVs redirecionados para airflow/data/csv
 ├── docker-compose.yml   # composição dos serviços
 └── README.md
 ```
+
+Os arquivos CSV foram redirecionados de `Dados/` para `airflow/data/csv`, conforme explicitado em [Dados da entrega](./Dados/README.md).
 
 ## Pré-requisitos
 
@@ -274,6 +276,10 @@ variáveis obrigatórias ausentes ou vazias.
 
 ### Arquivos de origem
 
+Baixe os arquivos na página de dados da competição
+[Home Credit Default Risk](https://www.kaggle.com/competitions/home-credit-default-risk/data).
+O Kaggle pode exigir autenticação e a aceitação das regras da competição antes de liberar o download.
+
 Coloque estes arquivos em `data-platform/airflow/data/csv`:
 
 ```text
@@ -283,8 +289,7 @@ bureau.csv
 installments_payments.csv
 ```
 
-Caso ainda não esteja nela, entre na pasta da plataforma antes de executar os
-demais comandos deste README:
+Caso ainda não esteja nela, entre na pasta da plataforma antes de executar os demais comandos deste README:
 
 ```bash
 cd data-platform

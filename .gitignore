@@ -1,4 +1,7 @@
-/data-platform/airflow/data
+/data-platform/airflow/data/*
+!/data-platform/airflow/data/csv/
+/data-platform/airflow/data/csv/*
+!/data-platform/airflow/data/csv/.gitkeep
 *.pyc
 /data-platform/airflow/dags/__pycache__
 /data-platform/DataPipeline/.ipynb_checkpoints/*

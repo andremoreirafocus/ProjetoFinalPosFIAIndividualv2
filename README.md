@@ -117,8 +117,8 @@ Detalhes e justificativas estão nos READMEs de cada componente.
 
 ## Execução rápida
 
-1. Coloque os arquivos de origem em `data-platform/airflow/data/csv`.
-2. Defina `JUPYTER_TOKEN` em `data-platform/.env`.
+1. Baixe os quatro arquivos indicados em [Arquivos de origem](./data-platform/README.md#arquivos-de-origem) e coloque-os em `data-platform/airflow/data/csv`.
+2. Revise os valores das variáveis de ambiente definidas em `data-platform/.env`.
 3. Inicie a plataforma:
 
 ```bash
@@ -126,8 +126,10 @@ cd data-platform
 docker compose up -d --build
 ```
 
-4. Acesse o Airflow em http://localhost:8080 com `admin` / `admin`.
+4. Acesse o Airflow usando as credenciais definidas em `data-platform/.env`.
 5. Habilite e execute manualmente a DAG `pipeline_orchestration`.
+6. Verifique que o pipeline foi concluído com sucesso incluindo a tarefa de treinamento do modelo
+7. Acesse a API ou o frontend usando os links informados abaixo.
 
 ## Acessos locais
 
