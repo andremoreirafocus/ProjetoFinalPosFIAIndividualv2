@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>{{ report.report_title }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 14mm 16mm;
+
+      @bottom-left {
+        content: "Relatório de apoio à revisão humana · uso interno";
+        color: #64777d;
+        font-family: "DejaVu Sans", Arial, sans-serif;
+        font-size: 7.5pt;
+      }
+
+      @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        color: #64777d;
+        font-family: "DejaVu Sans", Arial, sans-serif;
+        font-size: 7.5pt;
+      }
+    }
+
+    :root {
+      --ink: #112a33;
+      --muted: #5f737a;
+      --teal: #0f8c8c;
+      --teal-dark: #0a5353;
+      --teal-soft: #eef5f5;
+      --orange: #d9932e;
+      --orange-soft: #fcf3e5;
+      --red: #c7473a;
+      --red-soft: #fbefed;
+      --line: #cbd8da;
+      --paper: #ffffff;
+      --background: #f4f7f7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--ink);
+      font-family: "DejaVu Sans", Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+    }
+
+    main {
+      background: var(--paper);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 3mm;
+      font-size: 21pt;
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin: 0 0 3mm;
+      color: var(--teal-dark);
+      font-size: 13pt;
+      line-height: 1.25;
+    }
+
+    h3 {
+      margin-bottom: 1.5mm;
+      font-size: 10pt;
+      line-height: 1.3;
+    }
+
+    .eyebrow {
+      margin-bottom: 2mm;
+      color: var(--teal);
+      font-size: 8pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .header {
+      padding-bottom: 5mm;
+      border-bottom: 1.5pt solid var(--teal);
+    }
+
+    .header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8mm;
+    }
+
+    .status {
+      flex: 0 0 auto;
+      padding: 2.2mm 4mm;
+      border: 1pt solid var(--orange);
+      border-radius: 999px;
+      background: var(--orange-soft);
+      color: #80500e;
+      font-size: 8.5pt;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2.5mm;
+      margin-top: 4mm;
+    }
+
+    .meta-card {
+      min-height: 18mm;
+      padding: 3mm;
+      border: 0.75pt solid var(--line);
+      border-radius: 2mm;
+      background: var(--teal-soft);
+    }
+
+    .meta-label {
+      display: block;
+      margin-bottom: 1mm;
+      color: var(--muted);
+      font-size: 7.5pt;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .meta-value {
+      display: block;
+      font-size: 10pt;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .section {
+      margin-top: 7mm;
+    }
+
+    .summary {
+      padding: 4mm 4.5mm;
+      border-left: 3pt solid var(--teal);
+      border-radius: 0 2mm 2mm 0;
+      background: var(--teal-soft);
+    }
+
+    .summary p:last-child,
+    .policy p:last-child,
+    .factor p:last-child,
+    .decision p:last-child {
+      margin-bottom: 0;
+    }
+
+    .policy {
+      margin-top: 3mm;
+      padding: 4mm 4.5mm;
+      border: 0.75pt solid var(--orange);
+      border-radius: 2mm;
+      background: var(--orange-soft);
+    }
+
+    .factor-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 3mm;
+    }
+
+    .factor {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      padding: 3.5mm 4mm;
+      border: 0.75pt solid var(--line);
+      border-left-width: 3pt;
+      border-radius: 2mm;
+      background: var(--paper);
+    }
+
+    .factor.increase {
+      border-left-color: var(--orange);
+    }
+
+    .factor.reduce {
+      border-left-color: var(--teal);
+    }
+
+    .factor-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 5mm;
+      margin-bottom: 2mm;
+    }
+
+    .factor-title {
+      margin: 0;
+    }
+
+    .technical-name {
+      display: block;
+      margin-top: 0.5mm;
+      color: var(--muted);
+      font-family: "DejaVu Sans Mono", monospace;
+      font-size: 7.5pt;
+      font-weight: 400;
+    }
+
+    .factor-value {
+      flex: 0 0 43mm;
+      text-align: right;
+    }
+
+    .factor-value strong {
+      display: block;
+      font-size: 10pt;
+    }
+
+    .factor-value span {
+      color: var(--muted);
+      font-size: 7.5pt;
+    }
+
+    .direction {
+      display: inline-block;
+      margin-bottom: 2mm;
+      padding: 1mm 2.5mm;
+      border-radius: 999px;
+      font-size: 7.5pt;
+      font-weight: 700;
+    }
+
+    .direction.increase {
+      background: var(--orange-soft);
+      color: #80500e;
+    }
+
+    .direction.reduce {
+      background: var(--teal-soft);
+      color: var(--teal-dark);
+    }
+
+    .contextual-conclusion {
+      margin-top: 2mm;
+      padding: 2.5mm 3mm;
+      border-radius: 1.5mm;
+      background: var(--teal-soft);
+      color: #274149;
+    }
+
+    .evidence-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5mm 5mm;
+      margin-top: 2mm;
+      padding-top: 2mm;
+      border-top: 0.5pt solid var(--line);
+      color: var(--muted);
+      font-size: 8pt;
+    }
+
+    .evidence-summary strong {
+      color: var(--ink);
+    }
+
+    .comparison {
+      margin-top: 2mm;
+      padding-top: 2mm;
+      border-top: 0.5pt solid var(--line);
+      color: #385058;
+      font-size: 8.5pt;
+    }
+
+    .comparison-title {
+      margin-bottom: 1.5mm;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5mm 4mm;
+    }
+
+    .comparison-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 3mm;
+      padding-bottom: 0.8mm;
+      border-bottom: 0.5pt dotted var(--line);
+    }
+
+    .comparison-label {
+      color: var(--muted);
+    }
+
+    .comparison-value {
+      color: var(--ink);
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .appendix {
+      break-before: page;
+      page-break-before: always;
+    }
+
+    .appendix-intro {
+      margin-bottom: 4mm;
+      color: var(--muted);
+      font-size: 8.5pt;
+    }
+
+    .technical-factor {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin-bottom: 3mm;
+      padding: 3mm 3.5mm;
+      border: 0.75pt solid var(--line);
+      border-radius: 2mm;
+    }
+
+    .technical-factor-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 5mm;
+    }
+
+    .technical-factor-header p {
+      margin-bottom: 0;
+    }
+
+    .technical-values {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .policy-values {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2mm 5mm;
+      margin: 2.5mm 0 0;
+      padding-top: 2.5mm;
+      border-top: 0.5pt solid #e5c28a;
+      font-size: 8.5pt;
+    }
+
+    .policy-values strong {
+      color: #80500e;
+    }
+
+    .limitations {
+      margin: 0;
+      padding-left: 5mm;
+    }
+
+    .limitations li {
+      margin-bottom: 1.5mm;
+    }
+
+    .decision {
+      margin-top: 5mm;
+      padding: 4mm 4.5mm;
+      border: 1pt solid var(--teal-dark);
+      border-radius: 2mm;
+      background: var(--teal-dark);
+      color: #ffffff;
+      font-size: 10.5pt;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .traceability {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8pt;
+    }
+
+    .traceability th,
+    .traceability td {
+      padding: 2mm 2.5mm;
+      border: 0.5pt solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .traceability th {
+      width: 24%;
+      background: var(--teal-soft);
+      color: var(--teal-dark);
+    }
+
+    .document-note {
+      margin-top: 4mm;
+      color: var(--muted);
+      font-size: 7.5pt;
+    }
+
+    @media print {
+      body {
+        background: var(--paper);
+      }
+    }
+  </style>
+</head>
+<body>
+  {% macro decimal_at_most_4(value) -%}
+    {%- set formatted = "%.4f" | format(value) -%}
+    {{- formatted.rstrip("0").rstrip(".") -}}
+  {%- endmacro %}
+
+  {% macro format_percentile(value) -%}
+    {{- "%.0f" | format(value) -}}
+  {%- endmacro %}
+
+  {% macro format_value(value, factor) -%}
+    {%- if value is none -%}
+      Não informado
+    {%- elif value is number and factor.format == "currency" -%}
+      {{ "%.2f" | format(value) }}
+    {%- elif value is number and (factor.format in ["integer", "boolean", "days_before_application"] or factor.type == "binary") -%}
+      {{ "%.0f" | format(value) }}
+    {%- elif value is number -%}
+      {{ decimal_at_most_4(value) }}
+    {%- else -%}
+      {{ value }}
+    {%- endif -%}
+  {%- endmacro %}
+
+  {% macro format_population_value(value, factor) -%}
+    {%- if value is none -%}
+      Não informado
+    {%- elif factor.format == "currency" -%}
+      {{ "%.2f" | format(value) }}
+    {%- elif factor.format in ["integer", "days_before_application"] -%}
+      {{ "%.0f" | format(value) }}
+    {%- else -%}
+      {{ decimal_at_most_4(value) }}
+    {%- endif -%}
+  {%- endmacro %}
+
+  {% macro percentile_range(low, high) -%}
+    {%- if low == high -%}
+      {{ format_percentile(low) }}
+    {%- else -%}
+      {{ format_percentile(low) }}–{{ format_percentile(high) }}
+    {%- endif -%}
+  {%- endmacro %}
+
+  {% macro comparison_block(factor) -%}
+    {% set comparison = factor.comparison %}
+    <div class="comparison">
+      <div class="comparison-title">Comparação com o treinamento</div>
+      <div class="comparison-grid">
+        <div class="comparison-item">
+          <span class="comparison-label">SHAP local absoluto</span>
+          <span class="comparison-value">{{ decimal_at_most_4(comparison.shap.local_abs_shap) }}</span>
+        </div>
+        <div class="comparison-item">
+          <span class="comparison-label">Média SHAP global</span>
+          <span class="comparison-value">{{ decimal_at_most_4(comparison.shap.global_mean_abs_shap) }}</span>
+        </div>
+        <div class="comparison-item">
+          <span class="comparison-label">Faixa percentil do SHAP</span>
+          <span class="comparison-value">{{ percentile_range(comparison.shap.abs_shap_percentile_low, comparison.shap.abs_shap_percentile_high) }}</span>
+        </div>
+
+        {% if comparison.numeric %}
+          <div class="comparison-item">
+            <span class="comparison-label">Percentil do cliente</span>
+            <span class="comparison-value">{{ percentile_range(comparison.numeric.training_percentile_low, comparison.numeric.training_percentile_high) }}</span>
+          </div>
+          <div class="comparison-item">
+            <span class="comparison-label">Média populacional</span>
+            <span class="comparison-value">{{ format_population_value(comparison.numeric.population_mean, factor) }}</span>
+          </div>
+          <div class="comparison-item">
+            <span class="comparison-label">Mediana populacional</span>
+            <span class="comparison-value">{{ format_population_value(comparison.numeric.population_median, factor) }}</span>
+          </div>
+          <div class="comparison-item">
+            <span class="comparison-label">Percentil 25</span>
+            <span class="comparison-value">{{ format_population_value(comparison.numeric.population_p25, factor) }}</span>
+          </div>
+          <div class="comparison-item">
+            <span class="comparison-label">Percentil 75</span>
+            <span class="comparison-value">{{ format_population_value(comparison.numeric.population_p75, factor) }}</span>
+          </div>
+          {% if comparison.numeric.binary_rates %}
+            <div class="comparison-item">
+              <span class="comparison-label">Frequência populacional</span>
+              <span class="comparison-value">{{ decimal_at_most_4(comparison.numeric.binary_rates.overall) }}</span>
+            </div>
+          {% endif %}
+        {% endif %}
+
+        {% if comparison.categorical %}
+          <div class="comparison-item">
+            <span class="comparison-label">Ocorrências da categoria</span>
+            <span class="comparison-value">{{ "%.0f" | format(comparison.categorical.category_count) }}</span>
+          </div>
+          <div class="comparison-item">
+            <span class="comparison-label">Frequência da categoria</span>
+            <span class="comparison-value">{{ decimal_at_most_4(comparison.categorical.category_frequency) }}</span>
+          </div>
+          <div class="comparison-item">
+            <span class="comparison-label">Inadimplência na categoria</span>
+            <span class="comparison-value">{{ decimal_at_most_4(comparison.categorical.category_default_rate) }}</span>
+          </div>
+          <div class="comparison-item">
+            <span class="comparison-label">Inadimplência populacional</span>
+            <span class="comparison-value">{{ decimal_at_most_4(comparison.categorical.population_default_rate) }}</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {%- endmacro %}
+
+  {% macro evidence_summary(factor) -%}
+    {% set comparison = factor.comparison %}
+    <div class="evidence-summary">
+      {% if comparison.numeric and factor.type != "binary" %}
+        <span><strong>Percentil do cliente:</strong> {{ percentile_range(comparison.numeric.training_percentile_low, comparison.numeric.training_percentile_high) }}</span>
+        <span><strong>Mediana:</strong> {{ format_population_value(comparison.numeric.population_median, factor) }}</span>
+      {% elif comparison.numeric and factor.type == "binary" %}
+        <span><strong>Frequência populacional:</strong> {{ decimal_at_most_4(comparison.numeric.binary_rates.overall) }}</span>
+        <span><strong>Mediana:</strong> {{ format_population_value(comparison.numeric.population_median, factor) }}</span>
+      {% elif comparison.categorical %}
+        <span><strong>Frequência da categoria:</strong> {{ decimal_at_most_4(comparison.categorical.category_frequency) }}</span>
+        <span><strong>Inadimplência da categoria:</strong> {{ decimal_at_most_4(comparison.categorical.category_default_rate) }}</span>
+        <span><strong>Inadimplência populacional:</strong> {{ decimal_at_most_4(comparison.categorical.population_default_rate) }}</span>
+      {% endif %}
+      <span><strong>Faixa percentil do SHAP:</strong> {{ percentile_range(comparison.shap.abs_shap_percentile_low, comparison.shap.abs_shap_percentile_high) }}</span>
+    </div>
+  {%- endmacro %}
+
+  {% macro factor_card(factor, direction_class, direction_label) -%}
+    <article class="factor {{ direction_class }}">
+      <div class="factor-header">
+        <div>
+          <h3 class="factor-title">
+            {{ factor.label }}
+            <span class="technical-name">{{ factor.feature }}</span>
+          </h3>
+        </div>
+        <div class="factor-value">
+          <strong>{{ format_value(factor.customer_value, factor) }}</strong>
+          {% if factor.unit %}<span>{{ factor.unit }}</span>{% endif %}
+        </div>
+      </div>
+      <span class="direction {{ direction_class }}">{{ direction_label }}</span>
+      <p>{{ factor.explanation }}</p>
+      <p class="contextual-conclusion">
+        <strong>Conclusão contextualizada:</strong>
+        {{ factor.contextual_conclusion }}
+      </p>
+      {{ evidence_summary(factor) }}
+    </article>
+  {%- endmacro %}
+
+  {% macro technical_factor(factor) -%}
+    <article class="technical-factor">
+      <div class="technical-factor-header">
+        <div>
+          <h3>
+            Fator {{ factor.report_rank }} · {{ factor.label }}
+            <span class="technical-name">{{ factor.feature }}</span>
+          </h3>
+        </div>
+        <div class="technical-values">
+          <p><strong>Valor:</strong> {{ format_value(factor.customer_value, factor) }}</p>
+          <p><strong>SHAP:</strong> {{ decimal_at_most_4(factor.shap_value) }}</p>
+        </div>
+      </div>
+      {{ comparison_block(factor) }}
+    </article>
+  {%- endmacro %}
+
+  <main>
+    <header class="header">
+      <p class="eyebrow">Apoio à decisão · revisão humana</p>
+      <div class="header-row">
+        <h1>{{ report.report_title }}</h1>
+        <span class="status">Revisão manual</span>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-card">
+          <span class="meta-label">Cliente</span>
+          <span class="meta-value">{{ report.case_summary.customer_id }}</span>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Score de risco</span>
+          <span class="meta-value">{{ decimal_at_most_4(report.policy_context.risk_score) }}</span>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Recomendação</span>
+          <span class="meta-value">Revisão manual</span>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Gerado em</span>
+          <span class="meta-value">{{ report.generated_at | default("Não informado", true) }}</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>Resumo do caso</h2>
+      <div class="summary">
+        <p>{{ report.case_summary.summary }}</p>
+      </div>
+      <div class="policy">
+        <h3>Por que o caso foi encaminhado à revisão</h3>
+        <p>{{ report.policy_context.explanation }}</p>
+        <div class="policy-values">
+          <span><strong>Score:</strong> {{ decimal_at_most_4(report.policy_context.risk_score) }}</span>
+          <span><strong>Aprovação:</strong> abaixo de {{ decimal_at_most_4(report.policy_context.approve_max_score) }}</span>
+          <span><strong>Revisão manual:</strong> de {{ decimal_at_most_4(report.policy_context.approve_max_score) }} até abaixo de {{ decimal_at_most_4(report.policy_context.manual_review_max_score) }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Fatores que elevaram o score</h2>
+      <div class="factor-list">
+        {% for factor in report.factors_increasing_score %}
+          {{ factor_card(factor, "increase", "Elevou o score") }}
+        {% else %}
+          <p>Nenhum fator autorizado foi classificado nesta direção.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Fatores que reduziram o score</h2>
+      <div class="factor-list">
+        {% for factor in report.factors_reducing_score %}
+          {{ factor_card(factor, "reduce", "Reduziu o score") }}
+        {% else %}
+          <p>Nenhum fator autorizado foi classificado nesta direção.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Limitações da explicação</h2>
+      <ul class="limitations">
+        {% for limitation in report.limitations %}
+          <li>{{ limitation }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <div class="decision">
+      <p>{{ report.human_decision_notice }}</p>
+    </div>
+
+    <section class="section appendix">
+      <p class="eyebrow">Evidências determinísticas</p>
+      <h2>Apêndice técnico para conferência</h2>
+      <p class="appendix-intro">
+        Os fatores aparecem na mesma ordem e com os mesmos identificadores utilizados no
+        relatório principal. Os valores abaixo vêm diretamente da resposta técnica e das
+        referências do treinamento; não foram produzidos nem recalculados pelo LLM.
+      </p>
+      {% for factor in report.factors_increasing_score %}
+        {{ technical_factor(factor) }}
+      {% endfor %}
+      {% for factor in report.factors_reducing_score %}
+        {{ technical_factor(factor) }}
+      {% endfor %}
+    </section>
+
+    <section class="section">
+      <h2>Rastreabilidade</h2>
+      <table class="traceability">
+        <tbody>
+          <tr>
+            <th>Versão do modelo</th>
+            <td>{{ report.traceability.model_version | default("Não informado", true) }}</td>
+            <th>Versão da política</th>
+            <td>{{ report.traceability.policy_version | default("Não informado", true) }}</td>
+          </tr>
+          <tr>
+            <th>Versão do catálogo</th>
+            <td>{{ report.traceability.catalog_version | default("Não informado", true) }}</td>
+            <th>Versão do prompt</th>
+            <td>{{ report.traceability.prompt_version | default("Não informado", true) }}</td>
+          </tr>
+          <tr>
+            <th>Schema do relatório</th>
+            <td>{{ report.report_schema_version }}</td>
+            <th>Identificador do relatório</th>
+            <td>{{ report.report_id | default("Não informado", true) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

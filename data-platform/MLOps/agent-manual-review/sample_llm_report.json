@@ -1,0 +1,69 @@
+{
+  "report_schema_version": "1.2.0",
+  "report_title": "Relatório de apoio à revisão de crédito",
+  "case_summary": {
+    "summary": "O caso foi encaminhado à revisão manual porque o score se encontra na faixa intermediária definida pela política. As evidências autorizadas mostram fatores que elevaram e reduziram o score, sem substituir a avaliação do analista."
+  },
+  "policy_context": {
+    "explanation": "A política classificou o score na faixa de revisão manual. O score ordena o risco estimado pelo modelo e não representa uma probabilidade calibrada de inadimplência."
+  },
+  "factors_increasing_score": [
+    {
+      "feature": "amt_credit",
+      "direction": "increases_risk",
+      "explanation": "O valor do crédito solicitado contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "O valor está próximo ao centro da distribuição de treinamento, enquanto sua relevância local para este caso foi superior à referência global da feature."
+    },
+    {
+      "feature": "has_car",
+      "direction": "increases_risk",
+      "explanation": "A informação sobre a posse de automóvel contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "A ausência de automóvel coincide com a mediana observada no treinamento, e sua relevância local foi ligeiramente superior à referência global da feature."
+    },
+    {
+      "feature": "bureau_debt_credit_ratio",
+      "direction": "increases_risk",
+      "explanation": "A relação entre a dívida total e o crédito total registrados no bureau contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "O valor está na faixa superior da população de treinamento e acima das referências centrais, com relevância local superior à referência global da feature."
+    },
+    {
+      "feature": "ext_source_2",
+      "direction": "increases_risk",
+      "explanation": "O Score externo 2 contribuiu para elevar o score do modelo neste caso.",
+      "contextual_conclusion": "O valor está na faixa inferior da população de treinamento, abaixo das referências centrais, e sua relevância local foi semelhante à referência global da feature."
+    },
+    {
+      "feature": "name_education_type",
+      "direction": "increases_risk",
+      "explanation": "A categoria de escolaridade informada contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "A categoria é frequente na população de treinamento e apresentou inadimplência observada ligeiramente superior à taxa populacional, embora sua relevância local tenha sido inferior à referência global da feature."
+    },
+    {
+      "feature": "amt_annuity",
+      "direction": "increases_risk",
+      "explanation": "O valor da anuidade ou parcela contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "O valor está na região central da distribuição, ligeiramente acima das referências centrais, e sua relevância local foi semelhante à referência global da feature."
+    }
+  ],
+  "factors_reducing_score": [
+    {
+      "feature": "ext_source_3",
+      "direction": "reduces_risk",
+      "explanation": "O Score externo 3 contribuiu para reduzir o score do modelo neste caso.",
+      "contextual_conclusion": "O valor está na faixa superior da população de treinamento e acima das referências centrais, com relevância local superior à referência global da feature."
+    },
+    {
+      "feature": "days_last_phone_change",
+      "direction": "reduces_risk",
+      "explanation": "O intervalo desde a última troca de telefone contribuiu para reduzir o score neste caso.",
+      "contextual_conclusion": "O evento ocorreu há mais tempo que o observado para a maior parte da população de treinamento, e sua relevância local foi superior à referência global da feature."
+    }
+  ],
+  "limitations": [
+    "O score é uma medida de ordenação de risco e não uma probabilidade calibrada de inadimplência.",
+    "As contribuições SHAP descrevem como o modelo se comportou neste caso e não demonstram relações causais.",
+    "O relatório utiliza somente as evidências autorizadas e as referências fornecidas; ele não constitui uma avaliação completa e autônoma do cliente.",
+    "A recomendação da política não foi recalculada nem alterada durante a geração desta explicação."
+  ],
+  "human_decision_notice": "Este relatório apoia a revisão do caso, mas a decisão final de crédito permanece sob responsabilidade do analista humano."
+}

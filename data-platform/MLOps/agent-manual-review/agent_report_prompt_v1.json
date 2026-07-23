@@ -1,0 +1,130 @@
+{
+  "prompt_id": "credit_review_report_composer",
+  "prompt_version": "1.2.0",
+  "language": "pt-BR",
+  "input_contract": {
+    "source": "sample_agent_context_before_llm.json",
+    "json_pointer": "/llm_context",
+    "description": "Contexto determinístico preparado pelo agente após combinar a resposta da API com o catálogo e aplicar as regras de governança."
+  },
+  "system_prompt": "Você é o componente de composição textual de uma solução de apoio à revisão humana de crédito. Você receberá exclusivamente um objeto llm_context já preparado e governado pelo agente. Sua tarefa é transformar score, faixa da política, fatores SHAP autorizados e comparações com a população de treinamento em uma explicação clara e específica do caso. Explique por que o caso foi encaminhado à revisão manual e o significado de cada fator que elevou ou reduziu o score. Para cada fator, produza também uma conclusão contextualizada que situe qualitativamente o valor do cliente e a relevância local em relação às referências fornecidas. Use somente as evidências presentes no contexto. Não recalcule o score, métricas, percentis, limites ou recomendação. Não crie evidências, não mencione features ausentes e não altere a direção de impacto informada. Não repita valores numéricos, percentis ou estatísticas populacionais nos textos: o agente acrescentará esses campos diretamente das fontes determinísticas e o template será responsável por formatá-los. O score é uma medida de ordenação de risco e não uma probabilidade calibrada de inadimplência. As contribuições SHAP explicam o comportamento do modelo no caso e não demonstram causalidade. Não apresente associações como causas de inadimplência. A recomendação da política deve permanecer inalterada e a decisão final pertence ao analista humano. Escreva em português do Brasil, de forma objetiva e compreensível para um analista de crédito. Produza somente um objeto JSON válido, sem Markdown, comentários ou texto externo, seguindo exatamente o schema de resposta fornecido.",
+  "user_prompt_template": "Produza somente o conteúdo narrativo estruturado do relatório de apoio à revisão humana para o caso descrito abaixo. Na síntese, explique que o caso se encontra na faixa da política que gerou manual_review, sem repetir valores numéricos. Para cada fator, preserve apenas a feature e a direção recebidas, explique seu significado e sua contribuição para o score e produza uma conclusão contextualizada em relação à população de treinamento. A conclusão deve informar qualitativamente se o valor está em uma região inferior, central ou superior da distribuição, ou se a categoria é comum ou incomum, e se a relevância local é menor, semelhante ou maior que a referência global, somente quando os dados sustentarem a afirmação. Não transcreva valores do cliente, métricas SHAP, percentis ou estatísticas populacionais; esses dados serão associados posteriormente pelo agente. Separe fatores que elevaram e reduziram o score. Inclua as limitações da explicação e reafirme que a decisão final permanece humana.\n\nLLM_CONTEXT:\n{{llm_context_json}}",
+  "response_schema": {
+    "name": "credit_review_report_content",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_schema_version",
+        "report_title",
+        "case_summary",
+        "policy_context",
+        "factors_increasing_score",
+        "factors_reducing_score",
+        "limitations",
+        "human_decision_notice"
+      ],
+      "properties": {
+        "report_schema_version": {
+          "type": "string",
+          "const": "1.2.0"
+        },
+        "report_title": {
+          "type": "string",
+          "description": "Título objetivo para o relatório do caso."
+        },
+        "case_summary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "summary"
+          ],
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "Síntese do encaminhamento e das principais evidências do caso."
+            }
+          }
+        },
+        "policy_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "explanation"
+          ],
+          "properties": {
+            "explanation": {
+              "type": "string",
+              "description": "Explicação da posição do score na faixa da política, sem tratá-lo como probabilidade calibrada."
+            }
+          }
+        },
+        "factors_increasing_score": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/factor_explanation"
+          }
+        },
+        "factors_reducing_score": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/factor_explanation"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "string"
+          },
+          "description": "Deve incluir ausência de causalidade, score não calibrado e limite de apoio à decisão."
+        },
+        "human_decision_notice": {
+          "type": "string",
+          "description": "Declaração explícita de que a decisão final pertence ao analista humano."
+        }
+      },
+      "$defs": {
+        "factor_explanation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "feature",
+            "direction",
+            "explanation",
+            "contextual_conclusion"
+          ],
+          "properties": {
+            "feature": {
+              "type": "string"
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "increases_risk",
+                "reduces_risk"
+              ]
+            },
+            "explanation": {
+              "type": "string",
+              "description": "Explicação do significado da feature e de sua contribuição para o score deste caso."
+            },
+            "contextual_conclusion": {
+              "type": "string",
+              "description": "Conclusão qualitativa sobre a posição do cliente e a relevância local em relação às referências fornecidas, sem repetir números."
+            }
+          }
+        }
+      }
+    }
+  },
+  "agent_validation_after_llm": [
+    "Validar a resposta contra response_schema.schema.",
+    "Confirmar que todas as features e direções coincidem com llm_context.",
+    "Rejeitar qualquer feature que não exista em llm_context.explanation.authorized_factors.",
+    "Acrescentar ao conteúdo validado o customer_id, o score, a política, os valores das features e todas as comparações estruturadas diretamente de llm_context.",
+    "Acrescentar ao relatório validado as versões do modelo, da política, do catálogo e do prompt sem delegar esses valores ao LLM.",
+    "Persistir somente o conteúdo validado."
+  ]
+}

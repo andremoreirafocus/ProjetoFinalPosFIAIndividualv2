@@ -1,0 +1,279 @@
+{
+  "source": "database",
+  "customer_id": 100008,
+  "risk_score": 0.5552761155436352,
+  "predicted_class": 1,
+  "model_decision_threshold": 0.5,
+  "policy": {
+    "recommendation": "manual_review",
+    "reason": "Score de risco na faixa intermediária.",
+    "policy_version": "demo-v1",
+    "approve_max_score": 0.5,
+    "manual_review_max_score": 0.6
+  },
+  "explanation": {
+    "base_value": -0.4629565584816569,
+    "output_scale": "raw_score",
+    "top_factors": [
+      {
+        "feature": "code_gender",
+        "value": "M",
+        "shap_value": 0.23510845528044066,
+        "direction": "increases_risk",
+        "comparison": {
+          "feature_type": "categorical",
+          "shap": {
+            "global_mean_abs_shap": 0.10848787426485772,
+            "local_abs_shap": 0.23510845528044066,
+            "abs_shap_percentile_low": 95,
+            "abs_shap_percentile_high": 99
+          },
+          "numeric": null,
+          "categorical": {
+            "category_count": 105059,
+            "category_frequency": 0.34164306317497584,
+            "category_default_rate": 0.1014192025433328,
+            "population_default_rate": 0.08072881945686496
+          }
+        }
+      },
+      {
+        "feature": "amt_credit",
+        "value": 490495.5,
+        "shap_value": 0.11266556542176867,
+        "direction": "increases_risk",
+        "comparison": {
+          "feature_type": "numeric",
+          "shap": {
+            "global_mean_abs_shap": 0.07998722927948014,
+            "local_abs_shap": 0.11266556542176867,
+            "abs_shap_percentile_low": 75,
+            "abs_shap_percentile_high": 90
+          },
+          "numeric": {
+            "training_percentile_low": 47,
+            "training_percentile_high": 47,
+            "population_mean": 599025.9997057016,
+            "population_median": 513531,
+            "population_p25": 270000,
+            "population_p75": 808650,
+            "target_0_median": 517788,
+            "target_1_median": 497520,
+            "binary_rates": null
+          },
+          "categorical": null
+        }
+      },
+      {
+        "feature": "has_car",
+        "value": 0,
+        "shap_value": 0.10966100784535687,
+        "direction": "increases_risk",
+        "comparison": {
+          "feature_type": "numeric",
+          "shap": {
+            "global_mean_abs_shap": 0.0920497349976338,
+            "local_abs_shap": 0.10966100784535687,
+            "abs_shap_percentile_low": 50,
+            "abs_shap_percentile_high": 75
+          },
+          "numeric": {
+            "training_percentile_low": 0,
+            "training_percentile_high": 65,
+            "population_mean": 0.34010815873253314,
+            "population_median": 0,
+            "population_p25": 0,
+            "population_p75": 1,
+            "target_0_median": 0,
+            "target_1_median": 0,
+            "binary_rates": {
+              "overall": 0.34010815873253314,
+              "target_0": 0.3431758205217096,
+              "target_1": 0.30517623363544816
+            }
+          },
+          "categorical": null
+        }
+      },
+      {
+        "feature": "ext_source_3",
+        "value": 0.6212263380626669,
+        "shap_value": -0.10811046129320098,
+        "direction": "reduces_risk",
+        "comparison": {
+          "feature_type": "numeric",
+          "shap": {
+            "global_mean_abs_shap": 0.0779577281501505,
+            "local_abs_shap": 0.10811046129320098,
+            "abs_shap_percentile_low": 75,
+            "abs_shap_percentile_high": 90
+          },
+          "numeric": {
+            "training_percentile_low": 72.66724667535931,
+            "training_percentile_high": 72.66724667535931,
+            "population_mean": 0.5156949091808122,
+            "population_median": 0.5352762504724826,
+            "population_p25": 0.4170996682522097,
+            "population_p75": 0.6363761710860439,
+            "target_0_median": 0.5352762504724826,
+            "target_1_median": 0.475849908720221,
+            "binary_rates": null
+          },
+          "categorical": null
+        }
+      },
+      {
+        "feature": "days_last_phone_change",
+        "value": -2536,
+        "shap_value": -0.09837654668999074,
+        "direction": "reduces_risk",
+        "comparison": {
+          "feature_type": "numeric",
+          "shap": {
+            "global_mean_abs_shap": 0.06015126240870849,
+            "local_abs_shap": 0.09837654668999074,
+            "abs_shap_percentile_low": 75,
+            "abs_shap_percentile_high": 90
+          },
+          "numeric": {
+            "training_percentile_low": 4.833333333333333,
+            "training_percentile_high": 4.833333333333333,
+            "population_mean": -962.8581188965597,
+            "population_median": -757,
+            "population_p25": -1570,
+            "population_p75": -274,
+            "target_0_median": -776,
+            "target_1_median": -594,
+            "binary_rates": null
+          },
+          "categorical": null
+        }
+      },
+      {
+        "feature": "bureau_debt_credit_ratio",
+        "value": 0.5124544904369879,
+        "shap_value": 0.09550675683899977,
+        "direction": "increases_risk",
+        "comparison": {
+          "feature_type": "numeric",
+          "shap": {
+            "global_mean_abs_shap": 0.07219879350617422,
+            "local_abs_shap": 0.09550675683899977,
+            "abs_shap_percentile_low": 75,
+            "abs_shap_percentile_high": 90
+          },
+          "numeric": {
+            "training_percentile_low": 80.5795898412659,
+            "training_percentile_high": 80.5795898412659,
+            "population_mean": 0.24088361545433246,
+            "population_median": 0.1200456570155902,
+            "population_p25": 0,
+            "population_p75": 0.4308114275876882,
+            "target_0_median": 0.11303203447937309,
+            "target_1_median": 0.22067843669436396,
+            "binary_rates": null
+          },
+          "categorical": null
+        }
+      },
+      {
+        "feature": "occupation_type",
+        "value": "Laborers",
+        "shap_value": 0.0902486745777018,
+        "direction": "increases_risk",
+        "comparison": {
+          "feature_type": "categorical",
+          "shap": {
+            "global_mean_abs_shap": 0.06922837141827128,
+            "local_abs_shap": 0.0902486745777018,
+            "abs_shap_percentile_low": 75,
+            "abs_shap_percentile_high": 90
+          },
+          "numeric": null,
+          "categorical": {
+            "category_count": 55186,
+            "category_frequency": 0.1794602469505156,
+            "category_default_rate": 0.10578769977892943,
+            "population_default_rate": 0.08072881945686496
+          }
+        }
+      },
+      {
+        "feature": "ext_source_2",
+        "value": 0.3542247319929012,
+        "shap_value": 0.07142909769702656,
+        "direction": "increases_risk",
+        "comparison": {
+          "feature_type": "numeric",
+          "shap": {
+            "global_mean_abs_shap": 0.06862270566146245,
+            "local_abs_shap": 0.07142909769702656,
+            "abs_shap_percentile_low": 50,
+            "abs_shap_percentile_high": 75
+          },
+          "numeric": {
+            "training_percentile_low": 21.346566052751562,
+            "training_percentile_high": 21.346566052751562,
+            "population_mean": 0.5145033543220389,
+            "population_median": 0.5659614260608526,
+            "population_p25": 0.3929737210031833,
+            "population_p75": 0.663421802279324,
+            "target_0_median": 0.573401949749691,
+            "target_1_median": 0.4410759495199416,
+            "binary_rates": null
+          },
+          "categorical": null
+        }
+      },
+      {
+        "feature": "name_education_type",
+        "value": "Secondary / secondary special",
+        "shap_value": 0.06891481334271048,
+        "direction": "increases_risk",
+        "comparison": {
+          "feature_type": "categorical",
+          "shap": {
+            "global_mean_abs_shap": 0.1025849673609955,
+            "local_abs_shap": 0.06891481334271048,
+            "abs_shap_percentile_low": 0,
+            "abs_shap_percentile_high": 50
+          },
+          "numeric": null,
+          "categorical": {
+            "category_count": 218391,
+            "category_frequency": 0.7101892290031901,
+            "category_default_rate": 0.08939928843221562,
+            "population_default_rate": 0.08072881945686496
+          }
+        }
+      },
+      {
+        "feature": "amt_annuity",
+        "value": 27517.5,
+        "shap_value": 0.0675455208861952,
+        "direction": "increases_risk",
+        "comparison": {
+          "feature_type": "numeric",
+          "shap": {
+            "global_mean_abs_shap": 0.06414984255550583,
+            "local_abs_shap": 0.0675455208861952,
+            "abs_shap_percentile_low": 50,
+            "abs_shap_percentile_high": 75
+          },
+          "numeric": {
+            "training_percentile_low": 58.890243902439025,
+            "training_percentile_high": 58.890243902439025,
+            "population_mean": 27108.48784108536,
+            "population_median": 24903,
+            "population_p25": 16524,
+            "population_p75": 34596,
+            "target_0_median": 24876,
+            "target_1_median": 25263,
+            "binary_rates": null
+          },
+          "categorical": null
+        }
+      }
+    ]
+  }
+}

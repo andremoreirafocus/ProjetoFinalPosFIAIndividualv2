@@ -1,0 +1,333 @@
+{
+  "report_schema_version": "1.2.0",
+  "report_id": "credit-review-100008-sample-v1",
+  "generated_at": "2026-07-22T19:38:20-03:00",
+  "report_title": "Relatório de apoio à revisão de crédito",
+  "case_summary": {
+    "source": "database",
+    "customer_id": 100008,
+    "summary": "O caso foi encaminhado à revisão manual porque o score se encontra na faixa intermediária definida pela política. As evidências autorizadas mostram fatores que elevaram e reduziram o score, sem substituir a avaliação do analista."
+  },
+  "policy_context": {
+    "risk_score": 0.5552761155436352,
+    "predicted_class": 1,
+    "model_decision_threshold": 0.5,
+    "recommendation": "manual_review",
+    "reason": "Score de risco na faixa intermediária.",
+    "approve_max_score": 0.5,
+    "manual_review_max_score": 0.6,
+    "explanation": "A política classificou o score na faixa de revisão manual. O score ordena o risco estimado pelo modelo e não representa uma probabilidade calibrada de inadimplência."
+  },
+  "factors_increasing_score": [
+    {
+      "report_rank": 1,
+      "original_rank_by_abs_shap": 2,
+      "feature": "amt_credit",
+      "label": "Valor do crédito",
+      "description": "Valor total do crédito da solicitação atual.",
+      "type": "numeric",
+      "format": "currency",
+      "unit": "unidade monetária do dataset",
+      "value_semantics": "Valor monetário do crédito solicitado.",
+      "customer_value": 490495.5,
+      "shap_value": 0.11266556542176867,
+      "direction": "increases_risk",
+      "explanation": "O valor do crédito solicitado contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "O valor está próximo ao centro da distribuição de treinamento, enquanto sua relevância local para este caso foi superior à referência global da feature.",
+      "comparison": {
+        "feature_type": "numeric",
+        "shap": {
+          "global_mean_abs_shap": 0.07998722927948014,
+          "local_abs_shap": 0.11266556542176867,
+          "abs_shap_percentile_low": 75,
+          "abs_shap_percentile_high": 90
+        },
+        "numeric": {
+          "training_percentile_low": 47,
+          "training_percentile_high": 47,
+          "population_mean": 599025.9997057016,
+          "population_median": 513531,
+          "population_p25": 270000,
+          "population_p75": 808650,
+          "target_0_median": 517788,
+          "target_1_median": 497520,
+          "binary_rates": null
+        },
+        "categorical": null
+      }
+    },
+    {
+      "report_rank": 2,
+      "original_rank_by_abs_shap": 3,
+      "feature": "has_car",
+      "label": "Possui automóvel",
+      "description": "Indica se o cliente declarou possuir automóvel.",
+      "type": "binary",
+      "format": "boolean",
+      "unit": null,
+      "value_semantics": "0 = não possui automóvel; 1 = possui automóvel.",
+      "customer_value": 0,
+      "shap_value": 0.10966100784535687,
+      "direction": "increases_risk",
+      "explanation": "A informação sobre a posse de automóvel contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "A ausência de automóvel coincide com a mediana observada no treinamento, e sua relevância local foi ligeiramente superior à referência global da feature.",
+      "comparison": {
+        "feature_type": "numeric",
+        "shap": {
+          "global_mean_abs_shap": 0.0920497349976338,
+          "local_abs_shap": 0.10966100784535687,
+          "abs_shap_percentile_low": 50,
+          "abs_shap_percentile_high": 75
+        },
+        "numeric": {
+          "training_percentile_low": 0,
+          "training_percentile_high": 65,
+          "population_mean": 0.34010815873253314,
+          "population_median": 0,
+          "population_p25": 0,
+          "population_p75": 1,
+          "target_0_median": 0,
+          "target_1_median": 0,
+          "binary_rates": {
+            "overall": 0.34010815873253314,
+            "target_0": 0.3431758205217096,
+            "target_1": 0.30517623363544816
+          }
+        },
+        "categorical": null
+      }
+    },
+    {
+      "report_rank": 5,
+      "original_rank_by_abs_shap": 6,
+      "feature": "bureau_debt_credit_ratio",
+      "label": "Relação entre dívida e crédito no bureau",
+      "description": "Razão entre a dívida total e o crédito total registrados no bureau para o cliente.",
+      "type": "numeric",
+      "format": "ratio",
+      "unit": "razão",
+      "value_semantics": "Sem crédito total válido ou sem histórico, recebe 0 e deve ser interpretada junto com has_bureau.",
+      "customer_value": 0.5124544904369879,
+      "shap_value": 0.09550675683899977,
+      "direction": "increases_risk",
+      "explanation": "A relação entre a dívida total e o crédito total registrados no bureau contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "O valor está na faixa superior da população de treinamento e acima das referências centrais, com relevância local superior à referência global da feature.",
+      "comparison": {
+        "feature_type": "numeric",
+        "shap": {
+          "global_mean_abs_shap": 0.07219879350617422,
+          "local_abs_shap": 0.09550675683899977,
+          "abs_shap_percentile_low": 75,
+          "abs_shap_percentile_high": 90
+        },
+        "numeric": {
+          "training_percentile_low": 80.5795898412659,
+          "training_percentile_high": 80.5795898412659,
+          "population_mean": 0.24088361545433246,
+          "population_median": 0.1200456570155902,
+          "population_p25": 0,
+          "population_p75": 0.4308114275876882,
+          "target_0_median": 0.11303203447937309,
+          "target_1_median": 0.22067843669436396,
+          "binary_rates": null
+        },
+        "categorical": null
+      }
+    },
+    {
+      "report_rank": 6,
+      "original_rank_by_abs_shap": 8,
+      "feature": "ext_source_2",
+      "label": "Score externo 2",
+      "description": "Score normalizado fornecido por uma fonte externa de dados de crédito.",
+      "type": "numeric",
+      "format": "decimal",
+      "unit": "score normalizado",
+      "value_semantics": "Valores maiores estiveram associados a menor inadimplência na análise exploratória. Valores ausentes são imputados pela mediana.",
+      "customer_value": 0.3542247319929012,
+      "shap_value": 0.07142909769702656,
+      "direction": "increases_risk",
+      "explanation": "O Score externo 2 contribuiu para elevar o score do modelo neste caso.",
+      "contextual_conclusion": "O valor está na faixa inferior da população de treinamento, abaixo das referências centrais, e sua relevância local foi semelhante à referência global da feature.",
+      "comparison": {
+        "feature_type": "numeric",
+        "shap": {
+          "global_mean_abs_shap": 0.06862270566146245,
+          "local_abs_shap": 0.07142909769702656,
+          "abs_shap_percentile_low": 50,
+          "abs_shap_percentile_high": 75
+        },
+        "numeric": {
+          "training_percentile_low": 21.346566052751562,
+          "training_percentile_high": 21.346566052751562,
+          "population_mean": 0.5145033543220389,
+          "population_median": 0.5659614260608526,
+          "population_p25": 0.3929737210031833,
+          "population_p75": 0.663421802279324,
+          "target_0_median": 0.573401949749691,
+          "target_1_median": 0.4410759495199416,
+          "binary_rates": null
+        },
+        "categorical": null
+      }
+    },
+    {
+      "report_rank": 7,
+      "original_rank_by_abs_shap": 9,
+      "feature": "name_education_type",
+      "label": "Nível de escolaridade",
+      "description": "Maior nível de escolaridade informado pelo cliente.",
+      "type": "categorical",
+      "format": "category",
+      "unit": null,
+      "value_semantics": "Categorias seguem os valores da fonte; ausências, se existentes, são representadas por 'Unknown'.",
+      "customer_value": "Secondary / secondary special",
+      "shap_value": 0.06891481334271048,
+      "direction": "increases_risk",
+      "explanation": "A categoria de escolaridade informada contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "A categoria é frequente na população de treinamento e apresentou inadimplência observada ligeiramente superior à taxa populacional, embora sua relevância local tenha sido inferior à referência global da feature.",
+      "comparison": {
+        "feature_type": "categorical",
+        "shap": {
+          "global_mean_abs_shap": 0.1025849673609955,
+          "local_abs_shap": 0.06891481334271048,
+          "abs_shap_percentile_low": 0,
+          "abs_shap_percentile_high": 50
+        },
+        "numeric": null,
+        "categorical": {
+          "category_count": 218391,
+          "category_frequency": 0.7101892290031901,
+          "category_default_rate": 0.08939928843221562,
+          "population_default_rate": 0.08072881945686496
+        }
+      }
+    },
+    {
+      "report_rank": 8,
+      "original_rank_by_abs_shap": 10,
+      "feature": "amt_annuity",
+      "label": "Valor da anuidade/parcela",
+      "description": "Valor da anuidade associada ao crédito da solicitação atual.",
+      "type": "numeric",
+      "format": "currency",
+      "unit": "unidade monetária do dataset",
+      "value_semantics": "Valor monetário; ausências são imputadas pela mediana.",
+      "customer_value": 27517.5,
+      "shap_value": 0.0675455208861952,
+      "direction": "increases_risk",
+      "explanation": "O valor da anuidade ou parcela contribuiu para elevar o score neste caso.",
+      "contextual_conclusion": "O valor está na região central da distribuição, ligeiramente acima das referências centrais, e sua relevância local foi semelhante à referência global da feature.",
+      "comparison": {
+        "feature_type": "numeric",
+        "shap": {
+          "global_mean_abs_shap": 0.06414984255550583,
+          "local_abs_shap": 0.0675455208861952,
+          "abs_shap_percentile_low": 50,
+          "abs_shap_percentile_high": 75
+        },
+        "numeric": {
+          "training_percentile_low": 58.890243902439025,
+          "training_percentile_high": 58.890243902439025,
+          "population_mean": 27108.48784108536,
+          "population_median": 24903,
+          "population_p25": 16524,
+          "population_p75": 34596,
+          "target_0_median": 24876,
+          "target_1_median": 25263,
+          "binary_rates": null
+        },
+        "categorical": null
+      }
+    }
+  ],
+  "factors_reducing_score": [
+    {
+      "report_rank": 3,
+      "original_rank_by_abs_shap": 4,
+      "feature": "ext_source_3",
+      "label": "Score externo 3",
+      "description": "Score normalizado fornecido por uma fonte externa de dados de crédito.",
+      "type": "numeric",
+      "format": "decimal",
+      "unit": "score normalizado",
+      "value_semantics": "Valores maiores estiveram associados a menor inadimplência na análise exploratória. Valores ausentes são imputados pela mediana.",
+      "customer_value": 0.6212263380626669,
+      "shap_value": -0.10811046129320098,
+      "direction": "reduces_risk",
+      "explanation": "O Score externo 3 contribuiu para reduzir o score do modelo neste caso.",
+      "contextual_conclusion": "O valor está na faixa superior da população de treinamento e acima das referências centrais, com relevância local superior à referência global da feature.",
+      "comparison": {
+        "feature_type": "numeric",
+        "shap": {
+          "global_mean_abs_shap": 0.0779577281501505,
+          "local_abs_shap": 0.10811046129320098,
+          "abs_shap_percentile_low": 75,
+          "abs_shap_percentile_high": 90
+        },
+        "numeric": {
+          "training_percentile_low": 72.66724667535931,
+          "training_percentile_high": 72.66724667535931,
+          "population_mean": 0.5156949091808122,
+          "population_median": 0.5352762504724826,
+          "population_p25": 0.4170996682522097,
+          "population_p75": 0.6363761710860439,
+          "target_0_median": 0.5352762504724826,
+          "target_1_median": 0.475849908720221,
+          "binary_rates": null
+        },
+        "categorical": null
+      }
+    },
+    {
+      "report_rank": 4,
+      "original_rank_by_abs_shap": 5,
+      "feature": "days_last_phone_change",
+      "label": "Tempo desde a última troca de telefone",
+      "description": "Número de dias entre a última troca de telefone do cliente e a solicitação atual.",
+      "type": "numeric",
+      "format": "days_before_application",
+      "unit": "dias",
+      "value_semantics": "Eventos anteriores à solicitação são representados por valores negativos; quanto mais próximo de zero, mais recente o evento. Ausências são imputadas pela mediana.",
+      "customer_value": -2536,
+      "shap_value": -0.09837654668999074,
+      "direction": "reduces_risk",
+      "explanation": "O intervalo desde a última troca de telefone contribuiu para reduzir o score neste caso.",
+      "contextual_conclusion": "O evento ocorreu há mais tempo que o observado para a maior parte da população de treinamento, e sua relevância local foi superior à referência global da feature.",
+      "comparison": {
+        "feature_type": "numeric",
+        "shap": {
+          "global_mean_abs_shap": 0.06015126240870849,
+          "local_abs_shap": 0.09837654668999074,
+          "abs_shap_percentile_low": 75,
+          "abs_shap_percentile_high": 90
+        },
+        "numeric": {
+          "training_percentile_low": 4.833333333333333,
+          "training_percentile_high": 4.833333333333333,
+          "population_mean": -962.8581188965597,
+          "population_median": -757,
+          "population_p25": -1570,
+          "population_p75": -274,
+          "target_0_median": -776,
+          "target_1_median": -594,
+          "binary_rates": null
+        },
+        "categorical": null
+      }
+    }
+  ],
+  "limitations": [
+    "O score é uma medida de ordenação de risco e não uma probabilidade calibrada de inadimplência.",
+    "As contribuições SHAP descrevem como o modelo se comportou neste caso e não demonstram relações causais.",
+    "O relatório utiliza somente as evidências autorizadas e as referências fornecidas; ele não constitui uma avaliação completa e autônoma do cliente.",
+    "A recomendação da política não foi recalculada nem alterada durante a geração desta explicação."
+  ],
+  "human_decision_notice": "Este relatório apoia a revisão do caso, mas a decisão final de crédito permanece sob responsabilidade do analista humano.",
+  "traceability": {
+    "model_version": null,
+    "policy_version": "demo-v1",
+    "catalog_version": "1.0.0",
+    "prompt_version": "1.2.0"
+  }
+}
