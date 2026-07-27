@@ -16,6 +16,7 @@ class PredictionService:
 
     REQUIRED_ARTIFACT_KEYS = {
         "model",
+        "features",
         "decision_threshold",
         "metrics",
     }
@@ -32,15 +33,10 @@ class PredictionService:
         with self.model_path.open("rb") as file:
             artifact = pickle.load(file)
         missing_keys = self.REQUIRED_ARTIFACT_KEYS.difference(artifact)
-        if "input_features" not in artifact and "features" not in artifact:
-            missing_keys.add("input_features")
         if missing_keys:
             raise ValueError(
                 f"Artefato inválido. Chaves ausentes: {sorted(missing_keys)}"
             )
-
-        if "input_features" not in artifact:
-            artifact["input_features"] = artifact["features"]
 
         return artifact
 
@@ -54,7 +50,7 @@ class PredictionService:
     @property
     def expected_features(self) -> list[str]:
         self._ensure_loaded()
-        return list(self.artifact["input_features"])
+        return list(self.artifact["features"])
 
     @property
     def decision_threshold(self) -> float:
