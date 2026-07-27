@@ -1,6 +1,6 @@
 {
   "model_version": "1.0.0",
-  "trained_at_utc": "2026-07-15T18:55:06+00:00",
+  "trained_at_utc": "2026-07-23T17:10:46+00:00",
   "row_count": 307511,
   "target_rate": 0.08072881945686496,
   "numeric_features": {

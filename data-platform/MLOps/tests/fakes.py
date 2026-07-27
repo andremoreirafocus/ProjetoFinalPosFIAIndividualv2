@@ -11,7 +11,6 @@ from typing import Any
 import numpy as np
 
 from MLOps.app.api.feature_service import CustomerNotFoundError
-from MLOps.app.api.model_service import ModelInputError
 
 
 class FakeModel:
@@ -40,47 +39,6 @@ class FakeModel:
         return np.array([[0.25, -0.10, -0.40]])
 
 
-class FakePredictionService:
-    """Fake do ``PredictionService`` para exercitar a camada HTTP (``main.py``).
-
-    Reproduz apenas o contrato consumido pelos endpoints: estado de carga,
-    features esperadas, threshold e o resultado da predição.
-    """
-
-    def __init__(
-        self,
-        loaded: bool = True,
-        features: list[str] | None = None,
-        threshold: float = 0.5,
-        score: float = 0.55,
-        predicted_class: int = 1,
-        missing: list[str] | None = None,
-    ) -> None:
-        self._loaded = loaded
-        self._features = features or ["ext_source_1", "occupation_type"]
-        self._threshold = threshold
-        self._score = score
-        self._class = predicted_class
-        self._missing = missing
-        self.model_path = "/fake/model.pkl"
-
-    @property
-    def is_loaded(self) -> bool:
-        return self._loaded
-
-    @property
-    def expected_features(self) -> list[str]:
-        return list(self._features)
-
-    @property
-    def decision_threshold(self) -> float:
-        return self._threshold
-
-    def predict(self, features: dict[str, Any]) -> tuple[float, int]:
-        if self._missing is not None:
-            raise ModelInputError(self._missing)
-        return self._score, self._class
-
 class FakeFeatureService:
     """Fake do ``CustomerFeatureService`` para os endpoints por cliente.
 
@@ -104,20 +62,6 @@ class FakeFeatureService:
                 f"Cliente {customer_id} não encontrado em application_abt."
             )
         return dict(self._features)
-
-
-class FakeExplanationService:
-    """Fake do serviço de explicação injetado nos testes HTTP."""
-
-    def __init__(self, explanation: dict[str, Any] | None = None) -> None:
-        self.explanation = explanation or {
-            "base_value": -0.4,
-            "output_scale": "raw_score",
-            "top_factors": [],
-        }
-
-    def explain(self, features: dict[str, Any]) -> dict[str, Any]:
-        return dict(self.explanation)
 
 
 class RetryFakeService:

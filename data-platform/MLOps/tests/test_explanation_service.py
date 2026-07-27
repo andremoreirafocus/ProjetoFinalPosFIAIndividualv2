@@ -12,9 +12,7 @@ from MLOps.tests.fixtures import build_artifact, build_feature_reference
 class ExplanationServiceTest(unittest.TestCase):
     def _service(self, directory: Path) -> ExplanationService:
         prediction_service = PredictionService(Path("/loaded/in/memory.pkl"))
-        prediction_service.artifact = build_artifact(
-            model=FakeModel(), include_input_features=True
-        )
+        prediction_service.artifact = build_artifact(model=FakeModel())
         reference_path = directory / "feature_reference.json"
         reference_path.write_text(
             json.dumps(build_feature_reference()), encoding="utf-8"

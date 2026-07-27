@@ -36,11 +36,9 @@ class ModelContractTest(unittest.TestCase):
         ).open("rb") as file:
             artifact = pickle.load(file)
 
-        # A chave atual do artefato é ``features``; ``input_features`` é a histórica.
-        artifact_features = artifact.get("input_features", artifact.get("features"))
         self.assertEqual(
             config["variables"]["input_features"],
-            artifact_features,
+            artifact["features"],
         )
 
 

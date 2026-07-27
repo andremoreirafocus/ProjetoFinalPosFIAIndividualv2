@@ -16,7 +16,7 @@ def build_features_from_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     Numéricas recebem ``0.0``; categóricas recebem a primeira categoria válida
     salva no artefato (garantindo um valor conhecido pelo modelo).
     """
-    features = artifact.get("input_features") or artifact["features"]
+    features = artifact["features"]
     categorical = set(artifact.get("categorical_features", []))
     categories = artifact.get("categories", {})
 

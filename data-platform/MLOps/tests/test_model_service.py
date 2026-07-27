@@ -13,8 +13,6 @@ from MLOps.tests.fixtures import build_artifact, write_artifact_pickle
 class PredictionServiceLoadTest(unittest.TestCase):
     def test_load_success_exposes_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            # Artefato usa a chave atual ``features``; ``load`` deve normalizar
-            # para ``input_features``.
             path = write_artifact_pickle(Path(tmp), build_artifact(threshold=0.4))
             service = PredictionService(path)
             service.load()
@@ -46,6 +44,17 @@ class PredictionServiceLoadTest(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         PredictionService(path).load()
 
+    def test_load_rejects_input_features_as_replacement_for_features(self) -> None:
+        artifact = build_artifact()
+        artifact["input_features"] = artifact.pop("features")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "artifact.pkl"
+            with path.open("wb") as file:
+                pickle.dump(artifact, file)
+
+            with self.assertRaises(ValueError):
+                PredictionService(path).load()
+
     def test_property_access_before_load_raises(self) -> None:
         service = PredictionService(Path("/qualquer/model.pkl"))
         with self.assertRaises(RuntimeError):
@@ -59,9 +68,7 @@ class PredictionServiceLoadTest(unittest.TestCase):
 class PredictionServicePredictTest(unittest.TestCase):
     def _loaded_service(self, model: FakeModel, **kwargs) -> PredictionService:
         service = PredictionService(Path("/loaded/in/memory.pkl"))
-        service.artifact = build_artifact(
-            model=model, include_input_features=True, **kwargs
-        )
+        service.artifact = build_artifact(model=model, **kwargs)
         return service
 
     def test_predict_returns_score_and_class_by_threshold(self) -> None:

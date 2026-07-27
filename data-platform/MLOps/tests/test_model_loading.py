@@ -36,7 +36,7 @@ class RefreshModelBundleTest(unittest.TestCase):
         reference_path: Path,
         trained_at_utc: str,
     ) -> None:
-        artifact = build_artifact(model=FakeModel(), include_input_features=True)
+        artifact = build_artifact(model=FakeModel())
         artifact["trained_at_utc"] = trained_at_utc
         with model_path.open("wb") as file:
             pickle.dump(artifact, file)
@@ -72,9 +72,7 @@ class RefreshModelBundleTest(unittest.TestCase):
                 )
             )
 
-            artifact = build_artifact(
-                model=FakeModel(), include_input_features=True
-            )
+            artifact = build_artifact(model=FakeModel())
             artifact["trained_at_utc"] = second_training
             with model_path.open("wb") as file:
                 pickle.dump(artifact, file)

@@ -16,13 +16,8 @@ def build_artifact(
     categorical_features: list[str] | None = None,
     categories: dict[str, list[str]] | None = None,
     threshold: float = 0.5,
-    include_input_features: bool = False,
 ) -> dict[str, Any]:
-    """Monta um dicionário-artefato coerente com o contrato do ``PredictionService``.
-
-    Por padrão usa ``features`` (chave atual); ``include_input_features`` adiciona a
-    chave histórica ``input_features`` quando se quer testar a normalização.
-    """
+    """Monta um dicionário-artefato coerente com o contrato atual do modelo."""
     artifact: dict[str, Any] = {
         "model": model if model is not None else FakeModel(),
         "features": features if features is not None else ["ext_source_1", "occupation_type"],
@@ -41,8 +36,6 @@ def build_artifact(
         "config_version": "test-v1",
         "trained_at_utc": "2026-07-14T00:00:00+00:00",
     }
-    if include_input_features:
-        artifact["input_features"] = artifact["features"]
     return artifact
 
 
