@@ -72,7 +72,6 @@ class ApiEndpointsTest(unittest.TestCase):
         app.state.credit_policy = CreditPolicy(0.50, 0.60, "test-v1")
         app.state.model_load_error = None
         app.state.model_bundle_lock = RLock()
-        app.state.model_bundle_auto_refresh = True
         app.state.model_bundle_signature = None
 
         client = TestClient(app)

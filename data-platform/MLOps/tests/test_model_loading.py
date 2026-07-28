@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import suppress
 import json
 import pickle
 import tempfile
@@ -9,24 +11,65 @@ from pathlib import Path
 from MLOps.app.api.explanation_service import ExplanationService
 from MLOps.app.api.main import _load_model_with_retry, _refresh_model_bundle
 from MLOps.app.api.model_service import PredictionService
-from MLOps.tests.fakes import FakeModel, RetryFakeService
+from MLOps.tests.fakes import FakeModel
 from MLOps.tests.fixtures import build_artifact, build_feature_reference
 
 
 class LoadModelWithRetryTest(unittest.IsolatedAsyncioTestCase):
-    async def test_retries_until_model_loads(self) -> None:
-        # ``app`` real e leve (não é mock): só precisa de ``state.model_load_error``.
-        app = types.SimpleNamespace(
-            state=types.SimpleNamespace(model_load_error=None)
-        )
-        service = RetryFakeService(failures_before_success=1)
+    async def test_retries_until_complete_bundle_loads(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            model_path = directory / "lightgbm_abt.pkl"
+            reference_path = directory / "feature_reference.json"
+            prediction_service = PredictionService(model_path)
+            explanation_service = ExplanationService(
+                prediction_service,
+                reference_path,
+            )
+            app = types.SimpleNamespace(
+                state=types.SimpleNamespace(
+                    model_bundle_lock=threading.RLock(),
+                    model_bundle_signature=None,
+                    model_load_error=None,
+                )
+            )
 
-        await _load_model_with_retry(app, service, retry_seconds=0.01)
+            load_task = asyncio.create_task(
+                _load_model_with_retry(
+                    app,
+                    prediction_service,
+                    retry_seconds=0.01,
+                    explanation_service=explanation_service,
+                )
+            )
+            try:
+                for _ in range(100):
+                    if app.state.model_load_error is not None:
+                        break
+                    await asyncio.sleep(0.001)
+                self.assertIsNotNone(app.state.model_load_error)
 
-        # Falhou uma vez (ramo de erro) e carregou na segunda (ramo de sucesso).
-        self.assertTrue(service.is_loaded)
-        self.assertEqual(service.load_calls, 2)
-        self.assertIsNone(app.state.model_load_error)
+                with model_path.open("wb") as file:
+                    pickle.dump(build_artifact(model=FakeModel()), file)
+                reference_path.write_text(
+                    json.dumps(build_feature_reference()),
+                    encoding="utf-8",
+                )
+
+                await asyncio.wait_for(load_task, timeout=1)
+            finally:
+                if not load_task.done():
+                    load_task.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await load_task
+
+            self.assertTrue(prediction_service.is_loaded)
+            self.assertIsNotNone(explanation_service.reference)
+            self.assertEqual(
+                explanation_service.reference["model_version"],
+                prediction_service.config_version,
+            )
+            self.assertIsNone(app.state.model_load_error)
 
 
 class RefreshModelBundleTest(unittest.TestCase):
@@ -100,6 +143,50 @@ class RefreshModelBundleTest(unittest.TestCase):
             )
             self.assertEqual(
                 explanation_service.reference["trained_at_utc"], second_training
+            )
+
+    def test_keeps_loaded_bundle_when_one_file_is_temporarily_missing(self) -> None:
+        trained_at_utc = "2026-07-14T00:00:00+00:00"
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            model_path = directory / "lightgbm_abt.pkl"
+            reference_path = directory / "feature_reference.json"
+            self._write_pair(model_path, reference_path, trained_at_utc)
+            prediction_service = PredictionService(model_path)
+            explanation_service = ExplanationService(
+                prediction_service, reference_path
+            )
+            app = types.SimpleNamespace(
+                state=types.SimpleNamespace(
+                    model_bundle_lock=threading.RLock(),
+                    model_bundle_signature=None,
+                    model_load_error=None,
+                )
+            )
+
+            self.assertTrue(
+                _refresh_model_bundle(
+                    app, prediction_service, explanation_service
+                )
+            )
+
+            reference_path.unlink()
+
+            self.assertFalse(
+                _refresh_model_bundle(
+                    app, prediction_service, explanation_service
+                )
+            )
+            self.assertEqual(
+                prediction_service.trained_at_utc, trained_at_utc
+            )
+            self.assertEqual(
+                explanation_service.reference["trained_at_utc"],
+                trained_at_utc,
+            )
+            self.assertIn(
+                "feature_reference.json",
+                app.state.model_load_error,
             )
 
 

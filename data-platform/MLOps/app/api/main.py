@@ -48,7 +48,6 @@ async def lifespan(app: FastAPI):
     app.state.model_load_error = None
     app.state.model_bundle_signature = None
     app.state.model_bundle_lock = RLock()
-    app.state.model_bundle_auto_refresh = True
 
     model_load_task = asyncio.create_task(
         _load_model_with_retry(
@@ -70,23 +69,23 @@ async def lifespan(app: FastAPI):
 
 async def _load_model_with_retry(
     app: FastAPI,
-    service: PredictionService,
+    prediction_service: PredictionService,
     retry_seconds: float,
-    explanation_service: ExplanationService | None = None,
+    explanation_service: ExplanationService,
 ) -> None:
-    while not service.is_loaded:
+    while not prediction_service.is_loaded:
         try:
-            if explanation_service is None:
-                await asyncio.to_thread(service.load)
-            else:
-                await asyncio.to_thread(
-                    _refresh_model_bundle, app, service, explanation_service
-                )
+            await asyncio.to_thread(
+                _refresh_model_bundle,
+                app,
+                prediction_service,
+                explanation_service,
+            )
         except Exception as error:
             app.state.model_load_error = str(error)
             logger.error(
                 "Falha ao carregar o modelo %s: %s. Nova tentativa em %.1f segundos.",
-                service.model_path,
+                prediction_service.model_path,
                 error,
                 retry_seconds,
             )
@@ -94,10 +93,13 @@ async def _load_model_with_retry(
         else:
             app.state.model_load_error = None
             print(
-                f"Modelo carregado com sucesso: {service.model_path}",
+                f"Modelo carregado com sucesso: {prediction_service.model_path}",
                 flush=True,
             )
-            logger.info("Modelo carregado com sucesso: %s", service.model_path)
+            logger.info(
+                "Modelo carregado com sucesso: %s",
+                prediction_service.model_path,
+            )
 
 
 def _file_signature(path: Path) -> tuple[int, int]:
@@ -122,13 +124,13 @@ def _refresh_model_bundle(
 ) -> bool:
     """Recarrega modelo e referências juntos quando os arquivos forem alterados."""
     with app.state.model_bundle_lock:
-        signature_before = _bundle_signature(
-            prediction_service, explanation_service
-        )
-        if signature_before == app.state.model_bundle_signature:
-            return False
-
         try:
+            signature_before = _bundle_signature(
+                prediction_service, explanation_service
+            )
+            if signature_before == app.state.model_bundle_signature:
+                return False
+
             artifact = prediction_service.read_artifact()
             reference = explanation_service.read_reference()
             signature_after = _bundle_signature(
@@ -181,18 +183,7 @@ app = FastAPI(
 @app.get("/health", response_model=HealthResponse)
 def health(request: Request) -> HealthResponse:
     service: PredictionService = request.app.state.prediction_service
-    _refresh_or_503(request)
-    if not service.is_loaded:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "status": "unavailable",
-                "model_loaded": False,
-                "model_path": str(service.model_path),
-                "message": "O artefato do modelo ainda não foi carregado.",
-                "last_error": request.app.state.model_load_error,
-            },
-        )
+    _ensure_model_bundle_available(request)
 
     return HealthResponse(
         status="ok",
@@ -204,7 +195,7 @@ def health(request: Request) -> HealthResponse:
 @app.get("/model/features", response_model=list[str])
 def model_features(request: Request) -> list[str]:
     service: PredictionService = request.app.state.prediction_service
-    _refresh_or_503(request)
+    _ensure_model_bundle_available(request)
     with request.app.state.model_bundle_lock:
         return service.expected_features
 
@@ -266,9 +257,7 @@ def predict_from_database(customer_id: int, request: Request) -> PredictionRespo
         request=request,
     )
 
-def _refresh_or_503(request: Request) -> None:
-    if not getattr(request.app.state, "model_bundle_auto_refresh", False):
-        return
+def _ensure_model_bundle_available(request: Request) -> None:
     prediction_service: PredictionService = request.app.state.prediction_service
     explanation_service: ExplanationService = request.app.state.explanation_service
     try:
@@ -302,7 +291,7 @@ def _predict(
     explanation_service: ExplanationService = request.app.state.explanation_service
     credit_policy: CreditPolicy = request.app.state.credit_policy
 
-    _refresh_or_503(request)
+    _ensure_model_bundle_available(request)
 
     with request.app.state.model_bundle_lock:
         try:

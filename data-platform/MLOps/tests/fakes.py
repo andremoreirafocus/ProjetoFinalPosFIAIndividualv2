@@ -62,29 +62,3 @@ class FakeFeatureService:
                 f"Cliente {customer_id} não encontrado em application_abt."
             )
         return dict(self._features)
-
-
-class RetryFakeService:
-    """Serviço de carga com sequência roteirizada, para exercitar o retry.
-
-    ``load`` falha ``failures_before_success`` vezes e então marca ``is_loaded``,
-    permitindo cobrir os dois ramos de ``_load_model_with_retry`` (erro + sucesso)
-    sem interceptar código.
-    """
-
-    def __init__(self, failures_before_success: int = 1) -> None:
-        self._remaining_failures = failures_before_success
-        self._loaded = False
-        self.model_path = "/fake/model.pkl"
-        self.load_calls = 0
-
-    @property
-    def is_loaded(self) -> bool:
-        return self._loaded
-
-    def load(self) -> None:
-        self.load_calls += 1
-        if self._remaining_failures > 0:
-            self._remaining_failures -= 1
-            raise RuntimeError("falha simulada de carga do artefato")
-        self._loaded = True
