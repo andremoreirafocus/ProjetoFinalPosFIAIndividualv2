@@ -3,7 +3,7 @@
   "prompt_version": "1.2.0",
   "language": "pt-BR",
   "input_contract": {
-    "source": "sample_agent_context_before_llm.json",
+    "source": "archive/sample_agent_context_before_llm.json",
     "json_pointer": "/llm_context",
     "description": "Contexto determinístico preparado pelo agente após combinar a resposta da API com o catálogo e aplicar as regras de governança."
   },

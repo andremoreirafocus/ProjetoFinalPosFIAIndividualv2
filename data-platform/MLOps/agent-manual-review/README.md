@@ -1,189 +1,381 @@
-# Protótipo do relatório de apoio à revisão humana
+# Protótipo executável do agente de apoio à revisão humana
 
-Esta pasta reúne os artefatos usados para **materializar a proposta de relatório de
-apoio à revisão manual de crédito e validar, com o usuário, a utilidade do documento
-gerado**.
+Este diretório materializa o fluxo proposto para gerar um relatório de apoio à
+revisão manual de crédito. O protótipo combina dados produzidos pela API, regras de
+governança do catálogo de features, composição narrativa por um LLM e montagem
+controlada do JSON consumido pelo template do relatório.
 
-A intenção do protótipo é tornar concreta a evolução descrita na arquitetura: em vez
-de avaliar apenas uma descrição abstrata do agente, é possível examinar um relatório
-completo, verificar se ele reúne as informações necessárias e decidir se realmente
-reduz o trabalho de investigação do analista.
+O objetivo é validar concretamente:
 
-O resultado não busca apenas encurtar a leitura. Ele concentra no mesmo documento a
-explicação contextualizada do caso, as evidências que a sustentam, as limitações da
-explicação e os dados técnicos necessários para conferência. Assim, a utilidade pode
-ser avaliada em termos de compreensão, confiança, verificabilidade e redução de
-consultas a outras fontes.
+- quais informações devem chegar ao modelo de linguagem;
+- quais informações o LLM pode produzir;
+- como impedir que o LLM altere score, política, SHAP ou referências estatísticas;
+- como associar a narrativa validada aos dados originais do caso;
+- se o relatório resultante é útil e verificável para o analista.
 
-## Fluxo materializado
+O protótipo não toma decisão de crédito. A recomendação da política é preservada e a
+decisão final permanece com o analista humano.
+
+O README anterior, que documentava a construção manual dos primeiros artefatos, foi
+preservado em [`archive/README.md`](archive/README.md).
+
+## Fluxo implementado
 
 ```text
 resposta da API + catálogo de features
                   │
                   ▼
-       contexto governado pelo agente
+       prepare_llm_context.py
+       associa · enriquece · filtra
                   │
                   ▼
-          prompt estruturado do LLM
+       contexto governado para o LLM
                   │
                   ▼
-          conteúdo narrativo do LLM
+             invoke_llm.py
+       aplica o prompt · invoca Groq
                   │
                   ▼
- agente valida e reassocia evidências determinísticas
+          resposta narrativa JSON
                   │
                   ▼
-          JSON consolidado do relatório
+       process_llm_response.py
+       valida · reassocia · consolida
                   │
                   ▼
-        template HTML/Jinja → PDF
+          JSON final do relatório
+                  │
+                  ▼
+       template HTML/Jinja → PDF
 ```
 
-Os dados utilizados na demonstração tiveram como origem:
+Os três scripts separam responsabilidades que não devem ser confundidas:
 
-- [`sample_api_response_with_explanation.json`](sample_api_response_with_explanation.json):
-  resposta técnica da API contendo score, política e objeto de explicação;
-- [`../config/feature_catalog.json`](../config/feature_catalog.json): catálogo com a
-  semântica, as regras de interpretação e as restrições de uso das features;
-- [`sample_agent_context_before_llm.json`](sample_agent_context_before_llm.json):
-  contexto preparado pelo agente antes da chamada ao LLM, produzido pela associação
-  entre a resposta da API e o catálogo e pela exclusão das evidências não autorizadas.
+1. preparar e governar o contexto;
+2. invocar o modelo de linguagem;
+3. validar sua resposta e montar o relatório final.
 
-## Artefatos ativos
+O LLM recebe somente `llm_context`. Os fatores excluídos por governança e os dados de
+controle do processamento não são incluídos no prompt.
 
-O arquivo `sample_credit_review_report_v3.pdf` é a versão vigente do relatório e deve
-ser a única utilizada em validações, demonstrações e apresentações. As versões
-anteriores foram preservadas apenas como histórico e estão descritas em
-[Versões arquivadas](#versões-arquivadas).
+## Requisitos
 
-### `agent_report_prompt_v1.json`
+O ambiente Python usado pelo projeto deve receber as dependências específicas do
+protótipo:
 
-Contrato utilizado para orientar a composição textual pelo LLM. O arquivo define:
+```bash
+cd data-platform
+MLOps/.venv/bin/python -m pip install \
+  -r MLOps/agent-manual-review/agent-requirements.txt
+```
 
-- o contrato de entrada, que recebe somente o `llm_context` já preparado e governado;
-- as instruções que impedem o LLM de recalcular score, métricas, percentis, limites ou
-  recomendação;
-- a obrigação de explicar o caso e produzir uma conclusão contextualizada para cada
-  fator autorizado;
-- o schema JSON obrigatório da resposta;
-- as verificações que o agente deve executar após receber a resposta.
+O arquivo [`agent-requirements.txt`](agent-requirements.txt) fixa as versões de:
 
-Foi criado manualmente a partir do comportamento proposto para o agente e da estrutura
-de [`sample_agent_context_before_llm.json`](sample_agent_context_before_llm.json).
-Sua função no protótipo é explicitar e testar a divisão de responsabilidades: o LLM
-produz a narrativa, enquanto os valores técnicos permanecem sob controle da solução.
+- `langchain-groq`, usado para acessar o Groq por meio do LangChain;
+- `python-dotenv`, usado para ler a credencial local.
 
-### `sample_llm_report.json`
+## Configuração da credencial do Groq
 
-Exemplo da resposta que o LLM produziria ao receber o contexto preparado por meio do
-prompt anterior. Contém somente o conteúdo narrativo estruturado, incluindo:
+O script `invoke_llm.py` lê obrigatoriamente:
 
-- síntese do caso e enquadramento na política;
-- explicação dos fatores que elevaram ou reduziram o score;
+```text
+MLOps/agent-manual-review/.env
+```
+
+Conteúdo esperado:
+
+```dotenv
+GROQ_API_KEY=insira_a_chave_aqui
+```
+
+A chave é lida exclusivamente desse arquivo e passada explicitamente ao `ChatGroq`.
+Uma variável `GROQ_API_KEY` previamente exportada no processo não substitui o valor
+do arquivo.
+
+O `.env` contém um segredo e não deve ser versionado. No estado atual do repositório,
+esse caminho ainda não está protegido pelo `.gitignore`; essa proteção deve ser
+adicionada antes da criação de um `.env` real dentro do diretório.
+
+## Execução completa
+
+Os exemplos abaixo escrevem as saídas em `/tmp` para não alterar nem sobrescrever os
+artefatos de demonstração existentes:
+
+```bash
+mkdir -p /tmp/manual-review-agent-demo
+cd data-platform
+```
+
+### 1. Preparar o contexto do LLM
+
+```bash
+MLOps/.venv/bin/python \
+  MLOps/agent-manual-review/prepare_llm_context.py \
+  --api-response /caminho/para/api_response_with_model_version.json \
+  --feature-catalog MLOps/config/feature_catalog.json \
+  --prompt-version 1.2.0 \
+  --output /tmp/manual-review-agent-demo/context.json
+```
+
+#### Entradas
+
+`--api-response`
+
+: Resposta da API contendo identificação do caso, score, classe, política,
+  explicação local e `model_version`.
+
+`--feature-catalog`
+
+: Catálogo com semântica, formato, unidade, restrições e `allowed_in_report` para
+  cada feature.
+
+`--prompt-version`
+
+: Versão do contrato de prompt que será usada na chamada ao LLM. O parâmetro pode
+  ser omitido para gerar um contexto de auditoria, mas esse contexto receberá
+  `ready_for_llm: false`.
+
+`--output`
+
+: Novo arquivo que receberá o contexto preparado.
+
+#### Processamento
+
+O script:
+
+1. valida a estrutura da resposta e do catálogo;
+2. associa cada fator ao catálogo usando `feature`;
+3. acrescenta rótulo, descrição, tipo, formato, unidade e semântica;
+4. mantém no `llm_context` somente fatores com `allowed_in_report: true`;
+5. registra separadamente os fatores excluídos e o motivo;
+6. preserva valor do cliente, contribuição SHAP e referências estatísticas;
+7. registra versões do modelo, da política, do catálogo e do prompt;
+8. informa em `validation.ready_for_llm` se o contexto pode ser enviado ao LLM.
+
+Uma feature explicada pela API e ausente do catálogo constitui erro de contrato. Nesse
+caso, nenhum arquivo é escrito.
+
+#### Limitação do sample atual
+
+O arquivo
+[`sample_api_response_with_explanation.json`](sample_api_response_with_explanation.json)
+não possui `model_version`. Por isso, ele pode ser usado para demonstrar e reproduzir
+a preparação do contexto, mas o resultado será corretamente marcado como
+`ready_for_llm: false`.
+
+O arquivo
+[`sample_agent_context_before_llm.json`](archive/sample_agent_context_before_llm.json) foi
+reproduzido pelo script a partir do sample da API e do catálogo. Os valores de
+`source_files` refletem literalmente os caminhos fornecidos na linha de comando.
+
+### 2. Invocar o LLM com LangChain e Groq
+
+```bash
+MLOps/.venv/bin/python \
+  MLOps/agent-manual-review/invoke_llm.py \
+  --context /tmp/manual-review-agent-demo/context.json \
+  --prompt-contract MLOps/agent-manual-review/agent_report_prompt_v1.json \
+  --model openai/gpt-oss-20b \
+  --timeout-seconds 60 \
+  --output /tmp/manual-review-agent-demo/llm_response.json
+```
+
+#### Entradas
+
+`--context`
+
+: Contexto produzido por `prepare_llm_context.py`.
+
+`--prompt-contract`
+
+: Contrato que contém `system_prompt`, `user_prompt_template`, versão e schema da
+  resposta.
+
+`--model`
+
+: Identificador explícito do modelo disponível no Groq.
+
+`--timeout-seconds`
+
+: Limite explícito de duração da chamada.
+
+`--output`
+
+: Novo arquivo que receberá somente a resposta narrativa estruturada.
+
+#### Processamento
+
+Antes de chamar o Groq, o script:
+
+- exige `validation.ready_for_llm: true`;
+- confirma que a versão do prompt no contexto corresponde ao contrato informado;
+- insere somente `llm_context` no template do prompt;
+- exige saída estruturada conforme o JSON Schema do contrato;
+- usa temperatura zero;
+- desativa retry interno, pois retry pertence à futura orquestração.
+
+O LLM produz:
+
+- síntese do caso;
+- explicação do enquadramento na política;
+- explicação narrativa de cada fator;
 - conclusão contextualizada de cada fator;
-- limitações e aviso sobre a decisão humana.
+- limitações;
+- aviso de decisão humana.
 
-Foi gerado por uma **simulação da atuação do LLM** sobre o contexto do caso. Os números
-determinísticos não foram repetidos nesse arquivo porque são reassociados pelo agente
-na etapa seguinte. Portanto, este arquivo representa a contribuição específica do
-LLM, e não o relatório completo.
+Ele não produz nem recalcula os valores do cliente, score, política, SHAP, percentis
+ou estatísticas populacionais.
 
-### `sample_agent_report.json`
+### 3. Validar a resposta e montar o relatório
 
-Representa a saída consolidada do agente, pronta para renderização. Foi produzido pela
-combinação de duas fontes:
+```bash
+MLOps/.venv/bin/python \
+  MLOps/agent-manual-review/process_llm_response.py \
+  --context /tmp/manual-review-agent-demo/context.json \
+  --llm-response /tmp/manual-review-agent-demo/llm_response.json \
+  --output /tmp/manual-review-agent-demo/agent_report.json
+```
 
-1. o conteúdo narrativo de `sample_llm_report.json`;
-2. os dados determinísticos preservados em
-   [`sample_agent_context_before_llm.json`](sample_agent_context_before_llm.json).
+#### Entradas
 
-Nessa etapa, a resposta narrativa é validada contra o schema, as features e suas
-direções são confrontadas com o contexto autorizado e, em seguida, cada explicação é
-reassociada ao valor do cliente, SHAP, referências populacionais, política e dados de
-rastreabilidade. Essa associação é determinística: o LLM não cria nem modifica esses
-valores.
+`--context`
 
-O arquivo demonstra o contrato final entre a preparação do caso e a camada de
-apresentação.
+: Mesmo contexto que foi enviado ao LLM.
 
-### `credit_review_report_v1.html.j2`
+`--llm-response`
 
-Template HTML/Jinja usado para transformar `sample_agent_report.json` no documento
-visual. Foi criado especificamente para validar uma apresentação híbrida:
+: Resposta estruturada salva por `invoke_llm.py`.
 
-- o corpo principal prioriza a conclusão contextualizada e apresenta uma síntese das
-  evidências relevantes;
-- o apêndice técnico conserva as métricas determinísticas completas para conferência;
-- a seção de rastreabilidade identifica as versões associadas ao resultado;
-- scores e razões são exibidos com no máximo quatro casas decimais, enquanto
-  percentis são apresentados sem casas decimais.
+`--output`
 
-O template apenas formata dados existentes. Ele não recalcula risco, não altera a
-recomendação e não produz conclusões.
+: Novo arquivo que receberá o relatório consolidado.
 
-O sufixo `v1` identifica a versão do **template**, enquanto o sufixo `v3` do PDF
-identifica a terceira iteração do **artefato renderizado**. Essas versões pertencem a
-contratos diferentes e não indicam que o PDF vigente utilize um template obsoleto.
+#### Etapa A — validação da resposta
 
-### `sample_credit_review_report_v3.pdf`
+O script rejeita a resposta quando:
 
-Artefato final apresentado ao usuário para validação. Foi renderizado com um conversor
-HTML para PDF a partir de:
+- o schema possui campos ausentes ou extras;
+- aparece uma feature não autorizada;
+- uma feature autorizada é omitida ou duplicada;
+- a direção da contribuição difere do contexto original;
+- a feature aparece na lista incompatível com sua direção;
+- os textos obrigatórios estão vazios;
+- as limitações mínimas não foram apresentadas;
+- o contexto original não estava pronto para o LLM.
 
-- `sample_agent_report.json`, como fonte de dados;
-- `credit_review_report_v1.html.j2`, como definição de conteúdo e layout.
+#### Etapa B — montagem do relatório
 
-A versão 3 combina a interpretação contextualizada com um apêndice verificável. Essa
-estrutura busca reduzir o tempo total da revisão sem sacrificar profundidade: o
-analista recebe a conclusão, consegue entender as evidências que a sustentam e pode
-conferir os valores no próprio relatório, sem precisar reconstruir o caso consultando
-fontes dispersas.
+Somente depois da validação, o script:
 
-## Versões arquivadas
+1. associa cada narrativa à feature original;
+2. recupera do contexto o valor do cliente;
+3. recupera contribuição SHAP e direção;
+4. recupera comparações e referências estatísticas;
+5. acrescenta semântica, score, política e rastreabilidade;
+6. gera um `report_id` em UUID;
+7. registra `generated_at` em UTC;
+8. grava o JSON final consumido pelo template.
 
-A pasta [`archive`](archive) mantém as duas iterações que antecederam o relatório
-vigente. Elas não devem ser utilizadas como referência funcional nem como material de
-apresentação.
+O processo de associação é determinístico: a narrativa vem do LLM, enquanto os dados
+do caso e as referências estatísticas são copiados das fontes controladas.
 
-### `archive/sample_credit_review_report.pdf` — v1
+## Contrato de não sobrescrita
 
-Primeira materialização do relatório. Validou a utilidade de apresentar uma conclusão
-contextualizada para cada fator, mas exibia os números com precisão excessiva e ainda
-não separava adequadamente a leitura principal da conferência técnica.
+Os três scripts recusam um `--output` que já exista. A verificação ocorre antes da
+gravação e, no caso da chamada ao LLM, antes de consumir a API externa.
 
-### `archive/sample_credit_review_report_v2.pdf` — v2
+Para uma nova execução, informe um novo caminho ou remova deliberadamente uma saída
+descartável fora do repositório. Os scripts não implementam sobrescrita automática.
 
-Iteração intermediária voltada à apresentação mais adequada dos valores e ao
-detalhamento das evidências determinísticas. A experiência mostrou, porém, que a
-evidência técnica sem a mesma força narrativa da primeira versão reduziria a utilidade
-do documento para o analista.
+## Entradas e contratos do protótipo
 
-### Evolução consolidada na v3
+| Arquivo | Papel |
+|---|---|
+| [`sample_api_response_with_explanation.json`](sample_api_response_with_explanation.json) | Resposta técnica demonstrativa da API. |
+| [`../config/feature_catalog.json`](../config/feature_catalog.json) | Catálogo semântico e de governança. |
+| [`agent_report_prompt_v1.json`](agent_report_prompt_v1.json) | Prompt versionado e schema da resposta. |
+| [`credit_review_report_v1.html.j2`](credit_review_report_v1.html.j2) | Template HTML/Jinja do PDF. |
 
-A v3 substitui as duas anteriores ao combinar suas contribuições:
+Esses arquivos fornecem as entradas demonstrativas e os contratos usados para
+executar o fluxo. O arquivo `sample_api_response_with_explanation.json` é uma amostra
+de entrada, não uma saída a ser regenerada pelos scripts.
 
-- mantém a conclusão contextualizada que torna o caso compreensível;
-- apresenta evidências resumidas junto à conclusão;
-- preserva as métricas determinísticas completas em um apêndice verificável;
-- reduz a necessidade de consultas externas sem sacrificar profundidade.
+## Outputs demonstrativos arquivados
 
-O arquivamento permite documentar a evolução do protótipo sem criar ambiguidade sobre
-qual relatório representa a solução atualmente validada.
+| Arquivo | Etapa que exemplifica |
+|---|---|
+| [`sample_agent_context_before_llm.json`](archive/sample_agent_context_before_llm.json) | Contexto preparado por `prepare_llm_context.py`. |
+| [`sample_llm_response_to_report_request.json`](archive/sample_llm_response_to_report_request.json) | Resposta estruturada obtida após a solicitação de composição do relatório ao LLM. |
+| [`sample_agent_report.json`](archive/sample_agent_report.json) | Relatório consolidado por `process_llm_response.py`. |
+| [`sample_credit_review_report.pdf`](archive/sample_credit_review_report.pdf) | Primeira iteração do PDF. |
+| [`sample_credit_review_report_v2.pdf`](archive/sample_credit_review_report_v2.pdf) | Segunda iteração do PDF. |
+| [`sample_credit_review_report_v3.pdf`](archive/sample_credit_review_report_v3.pdf) | Terceira iteração e último PDF produzido durante a validação. |
 
-## Limites do protótipo
+Esses outputs são referências históricas imutáveis da execução demonstrativa. Os
+scripts não os usam como fallback e uma nova execução não deve apontar `--output`
+para o diretório `archive`. Use caminhos novos, como os exemplos em `/tmp`, para
+preservar os resultados já validados.
 
-Estes arquivos demonstram o comportamento e o resultado esperado, mas não constituem
-uma implementação produtiva completa do agente. A chamada ao LLM e a montagem do JSON
-final foram simuladas para permitir a validação antecipada do artefato.
+## Renderização do PDF
 
-O relatório:
+O JSON produzido por `process_llm_response.py` corresponde à entrada esperada pelo
+template [`credit_review_report_v1.html.j2`](credit_review_report_v1.html.j2).
 
-- não recalcula o risco;
-- não altera a recomendação da política;
-- não transforma o score em probabilidade calibrada;
-- não atribui causalidade às contribuições SHAP;
-- não substitui a decisão do analista humano.
+A renderização HTML/Jinja para PDF ainda não foi encapsulada em um quarto script. O
+template atual já contém a correção do título do apêndice para **“Indicadores do caso
+e referências estatísticas”**. Portanto, o próximo PDF deverá ser salvo como uma nova
+versão, preservando a v3.
 
-Depois que a utilidade e o conteúdo forem validados pelo usuário, estes contratos e
-artefatos podem orientar a implementação produtiva descrita em
+## Testes
+
+Execute:
+
+```bash
+cd data-platform
+MLOps/.venv/bin/python \
+  -m unittest MLOps.tests.test_agent_manual_review_scripts -v
+```
+
+Os testes usam fixtures e um fake explícito para o colaborador LLM. Não fazem chamadas
+ao Groq, não dependem de uma chave real e não interceptam funções em tempo de
+execução.
+
+Os contratos testados incluem:
+
+- enriquecimento pelo catálogo;
+- filtragem e auditoria das features restritas;
+- bloqueio por rastreabilidade incompleta;
+- correspondência da versão do prompt;
+- leitura da credencial no `.env` local;
+- preparação das mensagens;
+- invocação por uma interface de LLM estruturado;
+- rejeição de feature não autorizada, omitida ou com direção alterada;
+- reassociação dos dados originais à narrativa;
+- proibição de sobrescrita das três saídas.
+
+## O que está pronto e o que ainda falta
+
+O protótipo já materializa de ponta a ponta:
+
+- preparação governada do caso;
+- contrato versionado do prompt;
+- chamada real possível ao LLM pelo Groq;
+- persistência da resposta narrativa;
+- validação pós-LLM;
+- montagem do JSON final;
+- template e exemplo de PDF.
+
+Para se tornar uma solução produtiva ainda são necessários:
+
+- inclusão de `model_version` no contrato da API;
+- orquestração das três etapas;
+- mensageria e processamento assíncrono;
+- persistência durável de contexto, resposta e relatório;
+- idempotência;
+- política de retry e tratamento de indisponibilidade;
+- observabilidade;
+- gestão de segredos apropriada ao ambiente;
+- automatização da renderização e do armazenamento do PDF.
+
+A arquitetura produtiva proposta permanece documentada em
 [`../AGENT_ARCHITECTURE.md`](../AGENT_ARCHITECTURE.md).
