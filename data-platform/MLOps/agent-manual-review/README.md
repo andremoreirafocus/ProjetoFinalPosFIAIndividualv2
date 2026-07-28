@@ -41,11 +41,11 @@ resposta da API + catálogo de features
 
 Os dados utilizados na demonstração tiveram como origem:
 
-- [`../sample_api_response_with_explanation.json`](../sample_api_response_with_explanation.json):
+- [`sample_api_response_with_explanation.json`](sample_api_response_with_explanation.json):
   resposta técnica da API contendo score, política e objeto de explicação;
 - [`../config/feature_catalog.json`](../config/feature_catalog.json): catálogo com a
   semântica, as regras de interpretação e as restrições de uso das features;
-- [`../sample_agent_context_before_llm.json`](../sample_agent_context_before_llm.json):
+- [`sample_agent_context_before_llm.json`](sample_agent_context_before_llm.json):
   contexto preparado pelo agente antes da chamada ao LLM, produzido pela associação
   entre a resposta da API e o catálogo e pela exclusão das evidências não autorizadas.
 
@@ -69,7 +69,7 @@ Contrato utilizado para orientar a composição textual pelo LLM. O arquivo defi
 - as verificações que o agente deve executar após receber a resposta.
 
 Foi criado manualmente a partir do comportamento proposto para o agente e da estrutura
-de [`../sample_agent_context_before_llm.json`](../sample_agent_context_before_llm.json).
+de [`sample_agent_context_before_llm.json`](sample_agent_context_before_llm.json).
 Sua função no protótipo é explicitar e testar a divisão de responsabilidades: o LLM
 produz a narrativa, enquanto os valores técnicos permanecem sob controle da solução.
 
@@ -95,7 +95,7 @@ combinação de duas fontes:
 
 1. o conteúdo narrativo de `sample_llm_report.json`;
 2. os dados determinísticos preservados em
-   [`../sample_agent_context_before_llm.json`](../sample_agent_context_before_llm.json).
+   [`sample_agent_context_before_llm.json`](sample_agent_context_before_llm.json).
 
 Nessa etapa, a resposta narrativa é validada contra o schema, as features e suas
 direções são confrontadas com o contexto autorizado e, em seguida, cada explicação é
