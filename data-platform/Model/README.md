@@ -231,7 +231,7 @@ O Pickle oficial é um dicionário com os elementos necessários para que outro 
 | `trained_at_utc` | Data e hora do treinamento. |
 | `config_version` | Versão lógica da configuração. |
 
-A API aceita `features` e normaliza internamente esse nome para `input_features`, preservando compatibilidade com artefatos anteriores.
+O `train.py` salva a lista ordenada na chave `features`, que é consumida diretamente pela API como contrato de entrada do modelo.
 
 ### Referências para explicação e para o agente acelerador de revisão de crédito
 

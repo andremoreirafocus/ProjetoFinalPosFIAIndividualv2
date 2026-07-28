@@ -248,7 +248,7 @@ CREDIT_MANUAL_REVIEW_MAX_SCORE=0.60
 | `CREDIT_POLICY_VERSION` | Obrigatória | Versão declarada da política de crédito, retornada nas respostas da API. | Sem padrão |
 | `CREDIT_APPROVE_MAX_SCORE` | Obrigatória | Limite superior da aprovação automática. Scores abaixo desse valor recebem recomendação de aprovação. | Sem padrão |
 | `CREDIT_MANUAL_REVIEW_MAX_SCORE` | Obrigatória | Limite superior da análise manual. Scores a partir desse valor recebem recomendação de rejeição. | Sem padrão |
-| `MODEL_LOAD_RETRY_SECONDS` | Opcional | Intervalo entre tentativas de carregamento do artefato. Enquanto o modelo não estiver disponível, a API permanece ativa e `/health` responde `503`. | `5` segundos |
+| `MODEL_LOAD_RETRY_SECONDS` | Opcional | Intervalo entre tentativas de carregamento do modelo e de suas referências. Enquanto nenhum bundle válido estiver disponível, a API permanece ativa e `/health` responde `503`. | `5` segundos |
 | `CREDIT_API_PORT` | Opcional | Porta do host pela qual a API de crédito será acessada. | `8000` |
 | `CREDIT_FRONTEND_PORT` | Opcional | Porta do host pela qual o frontend Streamlit será acessado. | `8501` |
 
@@ -343,16 +343,16 @@ docker compose up -d --build postgres credit-api credit-frontend
 
 ### Prontidão da API e carregamento do modelo
 
-O processo do `credit-api` pode iniciar mesmo que o artefato ainda não esteja
-disponível no volume. A API tenta carregar o modelo em segundo plano e, em caso de
-falha, registra o erro no log e repete a operação após o intervalo configurado em
-`MODEL_LOAD_RETRY_SECONDS`.
+O processo do `credit-api` pode iniciar mesmo que o modelo ou suas referências
+ainda não estejam disponíveis no volume. A API tenta carregar os dois arquivos
+como um único bundle e, em caso de falha, registra o erro no log e repete a
+operação após o intervalo configurado em `MODEL_LOAD_RETRY_SECONDS`.
 
-Durante esse período, `GET /health` responde HTTP `503` e informa o caminho do
-artefato e o último erro de carregamento. Os endpoints que dependem do modelo
-também respondem `503`, evitando predições sem um artefato válido. Assim que uma
-tentativa é bem-sucedida, `/health` passa a responder HTTP `200` com
-`model_loaded: true`, sem necessidade de reiniciar o container.
+Enquanto nenhum bundle válido estiver disponível, `GET /health` responde HTTP
+`503` com uma mensagem de indisponibilidade e o último erro de carregamento. Os
+endpoints que dependem do modelo também respondem `503`. Assim que uma tentativa
+é bem-sucedida, `/health` passa a responder HTTP `200` com `model_loaded: true`,
+sem necessidade de reiniciar o container.
 
 Para acompanhar as tentativas:
 

@@ -74,17 +74,17 @@ No startup, o `lifespan`:
 
 1. valida os limites da política;
 2. cria o `PredictionService` com `MODEL_PATH`;
-3. inicia a carga e validação do artefato em segundo plano;
+3. inicia em segundo plano a carga conjunta do modelo e de suas referências;
 4. cria o engine SQLAlchemy com `pool_pre_ping=True`;
 5. instancia os serviços de features, explicação e política;
 6. registra os serviços em `app.state`;
 7. libera o pool de conexões no shutdown.
 
-Se o artefato estiver ausente, corrompido ou incompatível, a API registra o erro e tenta novamente após `MODEL_LOAD_RETRY_SECONDS`. Enquanto a carga inicial não termina, `/health` e os endpoints dependentes do modelo respondem `503`.
+Se o modelo ou suas referências estiverem ausentes, corrompidos ou incompatíveis, a API registra o erro e tenta carregar novamente o bundle após `MODEL_LOAD_RETRY_SECONDS`. Enquanto nenhum bundle válido estiver disponível, `/health` e os endpoints dependentes do modelo respondem `503`.
 
 Quando a carga termina, o modelo e suas referências permanecem em memória. A API verifica a assinatura dos dois arquivos a cada requisição e recarrega o conjunto quando ambos pertencem ao mesmo treinamento. Se apenas um deles tiver sido atualizado, a última versão válida continua em uso até que o novo par esteja completo.
 
-O artefato precisa conter modelo, threshold, métricas e lista de features. Para compatibilidade, o serviço aceita a chave atual `features` ou a chave histórica `input_features`.
+O artefato precisa conter modelo, threshold, métricas e a lista de features na chave obrigatória `features`, que é a única aceita pela API.
 
 ## Preparação para inferência
 
@@ -123,7 +123,7 @@ A resposta inclui os limites e `policy_version`. O score é uma pontuação de o
 
 | Método e caminho | Finalidade |
 |---|---|
-| `GET /health` | Retorna `200` com o modelo carregado ou `503` durante a carga inicial. |
+| `GET /health` | Retorna `200` com um bundle válido carregado ou `503` enquanto ele não estiver disponível. |
 | `GET /model/features` | Lista as features esperadas pelo modelo. |
 | `GET /customers/{customer_id}/features` | Recupera as features de um cliente para edição. |
 | `POST /predict/features` | Calcula o score a partir das features fornecidas. |
@@ -133,16 +133,13 @@ O Swagger gerado pelos contratos de `schemas.py` está disponível em http://loc
 
 ## Health check
 
-Enquanto o modelo não está disponível:
+Enquanto nenhum bundle válido está disponível:
 
 ```json
 {
   "detail": {
-    "status": "unavailable",
-    "model_loaded": false,
-    "model_path": "/app/Model/artifacts/lightgbm_abt.pkl",
-    "message": "O artefato do modelo ainda não foi carregado.",
-    "last_error": "Modelo não encontrado: /app/Model/artifacts/lightgbm_abt.pkl"
+    "message": "Modelo e referências ainda não estão disponíveis.",
+    "last_error": "[Errno 2] No such file or directory: '/app/Model/artifacts/lightgbm_abt.pkl'"
   }
 }
 ```
@@ -243,7 +240,8 @@ A resposta explicativa constitui o insumo quantitativo do futuro agente acelerad
 | Cliente inexistente na ABT | HTTP `404`. |
 | Falha ao consultar PostgreSQL | HTTP `503`. |
 | Features obrigatórias ausentes | HTTP `422` com a lista. |
-| Artefato ausente ou inválido | API ativa, retry da carga inicial e HTTP `503` nos endpoints dependentes. |
+| Modelo ou referências ausentes ou inválidos, sem bundle anterior | API ativa, retry da carga inicial e HTTP `503` nos endpoints dependentes. |
+| Atualização incompleta com bundle anterior válido | A API mantém em memória a última versão válida até que o novo par esteja completo. |
 
 As predições são registradas em JSON no stdout para demonstração e diagnóstico. Esse registro não substitui uma trilha de auditoria persistente.
 
