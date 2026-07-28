@@ -1,10 +1,14 @@
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from .model_service import PredictionService
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExplanationService:
@@ -47,6 +51,54 @@ class ExplanationService:
     def load_reference(self) -> None:
         """Carrega e valida o baseline gerado junto com o modelo."""
         self.reference = self.read_reference()
+
+    @staticmethod
+    def validate_feature_coverage(
+        reference: dict[str, Any],
+        expected_features: list[str],
+    ) -> None:
+        """Valida se as referências podem explicar as features do modelo."""
+        expected = set(expected_features)
+        numeric = set(reference["numeric_features"])
+        categorical = set(reference["categorical_features"])
+        shap_features = {
+            item["feature"]
+            for item in reference["global_shap"]["feature_importance"]
+        }
+
+        missing_statistics = expected.difference(numeric | categorical)
+        duplicated_types = expected.intersection(numeric & categorical)
+        missing_shap = expected.difference(shap_features)
+
+        errors = []
+        if missing_statistics:
+            errors.append(
+                "features sem referência estatística: "
+                f"{sorted(missing_statistics)}"
+            )
+        if duplicated_types:
+            errors.append(
+                "features simultaneamente numéricas e categóricas: "
+                f"{sorted(duplicated_types)}"
+            )
+        if missing_shap:
+            errors.append(
+                "features sem referência SHAP global: "
+                f"{sorted(missing_shap)}"
+            )
+        if errors:
+            raise ValueError(
+                "Referências incompatíveis com o modelo: " + "; ".join(errors)
+            )
+
+        extra_features = (numeric | categorical | shap_features).difference(
+            expected
+        )
+        if extra_features:
+            logger.warning(
+                "Referências sem correspondência no modelo foram ignoradas: %s",
+                sorted(extra_features),
+            )
 
     def explain(
         self, features: dict[str, Any], max_factors: int = 10

@@ -146,6 +146,10 @@ def _refresh_model_bundle(
                 raise ValueError(
                     "O instante de treinamento das referências diverge do modelo."
                 )
+            explanation_service.validate_feature_coverage(
+                reference,
+                artifact["features"],
+            )
         except Exception as error:
             app.state.model_load_error = str(error)
             if prediction_service.is_loaded and explanation_service.reference is not None:

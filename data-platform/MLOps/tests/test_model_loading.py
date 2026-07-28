@@ -189,6 +189,105 @@ class RefreshModelBundleTest(unittest.TestCase):
                 app.state.model_load_error,
             )
 
+    def test_rejects_reference_incompatible_with_model_features(self) -> None:
+        def remove_statistical_reference(reference: dict) -> None:
+            del reference["numeric_features"]["ext_source_1"]
+
+        def remove_global_shap_reference(reference: dict) -> None:
+            reference["global_shap"]["feature_importance"] = [
+                item
+                for item in reference["global_shap"]["feature_importance"]
+                if item["feature"] != "ext_source_1"
+            ]
+
+        def duplicate_feature_type(reference: dict) -> None:
+            reference["categorical_features"]["ext_source_1"] = {}
+
+        cases = {
+            "missing statistical reference": remove_statistical_reference,
+            "missing global SHAP reference": remove_global_shap_reference,
+            "feature in two reference types": duplicate_feature_type,
+        }
+
+        for name, change_reference in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp)
+                model_path = directory / "lightgbm_abt.pkl"
+                reference_path = directory / "feature_reference.json"
+                with model_path.open("wb") as file:
+                    pickle.dump(build_artifact(model=FakeModel()), file)
+                reference = build_feature_reference()
+                change_reference(reference)
+                reference_path.write_text(
+                    json.dumps(reference),
+                    encoding="utf-8",
+                )
+                prediction_service = PredictionService(model_path)
+                explanation_service = ExplanationService(
+                    prediction_service,
+                    reference_path,
+                )
+                app = types.SimpleNamespace(
+                    state=types.SimpleNamespace(
+                        model_bundle_lock=threading.RLock(),
+                        model_bundle_signature=None,
+                        model_load_error=None,
+                    )
+                )
+
+                with self.assertRaises(ValueError):
+                    _refresh_model_bundle(
+                        app,
+                        prediction_service,
+                        explanation_service,
+                    )
+
+                self.assertFalse(prediction_service.is_loaded)
+                self.assertIsNone(explanation_service.reference)
+
+    def test_accepts_extra_references_and_logs_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            model_path = directory / "lightgbm_abt.pkl"
+            reference_path = directory / "feature_reference.json"
+            with model_path.open("wb") as file:
+                pickle.dump(build_artifact(model=FakeModel()), file)
+            reference = build_feature_reference()
+            reference["numeric_features"]["legacy_feature"] = {}
+            reference["global_shap"]["feature_importance"].append(
+                {"feature": "legacy_feature"}
+            )
+            reference_path.write_text(
+                json.dumps(reference),
+                encoding="utf-8",
+            )
+            prediction_service = PredictionService(model_path)
+            explanation_service = ExplanationService(
+                prediction_service,
+                reference_path,
+            )
+            app = types.SimpleNamespace(
+                state=types.SimpleNamespace(
+                    model_bundle_lock=threading.RLock(),
+                    model_bundle_signature=None,
+                    model_load_error=None,
+                )
+            )
+
+            with self.assertLogs(level="WARNING") as captured:
+                loaded = _refresh_model_bundle(
+                    app,
+                    prediction_service,
+                    explanation_service,
+                )
+
+            self.assertTrue(loaded)
+            self.assertTrue(prediction_service.is_loaded)
+            self.assertIsNotNone(explanation_service.reference)
+            self.assertTrue(
+                any("legacy_feature" in message for message in captured.output)
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

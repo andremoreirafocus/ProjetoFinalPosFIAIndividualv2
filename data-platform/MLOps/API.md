@@ -84,6 +84,11 @@ Se o modelo ou suas referências estiverem ausentes, corrompidos ou incompatíve
 
 Quando a carga termina, o modelo e suas referências permanecem em memória. A API verifica a assinatura dos dois arquivos a cada requisição e recarrega o conjunto quando ambos pertencem ao mesmo treinamento. Se apenas um deles tiver sido atualizado, a última versão válida continua em uso até que o novo par esteja completo.
 
+Antes de ativar o bundle, a API também verifica se cada feature do modelo possui
+exatamente uma referência estatística, numérica ou categórica, e uma referência
+SHAP global. A ausência ou a ambiguidade dessas referências impede a ativação.
+Referências extras não impedem a carga, mas geram um warning no log.
+
 O artefato precisa conter modelo, threshold, métricas e a lista de features na chave obrigatória `features`, que é a única aceita pela API.
 
 ## Preparação para inferência

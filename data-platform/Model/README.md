@@ -245,6 +245,11 @@ e, para cada feature, média e percentis 50, 75, 90, 95 e 99 do valor SHAP
 absoluto em uma amostra reproduzível, cujo tamanho é definido por
 `parameters.reference.shap_sample_size`.
 
+Para que o bundle seja ativado pela API, cada feature registrada no artefato deve
+possuir exatamente uma referência estatística em `numeric_features` ou
+`categorical_features` e uma entrada em `global_shap.feature_importance`.
+Referências extras são aceitas, mas geram um warning no log da API.
+
 Esse baseline permite combinar a contribuição SHAP local retornada pela API com
 a posição estatística do cliente na população usada pelo treinamento. Os valores
 SHAP permanecem na escala bruta do modelo e não representam variação percentual
