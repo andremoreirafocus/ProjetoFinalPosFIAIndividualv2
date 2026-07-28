@@ -25,6 +25,12 @@ from process_llm_response import (
     validate_llm_response,
     write_json_exclusive as write_report_output,
 )
+from render_report_pdf import (
+    ReportRenderingError,
+    load_report_template_name,
+    render_report_pdf,
+    resolve_template_path,
+)
 
 
 def api_response_fixture(*, model_version: str | None = "model-v1") -> dict:
@@ -235,6 +241,18 @@ class FakeStructuredLlm:
         return self.response
 
 
+class FakePdfRenderer:
+    def __init__(self, pdf_content: bytes = b"%PDF-1.7\nfixture\n") -> None:
+        self.pdf_content = pdf_content
+        self.received_html: str | None = None
+        self.received_base_url: Path | None = None
+
+    def render(self, html: str, *, base_url: Path) -> bytes:
+        self.received_html = html
+        self.received_base_url = base_url
+        return self.pdf_content
+
+
 class PrepareLlmContextTest(unittest.TestCase):
     def test_enriches_authorized_factors_and_records_restricted_factors(self) -> None:
         context = prepared_context_fixture()
@@ -439,6 +457,159 @@ class ProcessLlmResponseTest(unittest.TestCase):
             LlmResponseValidationError, "Conjunto de features"
         ):
             validate_llm_response(prepared_context_fixture(), response)
+
+
+class RenderReportPdfTest(unittest.TestCase):
+    def test_loads_report_template_name_from_explicit_dotenv_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            env_path = Path(temporary_directory) / ".env"
+            expected_template_name = "report.html.j2"
+            env_path.write_text(
+                f"UNRELATED=value\nREPORT_TEMPLATE={expected_template_name}\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                load_report_template_name(env_path),
+                expected_template_name,
+            )
+
+    def test_rejects_missing_dotenv_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            env_path = Path(temporary_directory) / ".env"
+
+            with self.assertRaisesRegex(ReportRenderingError, "não existe"):
+                load_report_template_name(env_path)
+
+    def test_rejects_dotenv_without_report_template(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            env_path = Path(temporary_directory) / ".env"
+            env_path.write_text("UNRELATED=value\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ReportRenderingError, "REPORT_TEMPLATE"):
+                load_report_template_name(env_path)
+
+    def test_rejects_report_template_with_path_components(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            env_path = Path(temporary_directory) / ".env"
+            env_path.write_text(
+                "REPORT_TEMPLATE=templates/report.html.j2\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ReportRenderingError, "nome de arquivo"):
+                load_report_template_name(env_path)
+
+    def test_rejects_configured_template_that_does_not_exist(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            template_directory = Path(temporary_directory)
+            configured_template_name = "missing-report.html.j2"
+
+            with self.assertRaisesRegex(
+                ReportRenderingError,
+                configured_template_name,
+            ):
+                resolve_template_path(
+                    template_directory,
+                    configured_template_name,
+                )
+
+    def test_renders_report_with_configured_template_and_writes_pdf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            template_path = directory / "report.html.j2"
+            output_path = directory / "report.pdf"
+            report = assemble_report(
+                prepared_context_fixture(),
+                llm_response_fixture(),
+                report_id="report-id",
+                generated_at="2026-07-28T12:00:00+00:00",
+            )
+            template_path.write_text(
+                "<h1>{{ report.report_title }}</h1>"
+                "<p>{{ report.case_summary.customer_id }}</p>",
+                encoding="utf-8",
+            )
+            renderer = FakePdfRenderer()
+
+            render_report_pdf(
+                report,
+                template_path=template_path,
+                output_path=output_path,
+                renderer=renderer,
+            )
+
+            self.assertEqual(output_path.read_bytes(), renderer.pdf_content)
+            self.assertEqual(renderer.received_base_url, directory)
+            self.assertIn(report["report_title"], renderer.received_html)
+            self.assertIn(
+                str(report["case_summary"]["customer_id"]),
+                renderer.received_html,
+            )
+
+    def test_rejects_missing_report_field_required_by_template(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            template_path = directory / "report.html.j2"
+            output_path = directory / "report.pdf"
+            template_path.write_text(
+                "{{ report.required_but_absent }}",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ReportRenderingError, "template"):
+                render_report_pdf(
+                    {"report_title": "Relatório"},
+                    template_path=template_path,
+                    output_path=output_path,
+                    renderer=FakePdfRenderer(),
+                )
+
+            self.assertFalse(output_path.exists())
+
+    def test_refuses_existing_output_before_rendering(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            template_path = directory / "report.html.j2"
+            output_path = directory / "report.pdf"
+            original_content = b"%PDF-1.7\npreserved\n"
+            template_path.write_text(
+                "{{ report.report_title }}",
+                encoding="utf-8",
+            )
+            output_path.write_bytes(original_content)
+            renderer = FakePdfRenderer()
+
+            with self.assertRaisesRegex(ReportRenderingError, "não será sobrescrito"):
+                render_report_pdf(
+                    {"report_title": "Relatório"},
+                    template_path=template_path,
+                    output_path=output_path,
+                    renderer=renderer,
+                )
+
+            self.assertEqual(output_path.read_bytes(), original_content)
+            self.assertIsNone(renderer.received_html)
+
+    def test_rejects_renderer_output_that_is_not_a_pdf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            template_path = directory / "report.html.j2"
+            output_path = directory / "report.pdf"
+            template_path.write_text(
+                "{{ report.report_title }}",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ReportRenderingError, "PDF válido"):
+                render_report_pdf(
+                    {"report_title": "Relatório"},
+                    template_path=template_path,
+                    output_path=output_path,
+                    renderer=FakePdfRenderer(b"not-a-pdf"),
+                )
+
+            self.assertFalse(output_path.exists())
 
 
 class OutputSafetyTest(unittest.TestCase):
