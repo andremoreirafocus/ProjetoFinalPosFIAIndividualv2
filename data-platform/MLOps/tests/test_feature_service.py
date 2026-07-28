@@ -1,39 +1,26 @@
 import unittest
 
-import numpy as np
-
 from MLOps.app.api.feature_service import (
     CustomerFeatureService,
     CustomerNotFoundError,
 )
-from MLOps.tests.fixtures import sqlite_abt_engine
+from MLOps.tests.fixtures import sqlite_customer_feature_fixture
 
 
 class CustomerFeatureServiceTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.service = CustomerFeatureService(sqlite_abt_engine())
+        self.fixture = sqlite_customer_feature_fixture()
+        self.addCleanup(self.fixture.engine.dispose)
+        self.service = CustomerFeatureService(self.fixture.engine)
 
-    def test_build_returns_features_without_identifier_and_target(self) -> None:
-        features = self.service.build(100002)
+    def test_build_returns_exact_abt_features(self) -> None:
+        features = self.service.build(self.fixture.selected_customer_id)
 
-        # Identificador e alvo não podem vazar como variáveis explicativas.
-        self.assertNotIn("sk_id_curr", features)
-        self.assertNotIn("target", features)
-        self.assertEqual(features["ext_source_1"], 0.5)
-        self.assertEqual(features["occupation_type"], "Laborers")
-        # setdefault não sobrescreve valor presente...
-        self.assertEqual(features["inst_late_payment_rate"], 0.3)
-        # ...e insere o padrão quando a coluna não existe na ABT.
-        self.assertEqual(features["has_installments_history"], 0)
+        self.assertEqual(features, self.fixture.selected_customer_features)
 
     def test_missing_customer_raises_not_found(self) -> None:
         with self.assertRaises(CustomerNotFoundError):
-            self.service.build(999999)
-
-    def test_python_value_unwraps_numpy_scalars(self) -> None:
-        result = CustomerFeatureService._python_value(np.int64(5))
-        self.assertEqual(result, 5)
-        self.assertIsInstance(result, int)
+            self.service.build(self.fixture.absent_customer_id)
 
 
 if __name__ == "__main__":

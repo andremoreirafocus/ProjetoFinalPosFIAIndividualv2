@@ -1,6 +1,7 @@
 """Fixtures de dados para os testes da API (sem banco nem artefato treinado)."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 import pickle
 from pathlib import Path
 from typing import Any
@@ -95,26 +96,56 @@ def write_artifact_pickle(directory: Path, artifact: dict[str, Any]) -> Path:
     return path
 
 
-def sqlite_abt_engine() -> Engine:
-    """Engine SQLite em memória com ``application_abt`` semeada.
+@dataclass(frozen=True)
+class CustomerFeatureFixture:
+    engine: Engine
+    selected_customer_id: int
+    selected_customer_features: dict[str, Any]
+    absent_customer_id: int
 
-    A linha 100002 traz ``inst_late_payment_rate`` presente (exercita o ramo em
-    que ``setdefault`` não sobrescreve) e omite ``has_installments_history`` da
-    tabela (exercita o ramo em que ``setdefault`` insere o valor padrão).
-    """
+
+def sqlite_customer_feature_fixture() -> CustomerFeatureFixture:
+    """Cenário SQLite para busca de um cliente específico na ABT."""
+    selected_customer_id = 100002
+    selected_customer_features = {
+        "numeric_feature": 0.75,
+        "categorical_feature": "Managers",
+        "nullable_feature": None,
+    }
+    selected_customer = {
+        "sk_id_curr": selected_customer_id,
+        "target": 1,
+        **selected_customer_features,
+    }
+    other_customer = {
+        "sk_id_curr": 100001,
+        "target": 0,
+        "numeric_feature": 0.25,
+        "categorical_feature": "Laborers",
+        "nullable_feature": 1.0,
+    }
+    absent_customer_id = 999999
+
     engine = create_engine("sqlite://")
     with engine.begin() as connection:
         connection.execute(
             text(
                 "CREATE TABLE application_abt ("
-                "sk_id_curr INTEGER, target INTEGER, ext_source_1 REAL, "
-                "occupation_type TEXT, inst_late_payment_rate REAL)"
+                "sk_id_curr INTEGER, target INTEGER, numeric_feature REAL, "
+                "categorical_feature TEXT, nullable_feature REAL)"
             )
         )
         connection.execute(
             text(
                 "INSERT INTO application_abt VALUES "
-                "(100002, 1, 0.5, 'Laborers', 0.3)"
-            )
+                "(:sk_id_curr, :target, :numeric_feature, "
+                ":categorical_feature, :nullable_feature)"
+            ),
+            [other_customer, selected_customer],
         )
-    return engine
+    return CustomerFeatureFixture(
+        engine=engine,
+        selected_customer_id=selected_customer_id,
+        selected_customer_features=selected_customer_features,
+        absent_customer_id=absent_customer_id,
+    )
