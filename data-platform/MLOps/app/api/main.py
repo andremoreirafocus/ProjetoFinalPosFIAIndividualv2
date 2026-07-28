@@ -205,7 +205,6 @@ def health(request: Request) -> HealthResponse:
 def model_features(request: Request) -> list[str]:
     service: PredictionService = request.app.state.prediction_service
     _refresh_or_503(request)
-    _ensure_model_loaded(service)
     with request.app.state.model_bundle_lock:
         return service.expected_features
 
@@ -267,16 +266,6 @@ def predict_from_database(customer_id: int, request: Request) -> PredictionRespo
         request=request,
     )
 
-def _ensure_model_loaded(service: PredictionService) -> None:
-    if service.is_loaded:
-        return
-
-    raise HTTPException(
-        status_code=503,
-        detail="O modelo ainda não está disponível.",
-    )
-
-
 def _refresh_or_503(request: Request) -> None:
     if not getattr(request.app.state, "model_bundle_auto_refresh", False):
         return
@@ -314,7 +303,6 @@ def _predict(
     credit_policy: CreditPolicy = request.app.state.credit_policy
 
     _refresh_or_503(request)
-    _ensure_model_loaded(prediction_service)
 
     with request.app.state.model_bundle_lock:
         try:
