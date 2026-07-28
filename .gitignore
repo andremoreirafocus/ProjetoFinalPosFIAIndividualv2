@@ -13,3 +13,4 @@ abt.csv
 /data-platform/Model/artifacts/*.pkl
 /data-platform/Model/artifacts/*.joblib
 /dist
+*TS.md
