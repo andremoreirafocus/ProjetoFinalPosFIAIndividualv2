@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
-import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Any, Protocol
 
 from dotenv import dotenv_values
+
+from script_logging import configure_script_logging
 
 
 class LlmInvocationError(RuntimeError):
@@ -20,7 +22,20 @@ class StructuredLlm(Protocol):
         """Executa uma chamada e devolve a resposta estruturada."""
 
 
-SCRIPT_ENV_PATH = Path(__file__).resolve().parent / ".env"
+logger = logging.getLogger(Path(__file__).stem)
+
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+CONTEXT_INPUT_FILE_NAME = "sample_agent_context_before_llm.json"
+CONTEXT_INPUT_PATH = SCRIPT_DIRECTORY / CONTEXT_INPUT_FILE_NAME
+PROMPT_CONTRACT_PATH = SCRIPT_DIRECTORY / "agent_report_prompt_v1.json"
+SCRIPT_ENV_PATH = SCRIPT_DIRECTORY / ".env"
+LLM_RESPONSE_OUTPUT_FILE_NAME = "sample_llm_response_to_report_request.json"
+LLM_RESPONSE_OUTPUT_PATH = SCRIPT_DIRECTORY / LLM_RESPONSE_OUTPUT_FILE_NAME
+LLM_MODEL = "openai/gpt-oss-20b"
+LLM_TIMEOUT_SECONDS = 60.0
+LLM_MAX_TOKENS = 3072
+LLM_REASONING_EFFORT = "low"
+LLM_REASONING_FORMAT = "hidden"
 
 
 def _require_object(value: Any, location: str) -> dict[str, Any]:
@@ -122,6 +137,9 @@ def create_groq_structured_llm(
     timeout_seconds: float,
     prompt_contract: dict[str, Any],
     api_key: str,
+    max_tokens: int,
+    reasoning_effort: str,
+    reasoning_format: str,
 ) -> StructuredLlm:
     try:
         from langchain_groq import ChatGroq
@@ -136,6 +154,9 @@ def create_groq_structured_llm(
         timeout=timeout_seconds,
         max_retries=0,
         api_key=api_key,
+        max_tokens=max_tokens,
+        reasoning_effort=reasoning_effort,
+        reasoning_format=reasoning_format,
     )
     return llm.with_structured_output(
         response_schema(prompt_contract),
@@ -162,42 +183,76 @@ def write_json_exclusive(path: Path, value: dict[str, Any]) -> None:
         ) from error
 
 
-def build_argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Invoca um modelo Groq para produzir a narrativa estruturada."
+def generate_llm_response_file(
+    context_path: Path,
+    prompt_contract_path: Path,
+    env_path: Path,
+    output_path: Path,
+    *,
+    model: str,
+    timeout_seconds: float,
+    max_tokens: int,
+    reasoning_effort: str,
+    reasoning_format: str,
+) -> dict[str, Any]:
+    """Invoca o LLM para o contexto preparado e salva a resposta estruturada."""
+    if output_path.exists():
+        raise LlmInvocationError(
+            f"O arquivo de saída já existe e não será sobrescrito: {output_path}"
+        )
+    if timeout_seconds <= 0:
+        raise LlmInvocationError("timeout_seconds deve ser maior que zero.")
+    if max_tokens <= 0:
+        raise LlmInvocationError("max_tokens deve ser maior que zero.")
+
+    logger.info(
+        "Invocando LLM: context=%s, prompt=%s, model=%s, "
+        "max_tokens=%d, reasoning_effort=%s.",
+        context_path,
+        prompt_contract_path,
+        model,
+        max_tokens,
+        reasoning_effort,
     )
-    parser.add_argument("--context", required=True, type=Path)
-    parser.add_argument("--prompt-contract", required=True, type=Path)
-    parser.add_argument("--model", required=True)
-    parser.add_argument("--timeout-seconds", required=True, type=float)
-    parser.add_argument("--output", required=True, type=Path)
-    return parser
+    context = load_json_object(context_path)
+    prompt = load_json_object(prompt_contract_path)
+    messages = build_messages(context, prompt)
+    api_key = load_groq_api_key(env_path)
+    llm = create_groq_structured_llm(
+        model=model,
+        timeout_seconds=timeout_seconds,
+        prompt_contract=prompt,
+        api_key=api_key,
+        max_tokens=max_tokens,
+        reasoning_effort=reasoning_effort,
+        reasoning_format=reasoning_format,
+    )
+    result = invoke_structured_llm(llm, messages)
+    write_json_exclusive(output_path, result)
+    logger.info("Resposta estruturada do LLM salva em %s.", output_path)
+    return result
 
 
 def main() -> None:
-    parser = build_argument_parser()
-    args = parser.parse_args()
-    if args.output.exists():
-        parser.error(
-            f"O arquivo de saída já existe e não será sobrescrito: {args.output}"
-        )
-    if args.timeout_seconds <= 0:
-        parser.error("--timeout-seconds deve ser maior que zero.")
+    configure_script_logging(logger, __file__)
     try:
-        context = load_json_object(args.context)
-        prompt = load_json_object(args.prompt_contract)
-        messages = build_messages(context, prompt)
-        api_key = load_groq_api_key(SCRIPT_ENV_PATH)
-        llm = create_groq_structured_llm(
-            model=args.model,
-            timeout_seconds=args.timeout_seconds,
-            prompt_contract=prompt,
-            api_key=api_key,
+        generate_llm_response_file(
+            CONTEXT_INPUT_PATH,
+            PROMPT_CONTRACT_PATH,
+            SCRIPT_ENV_PATH,
+            LLM_RESPONSE_OUTPUT_PATH,
+            model=LLM_MODEL,
+            timeout_seconds=LLM_TIMEOUT_SECONDS,
+            max_tokens=LLM_MAX_TOKENS,
+            reasoning_effort=LLM_REASONING_EFFORT,
+            reasoning_format=LLM_REASONING_FORMAT,
         )
-        result = invoke_structured_llm(llm, messages)
-        write_json_exclusive(args.output, result)
     except LlmInvocationError as error:
-        parser.error(str(error))
+        logger.error("Falha na invocação do LLM: %s", error)
+        raise SystemExit(1) from error
+    except Exception as error:
+        logger.exception("Falha inesperada na invocação do LLM: %s", error)
+        raise SystemExit(1) from error
 
 
 if __name__ == "__main__":

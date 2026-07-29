@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
-import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Any
+
+from script_logging import configure_script_logging
 
 
 class ContextPreparationError(ValueError):
@@ -23,6 +25,15 @@ SEMANTIC_FIELDS = (
     "calculation",
     "special_values",
 )
+
+logger = logging.getLogger(Path(__file__).stem)
+
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+API_RESPONSE_PATH = SCRIPT_DIRECTORY / "sample_api_response_with_explanation.json"
+FEATURE_CATALOG_PATH = SCRIPT_DIRECTORY.parent / "config" / "feature_catalog.json"
+PROMPT_CONTRACT_PATH = SCRIPT_DIRECTORY / "agent_report_prompt_v1.json"
+CONTEXT_OUTPUT_FILE_NAME = "sample_agent_context_before_llm.json"
+CONTEXT_OUTPUT_PATH = SCRIPT_DIRECTORY / CONTEXT_OUTPUT_FILE_NAME
 
 
 def _require_object(value: Any, location: str) -> dict[str, Any]:
@@ -308,6 +319,16 @@ def load_json_object(path: Path) -> dict[str, Any]:
     return _require_object(value, str(path))
 
 
+def load_prompt_version(prompt_contract_path: Path) -> str:
+    prompt_contract = load_json_object(prompt_contract_path)
+    prompt_version = prompt_contract.get("prompt_version")
+    if not isinstance(prompt_version, str) or not prompt_version.strip():
+        raise ContextPreparationError(
+            f"prompt_version não está definida em {prompt_contract_path}."
+        )
+    return prompt_version
+
+
 def write_json_exclusive(path: Path, value: dict[str, Any]) -> None:
     try:
         with path.open("x", encoding="utf-8") as output:
@@ -319,35 +340,57 @@ def write_json_exclusive(path: Path, value: dict[str, Any]) -> None:
         ) from error
 
 
-def build_argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Prepara o contexto governado para o LLM."
+def prepare_context_file(
+    api_response_path: Path,
+    feature_catalog_path: Path,
+    prompt_contract_path: Path,
+    output_path: Path,
+) -> dict[str, Any]:
+    """Prepara e salva o contexto governado a partir dos arquivos de entrada."""
+    if output_path.exists():
+        raise ContextPreparationError(
+            f"O arquivo de saída já existe e não será sobrescrito: {output_path}"
+        )
+
+    logger.info(
+        "Preparando contexto: api_response=%s, feature_catalog=%s, prompt=%s.",
+        api_response_path,
+        feature_catalog_path,
+        prompt_contract_path,
     )
-    parser.add_argument("--api-response", required=True, type=Path)
-    parser.add_argument("--feature-catalog", required=True, type=Path)
-    parser.add_argument("--prompt-version")
-    parser.add_argument("--output", required=True, type=Path)
-    return parser
+    context = prepare_context(
+        load_json_object(api_response_path),
+        load_json_object(feature_catalog_path),
+        api_source=str(api_response_path),
+        catalog_source=str(feature_catalog_path),
+        prompt_version=load_prompt_version(prompt_contract_path),
+    )
+    write_json_exclusive(output_path, context)
+    processing = context["agent_processing"]
+    logger.info(
+        "Contexto salvo em %s: %d fatores autorizados e %d excluídos.",
+        output_path,
+        processing["authorized_factor_count"],
+        processing["excluded_factor_count"],
+    )
+    return context
 
 
 def main() -> None:
-    parser = build_argument_parser()
-    args = parser.parse_args()
-    if args.output.exists():
-        parser.error(
-            f"O arquivo de saída já existe e não será sobrescrito: {args.output}"
-        )
+    configure_script_logging(logger, __file__)
     try:
-        context = prepare_context(
-            load_json_object(args.api_response),
-            load_json_object(args.feature_catalog),
-            api_source=str(args.api_response),
-            catalog_source=str(args.feature_catalog),
-            prompt_version=args.prompt_version,
+        prepare_context_file(
+            API_RESPONSE_PATH,
+            FEATURE_CATALOG_PATH,
+            PROMPT_CONTRACT_PATH,
+            CONTEXT_OUTPUT_PATH,
         )
-        write_json_exclusive(args.output, context)
     except ContextPreparationError as error:
-        parser.error(str(error))
+        logger.error("Falha na preparação do contexto: %s", error)
+        raise SystemExit(1) from error
+    except Exception as error:
+        logger.exception("Falha inesperada na preparação do contexto: %s", error)
+        raise SystemExit(1) from error
 
 
 if __name__ == "__main__":

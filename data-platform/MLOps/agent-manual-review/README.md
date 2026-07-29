@@ -93,11 +93,14 @@ Os quatro scripts separam responsabilidades que não devem ser confundidas:
 
 1. preparar e governar o contexto;
 2. invocar o modelo de linguagem;
-3. validar sua resposta e montar o relatório final.
+3. validar sua resposta e montar o relatório final;
 4. renderizar o relatório por meio de um template fixo.
 
 O LLM recebe somente `llm_context`. Os fatores excluídos por governança e os dados de
 controle do processamento não são incluídos no prompt.
+
+O script `run_sample_report_pipeline.sh` apenas executa essas quatro fronteiras em
+sequência. Ele não incorpora nem duplica a lógica interna das etapas.
 
 ## Requisitos
 
@@ -152,48 +155,89 @@ No estado criado, o `.env` não contém segredo. Depois da inclusão de
 pelo `.gitignore`; essa proteção deve ser providenciada antes de inserir uma
 credencial real.
 
-## Execução completa
+## Execução orquestrada do sample
 
-Os exemplos abaixo escrevem as saídas em `/tmp` para não alterar nem sobrescrever os
-artefatos de demonstração existentes:
+O sample da API contém `model_version: "1.0.0"`, correspondente à versão registrada
+em `Model/config_model.json`. Portanto, ele atende ao contrato de rastreabilidade e
+pode percorrer o fluxo completo.
+
+Antes da execução, acrescente uma `GROQ_API_KEY` válida ao `.env` e confirme que os
+quatro arquivos de saída ainda não existem no diretório do protótipo. Em seguida,
+execute:
 
 ```bash
-mkdir -p /tmp/manual-review-agent-demo
 cd data-platform
+bash MLOps/agent-manual-review/run_sample_report_pipeline.sh
 ```
+
+O orquestrador usa diretamente:
+
+- `sample_api_response_with_explanation.json`;
+- `MLOps/config/feature_catalog.json`;
+- `agent_report_prompt_v1.json`;
+- o modelo Groq `openai/gpt-oss-20b`;
+- o template definido por `REPORT_TEMPLATE`.
+
+Cada script define como constantes seus arquivos de entrada e saída. O nome da saída
+de uma etapa é exatamente o nome da entrada consumida pela etapa seguinte:
+
+| Etapa | Nome do arquivo |
+|---|---|
+| Contexto preparado | `sample_agent_context_before_llm.json` |
+| Resposta do LLM | `sample_llm_response_to_report_request.json` |
+| Relatório consolidado | `sample_agent_report.json` |
+| PDF final | `sample_credit_review_report_v4.pdf` |
+
+Cada etapa recusa sua saída quando o arquivo já existe. O `set -e` do Bash interrompe
+o fluxo na primeira falha, portanto as etapas seguintes não são executadas.
+
+## Logging
+
+Os quatro scripts usam a mesma configuração definida em `script_logging.py`. Cada
+registro é enviado simultaneamente ao terminal e a um arquivo no diretório do
+protótipo:
+
+| Script | Arquivo de log |
+|---|---|
+| `prepare_llm_context.py` | `prepare_llm_context.log` |
+| `invoke_llm.py` | `invoke_llm.log` |
+| `process_llm_response.py` | `process_llm_response.log` |
+| `render_report_pdf.py` | `render_report_pdf.log` |
+
+Os arquivos são abertos em modo de acréscimo e estão ignorados pelo `.gitignore`. Os
+registros informam início, entradas e saídas operacionais, conclusão e falhas, sem
+gravar a chave do Groq nem o conteúdo do prompt.
+
+## Execução manual etapa a etapa
+
+Os scripts não recebem argumentos de linha de comando. Para executá-los
+individualmente, use a ordem abaixo a partir de `data-platform`.
 
 ### 1. Preparar o contexto do LLM
 
 ```bash
-MLOps/.venv/bin/python \
-  MLOps/agent-manual-review/prepare_llm_context.py \
-  --api-response /caminho/para/api_response_with_model_version.json \
-  --feature-catalog MLOps/config/feature_catalog.json \
-  --prompt-version 1.2.0 \
-  --output /tmp/manual-review-agent-demo/context.json
+MLOps/.venv/bin/python MLOps/agent-manual-review/prepare_llm_context.py
 ```
 
 #### Entradas
 
-`--api-response`
+`API_RESPONSE_PATH`
 
 : Resposta da API contendo identificação do caso, score, classe, política,
   explicação local e `model_version`.
 
-`--feature-catalog`
+`FEATURE_CATALOG_PATH`
 
 : Catálogo com semântica, formato, unidade, restrições e `allowed_in_report` para
   cada feature.
 
-`--prompt-version`
+`PROMPT_CONTRACT_PATH`
 
-: Versão do contrato de prompt que será usada na chamada ao LLM. O parâmetro pode
-  ser omitido para gerar um contexto de auditoria, mas esse contexto receberá
-  `ready_for_llm: false`.
+: Contrato de prompt do qual a versão obrigatória é lida.
 
-`--output`
+`CONTEXT_OUTPUT_PATH`
 
-: Novo arquivo que receberá o contexto preparado.
+: Arquivo `sample_agent_context_before_llm.json`, que receberá o contexto preparado.
 
 #### Processamento
 
@@ -211,53 +255,49 @@ O script:
 Uma feature explicada pela API e ausente do catálogo constitui erro de contrato. Nesse
 caso, nenhum arquivo é escrito.
 
-#### Limitação do sample atual
+#### Rastreabilidade do sample atual
 
 O arquivo
 [`sample_api_response_with_explanation.json`](sample_api_response_with_explanation.json)
-não possui `model_version`. Por isso, ele pode ser usado para demonstrar e reproduzir
-a preparação do contexto, mas o resultado será corretamente marcado como
-`ready_for_llm: false`.
+possui `model_version: "1.0.0"`. Com o catálogo e a versão do prompt atuais, o contexto
+produzido recebe `ready_for_llm: true`.
 
 O arquivo
 [`sample_agent_context_before_llm.json`](archive/sample_agent_context_before_llm.json) foi
-reproduzido pelo script a partir do sample da API e do catálogo. Os valores de
-`source_files` refletem literalmente os caminhos fornecidos na linha de comando.
+preservado como resultado histórico de uma execução anterior, realizada quando o
+sample da API ainda não continha `model_version`. Por isso, esse arquivo arquivado
+mantém `model_version: null` e `ready_for_llm: false`; ele não representa a saída que
+será produzida pela execução atual.
 
 ### 2. Invocar o LLM com LangChain e Groq
 
 ```bash
-MLOps/.venv/bin/python \
-  MLOps/agent-manual-review/invoke_llm.py \
-  --context /tmp/manual-review-agent-demo/context.json \
-  --prompt-contract MLOps/agent-manual-review/agent_report_prompt_v1.json \
-  --model openai/gpt-oss-20b \
-  --timeout-seconds 60 \
-  --output /tmp/manual-review-agent-demo/llm_response.json
+MLOps/.venv/bin/python MLOps/agent-manual-review/invoke_llm.py
 ```
 
 #### Entradas
 
-`--context`
+`CONTEXT_INPUT_PATH`
 
 : Contexto produzido por `prepare_llm_context.py`.
 
-`--prompt-contract`
+`PROMPT_CONTRACT_PATH`
 
 : Contrato que contém `system_prompt`, `user_prompt_template`, versão e schema da
   resposta.
 
-`--model`
+`LLM_MODEL`
 
 : Identificador explícito do modelo disponível no Groq.
 
-`--timeout-seconds`
+`LLM_TIMEOUT_SECONDS`
 
 : Limite explícito de duração da chamada.
 
-`--output`
+`LLM_RESPONSE_OUTPUT_PATH`
 
-: Novo arquivo que receberá somente a resposta narrativa estruturada.
+: Arquivo `sample_llm_response_to_report_request.json`, que receberá somente a
+  resposta narrativa estruturada.
 
 #### Processamento
 
@@ -285,26 +325,22 @@ ou estatísticas populacionais.
 ### 3. Validar a resposta e montar o relatório
 
 ```bash
-MLOps/.venv/bin/python \
-  MLOps/agent-manual-review/process_llm_response.py \
-  --context /tmp/manual-review-agent-demo/context.json \
-  --llm-response /tmp/manual-review-agent-demo/llm_response.json \
-  --output /tmp/manual-review-agent-demo/agent_report.json
+MLOps/.venv/bin/python MLOps/agent-manual-review/process_llm_response.py
 ```
 
 #### Entradas
 
-`--context`
+`CONTEXT_INPUT_PATH`
 
 : Mesmo contexto que foi enviado ao LLM.
 
-`--llm-response`
+`LLM_RESPONSE_INPUT_PATH`
 
 : Resposta estruturada salva por `invoke_llm.py`.
 
-`--output`
+`AGENT_REPORT_OUTPUT_PATH`
 
-: Novo arquivo que receberá o relatório consolidado.
+: Arquivo `sample_agent_report.json`, que receberá o relatório consolidado.
 
 #### Etapa A — validação da resposta
 
@@ -338,15 +374,12 @@ do caso e as referências estatísticas são copiados das fontes controladas.
 ### 4. Renderizar o PDF
 
 ```bash
-MLOps/.venv/bin/python \
-  MLOps/agent-manual-review/render_report_pdf.py \
-  --report /tmp/manual-review-agent-demo/agent_report.json \
-  --output /tmp/manual-review-agent-demo/credit_review_report.pdf
+MLOps/.venv/bin/python MLOps/agent-manual-review/render_report_pdf.py
 ```
 
 #### Entradas
 
-`--report`
+`AGENT_REPORT_INPUT_PATH`
 
 : JSON consolidado produzido por `process_llm_response.py`.
 
@@ -355,9 +388,10 @@ MLOps/.venv/bin/python \
 : Nome do template HTML/Jinja definido no `.env` local. O template deve estar no
   diretório `MLOps/agent-manual-review`.
 
-`--output`
+`FINAL_PDF_OUTPUT_PATH`
 
-: Novo arquivo PDF que receberá o relatório renderizado.
+: Arquivo `sample_credit_review_report_v4.pdf`, que receberá o relatório
+  renderizado.
 
 #### Processamento
 
@@ -373,11 +407,23 @@ O script:
 
 ## Contrato de não sobrescrita
 
-Os quatro scripts recusam um `--output` que já exista. A verificação ocorre antes da
-gravação e, no caso da chamada ao LLM, antes de consumir a API externa.
+Os quatro scripts recusam seu arquivo de saída quando ele já existe. A verificação
+ocorre antes da gravação e, no caso da chamada ao LLM, antes de consumir a API
+externa.
 
-Para uma nova execução, informe um novo caminho ou remova deliberadamente uma saída
-descartável fora do repositório. Os scripts não implementam sobrescrita automática.
+Para uma nova execução, remova deliberadamente os resultados descartáveis da execução
+anterior ou mova-os para um local apropriado. Os scripts não implementam sobrescrita
+automática.
+
+Para remover somente os quatro outputs reproduzíveis antes de uma nova execução:
+
+```bash
+cd data-platform
+bash MLOps/agent-manual-review/cleanup_generated_artifacts.sh
+```
+
+O script usa caminhos explícitos, não acessa `archive/` e preserva os arquivos de
+log.
 
 ## Entradas e contratos do protótipo
 
@@ -404,9 +450,7 @@ de entrada, não uma saída a ser regenerada pelos scripts.
 | [`sample_credit_review_report_v3.pdf`](archive/sample_credit_review_report_v3.pdf) | Terceira iteração e último PDF produzido durante a validação. |
 
 Esses outputs são referências históricas imutáveis da execução demonstrativa. Os
-scripts não os usam como fallback e uma nova execução não deve apontar `--output`
-para o diretório `archive`. Use caminhos novos, como os exemplos em `/tmp`, para
-preservar os resultados já validados.
+scripts não os usam como fallback e não escrevem no diretório `archive`.
 
 ## Testes
 
@@ -418,9 +462,10 @@ MLOps/.venv/bin/python \
   -m unittest MLOps.tests.test_agent_manual_review_scripts -v
 ```
 
-Os testes usam fixtures e fakes explícitos para os colaboradores LLM e renderizador de
-PDF. Não fazem chamadas ao Groq, não dependem de uma chave real, não geram um PDF
-usando o WeasyPrint e não interceptam funções em tempo de execução.
+Os testes usam fixtures de domínio e um fake explícito para o colaborador LLM. Não
+fazem chamadas ao Groq, não dependem de uma chave real e não interceptam funções em
+tempo de execução. A integração local com o WeasyPrint é exercitada em diretório
+temporário para confirmar a geração de um PDF válido.
 
 Os contratos testados incluem:
 
@@ -436,6 +481,9 @@ Os contratos testados incluem:
 - leitura obrigatória de `REPORT_TEMPLATE`;
 - aplicação do template ao relatório;
 - validação do retorno do renderizador;
+- correspondência entre a versão do sample e a configuração de treinamento;
+- encadeamento dos nomes de entrada e saída das quatro etapas;
+- logging simultâneo no terminal e no arquivo homônimo do script;
 - proibição de sobrescrita das quatro saídas.
 
 ## O que está pronto e o que ainda falta
@@ -448,17 +496,18 @@ O protótipo já materializa de ponta a ponta:
 - persistência da resposta narrativa;
 - validação pós-LLM;
 - montagem do JSON final;
+- orquestração sequencial do fluxo demonstrativo;
 - renderização determinística do PDF com o template configurado.
 
 Para se tornar uma solução produtiva ainda são necessários:
 
 - inclusão de `model_version` no contrato da API;
-- orquestração das quatro etapas;
+- orquestração produtiva assíncrona das quatro etapas;
 - mensageria e processamento assíncrono;
 - persistência durável de contexto, resposta e relatório;
 - idempotência;
 - política de retry e tratamento de indisponibilidade;
-- observabilidade;
+- observabilidade centralizada para o ambiente de produção;
 - gestão de segredos apropriada ao ambiente;
 - armazenamento durável do PDF.
 

@@ -3,52 +3,29 @@
 
 from __future__ import annotations
 
-import argparse
 import json
+import logging
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from dotenv import dotenv_values
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateError
+
+from script_logging import configure_script_logging
 
 
 class ReportRenderingError(RuntimeError):
     """Indica que o contrato de renderização do relatório não foi atendido."""
 
 
-class PdfRenderer(Protocol):
-    """Fronteira do componente responsável por converter HTML em PDF."""
-
-    def render(self, html: str, *, base_url: Path) -> bytes:
-        """Converte HTML em um documento PDF."""
-
+logger = logging.getLogger(Path(__file__).stem)
 
 SCRIPT_DIRECTORY = Path(__file__).resolve().parent
 SCRIPT_ENV_PATH = SCRIPT_DIRECTORY / ".env"
-
-
-class WeasyPrintRenderer:
-    """Converte HTML em PDF usando WeasyPrint."""
-
-    def render(self, html: str, *, base_url: Path) -> bytes:
-        try:
-            from weasyprint import HTML
-        except ImportError as error:
-            raise ReportRenderingError(
-                "WeasyPrint não está instalado. Instale agent-requirements.txt."
-            ) from error
-
-        try:
-            pdf = HTML(string=html, base_url=str(base_url)).write_pdf()
-        except (OSError, TypeError, ValueError) as error:
-            raise ReportRenderingError(
-                f"O renderizador não conseguiu gerar o PDF: {error}"
-            ) from error
-        if not isinstance(pdf, bytes):
-            raise ReportRenderingError(
-                "O renderizador não devolveu o conteúdo binário do PDF."
-            )
-        return pdf
+AGENT_REPORT_INPUT_FILE_NAME = "sample_agent_report.json"
+AGENT_REPORT_INPUT_PATH = SCRIPT_DIRECTORY / AGENT_REPORT_INPUT_FILE_NAME
+FINAL_PDF_OUTPUT_FILE_NAME = "sample_credit_review_report_v4.pdf"
+FINAL_PDF_OUTPUT_PATH = SCRIPT_DIRECTORY / FINAL_PDF_OUTPUT_FILE_NAME
 
 
 def load_json_object(path: Path) -> dict[str, Any]:
@@ -120,6 +97,28 @@ def render_html(report: dict[str, Any], template_path: Path) -> str:
         ) from error
 
 
+def convert_html_to_pdf(html: str, base_url: Path) -> bytes:
+    """Converte o HTML renderizado em PDF usando WeasyPrint."""
+    try:
+        from weasyprint import HTML
+    except ImportError as error:
+        raise ReportRenderingError(
+            "WeasyPrint não está instalado. Instale agent-requirements.txt."
+        ) from error
+
+    try:
+        pdf = HTML(string=html, base_url=str(base_url)).write_pdf()
+    except (OSError, TypeError, ValueError) as error:
+        raise ReportRenderingError(
+            f"O renderizador não conseguiu gerar o PDF: {error}"
+        ) from error
+    if not isinstance(pdf, bytes):
+        raise ReportRenderingError(
+            "O renderizador não devolveu o conteúdo binário do PDF."
+        )
+    return pdf
+
+
 def write_pdf_exclusive(output_path: Path, pdf: bytes) -> None:
     try:
         with output_path.open("xb") as output:
@@ -139,7 +138,6 @@ def render_report_pdf(
     *,
     template_path: Path,
     output_path: Path,
-    renderer: PdfRenderer,
 ) -> None:
     if output_path.exists():
         raise ReportRenderingError(
@@ -147,7 +145,7 @@ def render_report_pdf(
         )
 
     html = render_html(report, template_path)
-    pdf = renderer.render(html, base_url=template_path.parent)
+    pdf = convert_html_to_pdf(html, template_path.parent)
     if not pdf.startswith(b"%PDF-"):
         raise ReportRenderingError(
             "O renderizador não devolveu um documento PDF válido."
@@ -155,30 +153,53 @@ def render_report_pdf(
     write_pdf_exclusive(output_path, pdf)
 
 
-def build_argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Renderiza em PDF o relatório JSON consolidado pelo agente."
+def generate_pdf_file(
+    report_path: Path,
+    env_path: Path,
+    template_directory: Path,
+    output_path: Path,
+) -> None:
+    """Carrega o relatório e a configuração e gera o PDF final."""
+    if output_path.exists():
+        raise ReportRenderingError(
+            f"O arquivo de saída já existe e não será sobrescrito: {output_path}"
+        )
+
+    logger.info(
+        "Renderizando relatório: report=%s, config=%s.",
+        report_path,
+        env_path,
     )
-    parser.add_argument("--report", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
-    return parser
+    template_name = load_report_template_name(env_path)
+    template_path = resolve_template_path(template_directory, template_name)
+    report = load_json_object(report_path)
+    render_report_pdf(
+        report,
+        template_path=template_path,
+        output_path=output_path,
+    )
+    logger.info(
+        "PDF salvo em %s usando o template %s.",
+        output_path,
+        template_name,
+    )
 
 
 def main() -> None:
-    parser = build_argument_parser()
-    args = parser.parse_args()
+    configure_script_logging(logger, __file__)
     try:
-        template_name = load_report_template_name(SCRIPT_ENV_PATH)
-        template_path = resolve_template_path(SCRIPT_DIRECTORY, template_name)
-        report = load_json_object(args.report)
-        render_report_pdf(
-            report,
-            template_path=template_path,
-            output_path=args.output,
-            renderer=WeasyPrintRenderer(),
+        generate_pdf_file(
+            AGENT_REPORT_INPUT_PATH,
+            SCRIPT_ENV_PATH,
+            SCRIPT_DIRECTORY,
+            FINAL_PDF_OUTPUT_PATH,
         )
     except ReportRenderingError as error:
-        parser.error(str(error))
+        logger.error("Falha na geração do PDF: %s", error)
+        raise SystemExit(1) from error
+    except Exception as error:
+        logger.exception("Falha inesperada na geração do PDF: %s", error)
+        raise SystemExit(1) from error
 
 
 if __name__ == "__main__":

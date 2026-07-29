@@ -54,6 +54,10 @@ Os dados utilizados na demonstração tiveram como origem:
   contexto preparado pelo agente antes da chamada ao LLM, produzido pela associação
   entre a resposta da API e o catálogo e pela exclusão das evidências não autorizadas.
 
+O sample da API atualmente vinculado já contém `model_version: "1.0.0"` para permitir
+uma execução completa. O contexto preservado neste diretório antecede essa alteração;
+por isso, ele registra `model_version: null` e `ready_for_llm: false`.
+
 ## Artefatos produzidos nesta etapa
 
 Na etapa registrada por este documento, `sample_credit_review_report_v3.pdf` foi a

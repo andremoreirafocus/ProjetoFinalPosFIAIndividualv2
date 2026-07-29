@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
-import argparse
 from datetime import datetime, timezone
 import json
+import logging
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+from script_logging import configure_script_logging
 
 
 class LlmResponseValidationError(ValueError):
@@ -31,6 +33,16 @@ FACTOR_KEYS = {
     "explanation",
     "contextual_conclusion",
 }
+
+logger = logging.getLogger(Path(__file__).stem)
+
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+CONTEXT_INPUT_FILE_NAME = "sample_agent_context_before_llm.json"
+CONTEXT_INPUT_PATH = SCRIPT_DIRECTORY / CONTEXT_INPUT_FILE_NAME
+LLM_RESPONSE_INPUT_FILE_NAME = "sample_llm_response_to_report_request.json"
+LLM_RESPONSE_INPUT_PATH = SCRIPT_DIRECTORY / LLM_RESPONSE_INPUT_FILE_NAME
+AGENT_REPORT_OUTPUT_FILE_NAME = "sample_agent_report.json"
+AGENT_REPORT_OUTPUT_PATH = SCRIPT_DIRECTORY / AGENT_REPORT_OUTPUT_FILE_NAME
 
 
 def _require_object(value: Any, location: str) -> dict[str, Any]:
@@ -276,36 +288,61 @@ def write_json_exclusive(path: Path, value: dict[str, Any]) -> None:
         ) from error
 
 
-def build_argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Valida a resposta do LLM e monta o JSON final do relatório."
+def process_llm_response_files(
+    context_path: Path,
+    llm_response_path: Path,
+    output_path: Path,
+) -> dict[str, Any]:
+    """Valida a resposta do LLM, reassocia evidências e salva o relatório."""
+    if output_path.exists():
+        raise LlmResponseValidationError(
+            f"O arquivo de saída já existe e não será sobrescrito: {output_path}"
+        )
+
+    logger.info(
+        "Processando resposta do LLM: context=%s, llm_response=%s.",
+        context_path,
+        llm_response_path,
     )
-    parser.add_argument("--context", required=True, type=Path)
-    parser.add_argument("--llm-response", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
-    return parser
+    context = load_json_object(context_path)
+    response = load_json_object(llm_response_path)
+    validate_llm_response(context, response)
+    report = assemble_report(
+        context,
+        response,
+        report_id=str(uuid4()),
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    write_json_exclusive(output_path, report)
+    factor_count = (
+        len(report["factors_increasing_score"])
+        + len(report["factors_reducing_score"])
+    )
+    logger.info(
+        "Relatório consolidado salvo em %s com %d fatores validados.",
+        output_path,
+        factor_count,
+    )
+    return report
 
 
 def main() -> None:
-    parser = build_argument_parser()
-    args = parser.parse_args()
-    if args.output.exists():
-        parser.error(
-            f"O arquivo de saída já existe e não será sobrescrito: {args.output}"
-        )
+    configure_script_logging(logger, __file__)
     try:
-        context = load_json_object(args.context)
-        response = load_json_object(args.llm_response)
-        validate_llm_response(context, response)
-        report = assemble_report(
-            context,
-            response,
-            report_id=str(uuid4()),
-            generated_at=datetime.now(timezone.utc).isoformat(),
+        process_llm_response_files(
+            CONTEXT_INPUT_PATH,
+            LLM_RESPONSE_INPUT_PATH,
+            AGENT_REPORT_OUTPUT_PATH,
         )
-        write_json_exclusive(args.output, report)
     except LlmResponseValidationError as error:
-        parser.error(str(error))
+        logger.error("Falha no processamento da resposta do LLM: %s", error)
+        raise SystemExit(1) from error
+    except Exception as error:
+        logger.exception(
+            "Falha inesperada no processamento da resposta do LLM: %s",
+            error,
+        )
+        raise SystemExit(1) from error
 
 
 if __name__ == "__main__":

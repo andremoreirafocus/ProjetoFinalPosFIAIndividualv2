@@ -1,3 +1,7 @@
+from contextlib import redirect_stdout
+from io import StringIO
+import json
+import logging
 import sys
 import tempfile
 import unittest
@@ -8,29 +12,55 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1] / "agent-manual-review"
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from invoke_llm import (
+    CONTEXT_INPUT_FILE_NAME as INVOKE_CONTEXT_INPUT_FILE_NAME,
+    CONTEXT_INPUT_PATH as INVOKE_CONTEXT_INPUT_PATH,
+    LLM_MAX_TOKENS,
+    LLM_REASONING_EFFORT,
+    LLM_REASONING_FORMAT,
+    LLM_RESPONSE_OUTPUT_FILE_NAME as INVOKE_RESPONSE_OUTPUT_FILE_NAME,
+    LLM_RESPONSE_OUTPUT_PATH as INVOKE_RESPONSE_OUTPUT_PATH,
     LlmInvocationError,
     build_messages,
+    create_groq_structured_llm,
     invoke_structured_llm,
     load_groq_api_key,
     write_json_exclusive as write_llm_output,
 )
 from prepare_llm_context import (
+    API_RESPONSE_PATH,
+    CONTEXT_OUTPUT_FILE_NAME as PREPARE_CONTEXT_OUTPUT_FILE_NAME,
+    CONTEXT_OUTPUT_PATH as PREPARE_CONTEXT_OUTPUT_PATH,
+    FEATURE_CATALOG_PATH,
+    PROMPT_CONTRACT_PATH,
     ContextPreparationError,
+    load_prompt_version,
     prepare_context,
     write_json_exclusive as write_context_output,
 )
 from process_llm_response import (
+    AGENT_REPORT_OUTPUT_FILE_NAME as PROCESS_REPORT_OUTPUT_FILE_NAME,
+    AGENT_REPORT_OUTPUT_PATH as PROCESS_REPORT_OUTPUT_PATH,
+    CONTEXT_INPUT_FILE_NAME as PROCESS_CONTEXT_INPUT_FILE_NAME,
+    CONTEXT_INPUT_PATH as PROCESS_CONTEXT_INPUT_PATH,
+    LLM_RESPONSE_INPUT_FILE_NAME as PROCESS_RESPONSE_INPUT_FILE_NAME,
+    LLM_RESPONSE_INPUT_PATH as PROCESS_RESPONSE_INPUT_PATH,
     LlmResponseValidationError,
     assemble_report,
     validate_llm_response,
     write_json_exclusive as write_report_output,
 )
 from render_report_pdf import (
+    AGENT_REPORT_INPUT_FILE_NAME as RENDER_REPORT_INPUT_FILE_NAME,
+    AGENT_REPORT_INPUT_PATH as RENDER_REPORT_INPUT_PATH,
+    FINAL_PDF_OUTPUT_FILE_NAME,
+    FINAL_PDF_OUTPUT_PATH,
     ReportRenderingError,
     load_report_template_name,
+    render_html,
     render_report_pdf,
     resolve_template_path,
 )
+from script_logging import configure_script_logging
 
 
 def api_response_fixture(*, model_version: str | None = "model-v1") -> dict:
@@ -241,16 +271,35 @@ class FakeStructuredLlm:
         return self.response
 
 
-class FakePdfRenderer:
-    def __init__(self, pdf_content: bytes = b"%PDF-1.7\nfixture\n") -> None:
-        self.pdf_content = pdf_content
-        self.received_html: str | None = None
-        self.received_base_url: Path | None = None
+class ScriptLoggingTest(unittest.TestCase):
+    def test_writes_the_same_message_to_terminal_and_script_log_file(self) -> None:
+        application_logger = logging.getLogger("script_logging_test")
 
-    def render(self, html: str, *, base_url: Path) -> bytes:
-        self.received_html = html
-        self.received_base_url = base_url
-        return self.pdf_content
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            script_path = Path(temporary_directory) / "example_stage.py"
+            terminal_output = StringIO()
+            try:
+                with redirect_stdout(terminal_output):
+                    log_path = configure_script_logging(
+                        application_logger,
+                        script_path,
+                    )
+                    application_logger.info("etapa concluída")
+                    for handler in application_logger.handlers:
+                        handler.flush()
+
+                self.assertEqual(log_path, script_path.with_suffix(".log"))
+                self.assertIn("etapa concluída", terminal_output.getvalue())
+                self.assertIn(
+                    "etapa concluída",
+                    log_path.read_text(encoding="utf-8"),
+                )
+            finally:
+                for handler in list(application_logger.handlers):
+                    application_logger.removeHandler(handler)
+                    handler.close()
+                application_logger.setLevel(logging.NOTSET)
+                application_logger.propagate = True
 
 
 class PrepareLlmContextTest(unittest.TestCase):
@@ -339,6 +388,22 @@ class PrepareLlmContextTest(unittest.TestCase):
 
 
 class InvokeLlmTest(unittest.TestCase):
+    def test_configures_enough_output_for_the_structured_report(self) -> None:
+        structured_llm = create_groq_structured_llm(
+            model="openai/gpt-oss-20b",
+            timeout_seconds=60,
+            prompt_contract=prompt_contract_fixture(),
+            api_key="fixture-key",
+            max_tokens=LLM_MAX_TOKENS,
+            reasoning_effort=LLM_REASONING_EFFORT,
+            reasoning_format=LLM_REASONING_FORMAT,
+        )
+        configured_model = structured_llm.first.bound
+
+        self.assertEqual(configured_model.max_tokens, 3072)
+        self.assertEqual(configured_model.reasoning_effort, "low")
+        self.assertEqual(configured_model.reasoning_format, "hidden")
+
     def test_loads_groq_api_key_from_explicit_dotenv_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             env_path = Path(temporary_directory) / ".env"
@@ -514,11 +579,10 @@ class RenderReportPdfTest(unittest.TestCase):
                     configured_template_name,
                 )
 
-    def test_renders_report_with_configured_template_and_writes_pdf(self) -> None:
+    def test_renders_report_data_with_the_configured_template(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             directory = Path(temporary_directory)
             template_path = directory / "report.html.j2"
-            output_path = directory / "report.pdf"
             report = assemble_report(
                 prepared_context_fixture(),
                 llm_response_fixture(),
@@ -530,22 +594,32 @@ class RenderReportPdfTest(unittest.TestCase):
                 "<p>{{ report.case_summary.customer_id }}</p>",
                 encoding="utf-8",
             )
-            renderer = FakePdfRenderer()
 
-            render_report_pdf(
-                report,
-                template_path=template_path,
-                output_path=output_path,
-                renderer=renderer,
-            )
+            html = render_html(report, template_path)
 
-            self.assertEqual(output_path.read_bytes(), renderer.pdf_content)
-            self.assertEqual(renderer.received_base_url, directory)
-            self.assertIn(report["report_title"], renderer.received_html)
+            self.assertIn(report["report_title"], html)
             self.assertIn(
                 str(report["case_summary"]["customer_id"]),
-                renderer.received_html,
+                html,
             )
+
+    def test_writes_a_valid_pdf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            template_path = directory / "report.html.j2"
+            output_path = directory / "report.pdf"
+            template_path.write_text(
+                "<h1>{{ report.report_title }}</h1>",
+                encoding="utf-8",
+            )
+
+            render_report_pdf(
+                {"report_title": "Relatório"},
+                template_path=template_path,
+                output_path=output_path,
+            )
+
+            self.assertTrue(output_path.read_bytes().startswith(b"%PDF-"))
 
     def test_rejects_missing_report_field_required_by_template(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -562,7 +636,6 @@ class RenderReportPdfTest(unittest.TestCase):
                     {"report_title": "Relatório"},
                     template_path=template_path,
                     output_path=output_path,
-                    renderer=FakePdfRenderer(),
                 )
 
             self.assertFalse(output_path.exists())
@@ -578,38 +651,79 @@ class RenderReportPdfTest(unittest.TestCase):
                 encoding="utf-8",
             )
             output_path.write_bytes(original_content)
-            renderer = FakePdfRenderer()
 
             with self.assertRaisesRegex(ReportRenderingError, "não será sobrescrito"):
                 render_report_pdf(
                     {"report_title": "Relatório"},
                     template_path=template_path,
                     output_path=output_path,
-                    renderer=renderer,
                 )
 
             self.assertEqual(output_path.read_bytes(), original_content)
-            self.assertIsNone(renderer.received_html)
 
-    def test_rejects_renderer_output_that_is_not_a_pdf(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            directory = Path(temporary_directory)
-            template_path = directory / "report.html.j2"
-            output_path = directory / "report.pdf"
-            template_path.write_text(
-                "{{ report.report_title }}",
-                encoding="utf-8",
-            )
 
-            with self.assertRaisesRegex(ReportRenderingError, "PDF válido"):
-                render_report_pdf(
-                    {"report_title": "Relatório"},
-                    template_path=template_path,
-                    output_path=output_path,
-                    renderer=FakePdfRenderer(b"not-a-pdf"),
-                )
+class PipelineFileContractTest(unittest.TestCase):
+    def test_real_sample_matches_model_version_and_is_ready_for_llm(self) -> None:
+        project_directory = Path(__file__).resolve().parents[2]
+        model_config_path = project_directory / "Model" / "config_model.json"
+        api_response = json.loads(
+            API_RESPONSE_PATH.read_text(encoding="utf-8")
+        )
+        feature_catalog = json.loads(
+            FEATURE_CATALOG_PATH.read_text(encoding="utf-8")
+        )
+        model_config = json.loads(model_config_path.read_text(encoding="utf-8"))
 
-            self.assertFalse(output_path.exists())
+        self.assertEqual(
+            api_response["model_version"],
+            model_config["metadata"]["version"],
+        )
+        context = prepare_context(
+            api_response,
+            feature_catalog,
+            api_source=str(API_RESPONSE_PATH),
+            catalog_source=str(FEATURE_CATALOG_PATH),
+            prompt_version=load_prompt_version(PROMPT_CONTRACT_PATH),
+        )
+        self.assertTrue(context["validation"]["ready_for_llm"])
+
+    def test_each_stage_uses_the_previous_stage_output_as_its_input(self) -> None:
+        self.assertEqual(
+            PREPARE_CONTEXT_OUTPUT_FILE_NAME,
+            INVOKE_CONTEXT_INPUT_FILE_NAME,
+        )
+        self.assertEqual(
+            PREPARE_CONTEXT_OUTPUT_PATH,
+            INVOKE_CONTEXT_INPUT_PATH,
+        )
+        self.assertEqual(
+            PREPARE_CONTEXT_OUTPUT_FILE_NAME,
+            PROCESS_CONTEXT_INPUT_FILE_NAME,
+        )
+        self.assertEqual(
+            PREPARE_CONTEXT_OUTPUT_PATH,
+            PROCESS_CONTEXT_INPUT_PATH,
+        )
+        self.assertEqual(
+            INVOKE_RESPONSE_OUTPUT_FILE_NAME,
+            PROCESS_RESPONSE_INPUT_FILE_NAME,
+        )
+        self.assertEqual(
+            INVOKE_RESPONSE_OUTPUT_PATH,
+            PROCESS_RESPONSE_INPUT_PATH,
+        )
+        self.assertEqual(
+            PROCESS_REPORT_OUTPUT_FILE_NAME,
+            RENDER_REPORT_INPUT_FILE_NAME,
+        )
+        self.assertEqual(
+            PROCESS_REPORT_OUTPUT_PATH,
+            RENDER_REPORT_INPUT_PATH,
+        )
+        self.assertEqual(
+            FINAL_PDF_OUTPUT_PATH.name,
+            FINAL_PDF_OUTPUT_FILE_NAME,
+        )
 
 
 class OutputSafetyTest(unittest.TestCase):

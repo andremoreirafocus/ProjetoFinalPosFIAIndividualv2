@@ -1,5 +1,6 @@
 {
   "source": "database",
+  "model_version": "1.0.0",
   "customer_id": 100008,
   "risk_score": 0.5552761155436352,
   "predicted_class": 1,

@@ -1,0 +1,68 @@
+{
+  "report_schema_version": "1.2.0",
+  "report_title": "Relatório de Revisão Manual – Caso 100008",
+  "case_summary": {
+    "summary": "O cliente apresenta um score de risco que se situa na faixa intermediária da política, resultando em encaminhamento para revisão manual. O modelo identificou fatores que aumentaram e reduziram o risco, justificando a posição do score dentro da zona de revisão."
+  },
+  "policy_context": {
+    "explanation": "O score está dentro da faixa de revisão manual, abaixo do limite máximo de aprovação e acima do limite de aprovação, indicando que o risco não é baixo nem alto o suficiente para decisão automática."
+  },
+  "factors_increasing_score": [
+    {
+      "feature": "amt_credit",
+      "direction": "increases_risk",
+      "explanation": "O valor do crédito solicitado é elevado, contribuindo para um risco maior. Esse valor está acima da média da população e se encontra em uma região superior da distribuição de treinamento, reforçando a relevância local do fator.",
+      "contextual_conclusion": "O cliente possui um crédito de valor elevado, o que é incomum na população de treinamento e aumenta a relevância local."
+    },
+    {
+      "feature": "has_car",
+      "direction": "increases_risk",
+      "explanation": "A ausência de automóvel no perfil do cliente aumenta o risco, pois a posse de veículo costuma indicar maior estabilidade financeira. O valor binário 0 está em uma região inferior da distribuição de treinamento, mas a relevância local permanece semelhante à global.",
+      "contextual_conclusion": "Não possuir automóvel é relativamente comum na população de treinamento, mas mantém relevância local semelhante à referência global."
+    },
+    {
+      "feature": "bureau_debt_credit_ratio",
+      "direction": "increases_risk",
+      "explanation": "A razão dívida/ crédito no bureau é alta, indicando maior endividamento em relação ao crédito disponível. Esse valor está em uma região superior da distribuição de treinamento, elevando a relevância local.",
+      "contextual_conclusion": "O cliente apresenta um índice de endividamento elevado, o que é incomum na população de treinamento e aumenta a relevância local."
+    },
+    {
+      "feature": "ext_source_2",
+      "direction": "increases_risk",
+      "explanation": "O score externo 2 é moderado, contribuindo para risco maior. O valor está em uma região central da distribuição de treinamento, com relevância local semelhante à global.",
+      "contextual_conclusion": "O valor do score externo 2 está dentro da faixa típica da população de treinamento, mantendo relevância local semelhante."
+    },
+    {
+      "feature": "name_education_type",
+      "direction": "increases_risk",
+      "explanation": "O nível de escolaridade “Secondary / secondary special” está associado a um risco maior. Esse nível é comum na população de treinamento, mas a relevância local permanece semelhante à global.",
+      "contextual_conclusion": "A escolaridade informada é frequente na população de treinamento, com relevância local semelhante."
+    },
+    {
+      "feature": "amt_annuity",
+      "direction": "increases_risk",
+      "explanation": "O valor da anuidade é elevado, aumentando o risco. Esse valor está em uma região superior da distribuição de treinamento, reforçando a relevância local.",
+      "contextual_conclusion": "O cliente possui uma anuidade alta, o que é incomum na população de treinamento e aumenta a relevância local."
+    }
+  ],
+  "factors_reducing_score": [
+    {
+      "feature": "ext_source_3",
+      "direction": "reduces_risk",
+      "explanation": "O score externo 3 é alto, o que está associado a menor risco. O valor está em uma região superior da distribuição de treinamento, reforçando a relevância local.",
+      "contextual_conclusion": "O cliente possui um score externo 3 elevado, o que é comum na população de treinamento e mantém relevância local semelhante."
+    },
+    {
+      "feature": "days_last_phone_change",
+      "direction": "reduces_risk",
+      "explanation": "O tempo desde a última troca de telefone é muito negativo, indicando que a última troca ocorreu há muito tempo. Esse valor está em uma região superior da distribuição de treinamento, reforçando a relevância local.",
+      "contextual_conclusion": "O cliente tem um histórico de telefone antigo, o que é comum na população de treinamento e mantém relevância local semelhante."
+    }
+  ],
+  "limitations": [
+    "As contribuições SHAP explicam o comportamento do modelo, não estabelecem causalidade.",
+    "O score é uma medida de ordenação de risco e não representa uma probabilidade calibrada de inadimplência.",
+    "A decisão final permanece sob responsabilidade do analista humano."
+  ],
+  "human_decision_notice": "A decisão final sobre o crédito cabe ao analista humano."
+}

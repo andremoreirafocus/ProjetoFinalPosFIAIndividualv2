@@ -12,5 +12,6 @@ abt.csv
 # artefato do modelo (binario; reproduzivel via train.py). metrics.json fica versionado.
 /data-platform/Model/artifacts/*.pkl
 /data-platform/Model/artifacts/*.joblib
+/data-platform/MLOps/agent-manual-review/*.log
 /dist
 *TS.md
