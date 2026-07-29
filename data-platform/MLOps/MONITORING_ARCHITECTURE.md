@@ -83,6 +83,31 @@ Parte das informações necessárias ao monitoramento já existe em `feature_ref
 
 O artefato proposto `monitoring_reference.json`, ainda não implementado, terá outra finalidade: registrar faixas fixas e proporções esperadas para o cálculo de PSI, referências de calibração e inadimplência por faixa de score e resultados por subgrupo para auditoria de fairness. Ele e `feature_reference.json` serão gerados na mesma execução e vinculados à mesma versão do modelo. A redundância parcial é intencional para preservar contratos e responsabilidades independentes.
 
+O arquivo [`monitoring_reference.json`](./monitoring_reference.json) materializa esse
+contrato como documento de referência para a futura implementação. Seus valores
+foram calculados com as tabelas de origem, a ABT, o modelo e a política
+demonstrativa atuais. As referências de drift usam a ABT completa, enquanto
+performance, calibração, inadimplência por faixa de score e fairness usam o mesmo
+holdout estratificado da avaliação. O arquivo ainda não é gerado pelo treinamento
+nem consumido por uma DAG de monitoramento.
+
+O contrato separa dois momentos que não devem ser confundidos:
+
+- `source_data_quality_reference` registra ausência e valores inválidos depois da
+  ingestão e antes da sanitização. Essas medidas mostram a disponibilidade e a
+  representatividade efetivas da informação recebida;
+- `model_input_missing_expected_proportion`, dentro das referências de PSI,
+  registra a ausência depois da sanitização e da engenharia de features. Essa
+  medida valida o contrato da entrada efetivamente entregue ao modelo.
+
+Por exemplo, `ext_source_1` apresenta aproximadamente `56,38%` de ausência na
+origem e `0%` na ABT porque os valores ausentes são imputados pela mediana. A
+imputação permite a inferência, mas não recupera a informação original. Por isso, a
+DAG deverá medir a ausência antes da imputação e também comparar a distribuição
+resultante depois dela. Um aumento da ausência pode reduzir a relevância da feature
+e tornar os valores observados menos representativos, mesmo que nenhum nulo chegue
+ao modelo.
+
 Para gerar `monitoring_reference.json`, a etapa de treinamento executada pela DAG deverá ser estendida para calcular ou invocar esses cálculos sobre os dados de referência. A futura DAG de monitoramento utilizará o artefato para comparar os novos lotes sem recalcular o baseline.
 
 ## Model registry e versionamento

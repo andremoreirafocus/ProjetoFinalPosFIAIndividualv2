@@ -1,0 +1,1447 @@
+{
+  "schema_version": "1.0.0",
+  "artifact_type": "monitoring_reference",
+  "implementation_status": "reference_for_future_implementation",
+  "generated_at_utc": "2026-07-29T15:08:49+00:00",
+  "model": {
+    "version": "1.0.0",
+    "trained_at_utc": "2026-07-23T17:10:46+00:00",
+    "algorithm": "LightGBM",
+    "artifact": "Model/artifacts/lightgbm_abt.pkl"
+  },
+  "policy": {
+    "version": "demo-v1",
+    "approve_max_score": 0.5,
+    "manual_review_max_score": 0.6
+  },
+  "reference_populations": {
+    "drift": {
+      "source": "application_abt",
+      "role": "full_abt_used_to_train_the_published_model",
+      "row_count": 307511,
+      "observed_default_rate": 0.0807288195
+    },
+    "performance": {
+      "source": "stratified_holdout",
+      "role": "data_not_used_to_fit_the_evaluation_model",
+      "row_count": 61503,
+      "observed_default_rate": 0.0807277694,
+      "test_size": 0.2,
+      "random_state": 123
+    }
+  },
+  "source_data_quality_reference": {
+    "purpose": "preserve_source_missingness_and_invalid_value_rates_before_imputation",
+    "measurement_point": "application_train_after_ingestion_before_sanitization",
+    "source_table": "application_train",
+    "row_count": 307511,
+    "scope": "source_columns_that_directly_feed_model_features_or_sanitization_derived_features",
+    "features": {
+      "ext_source_1": {
+        "source_column": "ext_source_1",
+        "output_features": [
+          "ext_source_1",
+          "ext_source_mean"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 173378,
+        "source_missing_expected_proportion": 0.5638107255,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "median_imputation"
+      },
+      "ext_source_2": {
+        "source_column": "ext_source_2",
+        "output_features": [
+          "ext_source_2",
+          "ext_source_mean"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 660,
+        "source_missing_expected_proportion": 0.0021462647,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "median_imputation"
+      },
+      "ext_source_3": {
+        "source_column": "ext_source_3",
+        "output_features": [
+          "ext_source_3",
+          "ext_source_mean"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 60965,
+        "source_missing_expected_proportion": 0.1982530706,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "median_imputation"
+      },
+      "region_rating_client_w_city": {
+        "source_column": "region_rating_client_w_city",
+        "output_features": [
+          "region_rating_client_w_city"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "cast_to_bigint_without_imputation"
+      },
+      "days_last_phone_change": {
+        "source_column": "days_last_phone_change",
+        "output_features": [
+          "days_last_phone_change"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 1,
+        "source_missing_expected_proportion": 3.2519e-06,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "median_imputation"
+      },
+      "days_id_publish": {
+        "source_column": "days_id_publish",
+        "output_features": [
+          "days_id_publish"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "preserved_without_imputation"
+      },
+      "days_registration": {
+        "source_column": "days_registration",
+        "output_features": [
+          "days_registration"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "preserved_without_imputation"
+      },
+      "reg_city_not_work_city": {
+        "source_column": "reg_city_not_work_city",
+        "output_features": [
+          "reg_city_not_work_city"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "zero_imputation"
+      },
+      "reg_city_not_live_city": {
+        "source_column": "reg_city_not_live_city",
+        "output_features": [
+          "reg_city_not_live_city"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "zero_imputation"
+      },
+      "live_city_not_work_city": {
+        "source_column": "live_city_not_work_city",
+        "output_features": [
+          "live_city_not_work_city"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "zero_imputation"
+      },
+      "flag_own_car": {
+        "source_column": "flag_own_car",
+        "output_features": [
+          "has_car",
+          "own_car_age"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "Y_to_has_car_1; every_other_value_to_0"
+      },
+      "own_car_age": {
+        "source_column": "own_car_age",
+        "output_features": [
+          "own_car_age"
+        ],
+        "measurement_population": "rows_where_flag_own_car_is_Y",
+        "population_count": 104587,
+        "source_missing_count": 5,
+        "source_missing_expected_proportion": 4.78071e-05,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "median_imputation_for_car_owners; zero_for_non_owners"
+      },
+      "def_60_cnt_social_circle": {
+        "source_column": "def_60_cnt_social_circle",
+        "output_features": [
+          "def_60_cnt_social_circle"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 1021,
+        "source_missing_expected_proportion": 0.0033202064,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "zero_imputation"
+      },
+      "amt_req_credit_bureau_year": {
+        "source_column": "amt_req_credit_bureau_year",
+        "output_features": [
+          "amt_req_credit_bureau_year"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 41519,
+        "source_missing_expected_proportion": 0.1350163084,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "zero_imputation"
+      },
+      "cnt_children": {
+        "source_column": "cnt_children",
+        "output_features": [
+          "cnt_children"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "zero_imputation_then_cast_to_integer"
+      },
+      "cnt_fam_members": {
+        "source_column": "cnt_fam_members",
+        "output_features": [
+          "cnt_fam_members"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 2,
+        "source_missing_expected_proportion": 6.5038e-06,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "median_imputation"
+      },
+      "amt_income_total": {
+        "source_column": "amt_income_total",
+        "output_features": [
+          "amt_income_total",
+          "fe_credit_income_percent",
+          "fe_annuity_income_percent"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": "value_equals_zero",
+        "sanitization_rule": "null_or_zero_imputed_with_median_then_capped_at_p99"
+      },
+      "amt_credit": {
+        "source_column": "amt_credit",
+        "output_features": [
+          "amt_credit",
+          "fe_credit_income_percent"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "preserved_without_imputation"
+      },
+      "amt_annuity": {
+        "source_column": "amt_annuity",
+        "output_features": [
+          "amt_annuity",
+          "fe_annuity_income_percent"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 12,
+        "source_missing_expected_proportion": 3.9023e-05,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "median_imputation"
+      },
+      "occupation_type": {
+        "source_column": "occupation_type",
+        "output_features": [
+          "occupation_type"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 96391,
+        "source_missing_expected_proportion": 0.3134554536,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "trim_and_null_to_Unknown"
+      },
+      "organization_type": {
+        "source_column": "organization_type",
+        "output_features": [
+          "organization_type"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "trim_valid_categories; null_or_frequency_below_minimum_to_Other_low_freq"
+      },
+      "name_income_type": {
+        "source_column": "name_income_type",
+        "output_features": [
+          "name_income_type"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "trim_valid_categories; null_or_frequency_below_minimum_to_Other_low_freq"
+      },
+      "name_education_type": {
+        "source_column": "name_education_type",
+        "output_features": [
+          "name_education_type"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "trim_and_null_to_Unknown"
+      },
+      "code_gender": {
+        "source_column": "code_gender",
+        "output_features": [
+          "code_gender"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 4,
+        "source_invalid_expected_proportion": 1.30077e-05,
+        "invalid_definition": "trimmed_value_equals_XNA",
+        "sanitization_rule": "trim_and_XNA_or_null_to_Unknown"
+      },
+      "days_birth": {
+        "source_column": "days_birth",
+        "output_features": [
+          "age"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 0,
+        "source_invalid_expected_proportion": 0.0,
+        "invalid_definition": null,
+        "sanitization_rule": "absolute_value_divided_by_365.25_without_imputation"
+      },
+      "days_employed": {
+        "source_column": "days_employed",
+        "output_features": [
+          "years_employed",
+          "days_employed_anom"
+        ],
+        "measurement_population": "all_rows",
+        "population_count": 307511,
+        "source_missing_count": 0,
+        "source_missing_expected_proportion": 0.0,
+        "source_invalid_count": 55374,
+        "source_invalid_expected_proportion": 0.1800716072,
+        "invalid_definition": "value_equals_365243",
+        "sanitization_rule": "sentinel_to_zero_years_and_anomaly_flag; otherwise_absolute_value_divided_by_365.25"
+      }
+    }
+  },
+  "drift_reference": {
+    "psi": {
+      "formula": "sum((actual_proportion - expected_proportion) * ln(actual_proportion / expected_proportion))",
+      "zero_proportion_epsilon": 1e-06,
+      "numeric_features": {
+        "ext_source_1": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.3186901717,
+            0.4778323967,
+            0.5059979305,
+            0.5339384757,
+            0.6895669262,
+            null
+          ],
+          "expected_proportions": [
+            0.1000029267,
+            0.1000029267,
+            0.0180871579,
+            0.581910891,
+            0.0999964229,
+            0.0999996748
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "ext_source_2": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.2162038154,
+            0.3403762354,
+            0.4410759495,
+            0.5127315307,
+            0.5659614261,
+            0.6079632157,
+            0.6456586534,
+            0.6819170303,
+            0.7219501656,
+            null
+          ],
+          "expected_proportions": [
+            0.0999996748,
+            0.0999964229,
+            0.0999964229,
+            0.1000029267,
+            0.101079311,
+            0.0989232905,
+            0.0999899191,
+            0.1000094306,
+            0.099993171,
+            0.1000094306
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "ext_source_3": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.2567055724,
+            0.3706496323,
+            0.4578995512,
+            0.5352762505,
+            0.537069958,
+            0.6041125998,
+            0.6690566948,
+            0.7352209994,
+            null
+          ],
+          "expected_proportions": [
+            0.0994696125,
+            0.1001362553,
+            0.0987737024,
+            0.3010851644,
+            0.0021300051,
+            0.0962957423,
+            0.1037718976,
+            0.0989395501,
+            0.0993980703
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "ext_source_mean": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.3666825061,
+            0.4214703309,
+            0.4597675366,
+            0.4925312507,
+            0.5215641324,
+            0.5483963816,
+            0.5743193619,
+            0.6023819254,
+            0.6420092528,
+            null
+          ],
+          "expected_proportions": [
+            0.1000029267,
+            0.0999964229,
+            0.0999996748,
+            0.0999996748,
+            0.1000029267,
+            0.0999996748,
+            0.0999964229,
+            0.0999996748,
+            0.0999996748,
+            0.1000029267
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "region_rating_client_w_city": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            1.0,
+            2.0,
+            null
+          ],
+          "expected_proportions": [
+            0.1111082205,
+            0.7462627353,
+            0.1426290442
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "days_last_phone_change": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            -2158.0,
+            -1720.0,
+            -1426.0,
+            -1060.0,
+            -757.0,
+            -546.0,
+            -364.0,
+            -161.0,
+            null
+          ],
+          "expected_proportions": [
+            0.1001752783,
+            0.0999834152,
+            0.0999736595,
+            0.0999183769,
+            0.1001525149,
+            0.1003606375,
+            0.0994728644,
+            0.1002175532,
+            0.1997457002
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "days_id_publish": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            -4724.0,
+            -4430.0,
+            -4172.0,
+            -3881.0,
+            -3254.0,
+            -2654.0,
+            -2044.0,
+            -1378.0,
+            -730.0,
+            null
+          ],
+          "expected_proportions": [
+            0.1000191863,
+            0.1002923473,
+            0.0999769114,
+            0.0997362696,
+            0.1001264995,
+            0.100032194,
+            0.0998728501,
+            0.0999476441,
+            0.1000484536,
+            0.0999476441
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "days_registration": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            -9932.0,
+            -8230.0,
+            -6776.0,
+            -5459.0,
+            -4504.0,
+            -3537.0,
+            -2540.0,
+            -1491.0,
+            -690.0,
+            null
+          ],
+          "expected_proportions": [
+            0.1000061786,
+            0.1000094306,
+            0.1000061786,
+            0.100032194,
+            0.0999899191,
+            0.0999736595,
+            0.1000061786,
+            0.1001037361,
+            0.0999606518,
+            0.0999118731
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "own_car_age": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            2.0,
+            8.0,
+            14.0,
+            null
+          ],
+          "expected_proportions": [
+            0.6668314304,
+            0.036200331,
+            0.1145162287,
+            0.0891317709,
+            0.093320239
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "def_60_cnt_social_circle": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            null
+          ],
+          "expected_proportions": [
+            0.9162013717,
+            0.0837986283
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "amt_req_credit_bureau_year": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            null
+          ],
+          "expected_proportions": [
+            0.3685071428,
+            0.2061877461,
+            0.1632201775,
+            0.1093554377,
+            0.067360192,
+            0.0853693039
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "cnt_children": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            1.0,
+            2.0,
+            null
+          ],
+          "expected_proportions": [
+            0.7003684421,
+            0.1987538657,
+            0.0869855062,
+            0.013892186
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "cnt_fam_members": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            1.0,
+            2.0,
+            3.0,
+            null
+          ],
+          "expected_proportions": [
+            0.2206327579,
+            0.5149701962,
+            0.1710540436,
+            0.0933430024
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "amt_income_total": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            81000.0,
+            99000.0,
+            112500.0,
+            135000.0,
+            147150.0,
+            162000.0,
+            180000.0,
+            225000.0,
+            270000.0,
+            null
+          ],
+          "expected_proportions": [
+            0.1085847336,
+            0.0984680223,
+            0.1200184709,
+            0.158852854,
+            0.0140905529,
+            0.1011996319,
+            0.0998468347,
+            0.1457151126,
+            0.0648984914,
+            0.0883252957
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "amt_credit": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            180000.0,
+            254700.0,
+            306306.0,
+            432000.0,
+            513531.0,
+            604152.0,
+            755190.0,
+            900000.0,
+            1133748.0,
+            null
+          ],
+          "expected_proportions": [
+            0.1079766252,
+            0.1031540335,
+            0.0890732364,
+            0.0998565905,
+            0.1002435685,
+            0.0999183769,
+            0.110779777,
+            0.0974209053,
+            0.0920910146,
+            0.0994858721
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "amt_annuity": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            11074.5,
+            14701.5,
+            18189.0,
+            21870.0,
+            24903.0,
+            28062.0,
+            32004.0,
+            37516.5,
+            45954.0,
+            null
+          ],
+          "expected_proportions": [
+            0.100419172,
+            0.0995964372,
+            0.1000386978,
+            0.0999508961,
+            0.1000907285,
+            0.1001264995,
+            0.0998013079,
+            0.1000354459,
+            0.100185034,
+            0.0997557811
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "age": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            28.1560574949,
+            32.0164271047,
+            35.9753593429,
+            39.4688569473,
+            43.1211498973,
+            47.1457905544,
+            51.704312115,
+            56.0547570157,
+            60.7282683094,
+            null
+          ],
+          "expected_proportions": [
+            0.1000029267,
+            0.0999508961,
+            0.1000126825,
+            0.100071217,
+            0.0999086212,
+            0.100032194,
+            0.1000224382,
+            0.0999639037,
+            0.1000777208,
+            0.0999573999
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "years_employed": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            0.3942505133,
+            1.2539356605,
+            2.250513347,
+            3.3210130048,
+            4.6406570842,
+            6.4668035592,
+            8.8459958932,
+            13.363449692,
+            null
+          ],
+          "expected_proportions": [
+            0.180078111,
+            0.019670841,
+            0.1001687745,
+            0.1000647131,
+            0.1000191863,
+            0.1001687745,
+            0.0997362696,
+            0.1000484536,
+            0.100071217,
+            0.0999736595
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "fe_credit_income_percent": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            1.3333333333,
+            1.8333333333,
+            2.2819047619,
+            2.7777777778,
+            3.275862069,
+            3.9158,
+            4.73526,
+            5.7701333333,
+            7.4875,
+            null
+          ],
+          "expected_proportions": [
+            0.0991997034,
+            0.1003606375,
+            0.1004126682,
+            0.1012581664,
+            0.0987737024,
+            0.100071217,
+            0.0999313846,
+            0.0999769114,
+            0.1002077974,
+            0.0998078118
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "fe_annuity_income_percent": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.08,
+            0.1043428571,
+            0.125,
+            0.144,
+            0.1629333333,
+            0.1858,
+            0.212575,
+            0.2467391304,
+            0.3017,
+            null
+          ],
+          "expected_proportions": [
+            0.1002793396,
+            0.0997135062,
+            0.1019118015,
+            0.0982403881,
+            0.0997948041,
+            0.1000614612,
+            0.1000939804,
+            0.0998598424,
+            0.1000582093,
+            0.0999866671
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "prev_refused_rate": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            0.125,
+            0.25,
+            0.3846153846,
+            null
+          ],
+          "expected_proportions": [
+            0.6738523175,
+            0.036125537,
+            0.1180055348,
+            0.071356797,
+            0.1006598138
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "bureau_avg_days_credit": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            -1746.1666666667,
+            -1464.1,
+            -1270.0,
+            -1098.5,
+            -927.6,
+            -747.4444444444,
+            -542.0,
+            -285.5,
+            null
+          ],
+          "expected_proportions": [
+            0.099993171,
+            0.1000126825,
+            0.1000386978,
+            0.1000061786,
+            0.0999573999,
+            0.099993171,
+            0.1000354459,
+            0.0999866671,
+            0.1999765862
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "bureau_last_days_credit": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            -1076.0,
+            -658.0,
+            -448.0,
+            -328.0,
+            -239.0,
+            -171.0,
+            -109.0,
+            -48.0,
+            null
+          ],
+          "expected_proportions": [
+            0.100032194,
+            0.1001590187,
+            0.1002403166,
+            0.1003541337,
+            0.1005622563,
+            0.0990013365,
+            0.1000614612,
+            0.10080615,
+            0.198783133
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "bureau_active_rate": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            0.1,
+            0.25,
+            0.3333333333,
+            0.4,
+            0.5,
+            0.6,
+            null
+          ],
+          "expected_proportions": [
+            0.293846399,
+            0.0087476546,
+            0.1401088091,
+            0.0392863995,
+            0.1313318873,
+            0.1490190595,
+            0.039696141,
+            0.1979636501
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "bureau_active_count": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            null
+          ],
+          "expected_proportions": [
+            0.293846399,
+            0.2409767455,
+            0.189856623,
+            0.1236085864,
+            0.0716754848,
+            0.0800361613
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "bureau_closed_rate": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            0.3333333333,
+            0.5,
+            0.5217391304,
+            0.6666666667,
+            0.7272727273,
+            0.8333333333,
+            null
+          ],
+          "expected_proportions": [
+            0.2515227098,
+            0.0406944792,
+            0.2077356582,
+            3.57711e-05,
+            0.1666704606,
+            0.036473492,
+            0.0963217576,
+            0.2005456715
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "bureau_debt_credit_ratio": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            0.0007259376,
+            0.120045657,
+            0.2417827367,
+            0.3655116655,
+            0.5035090467,
+            0.6904519119,
+            null
+          ],
+          "expected_proportions": [
+            0.398028038,
+            0.0019706612,
+            0.0999996748,
+            0.0999996748,
+            0.1000029267,
+            0.0999996748,
+            0.0999996748,
+            0.0999996748
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "bureau_overdue_count": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            null
+          ],
+          "expected_proportions": [
+            0.9889532407,
+            0.0110467593
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        },
+        "inst_late_payment_rate": {
+          "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+          "upper_bounds": [
+            0.0,
+            0.007751938,
+            0.0416666667,
+            0.0801886792,
+            0.137254902,
+            0.2307692308,
+            null
+          ],
+          "expected_proportions": [
+            0.4959562422,
+            0.0041461931,
+            0.1014630371,
+            0.0984322512,
+            0.1000614612,
+            0.1007898904,
+            0.0991509247
+          ],
+          "model_input_missing_expected_proportion": 0.0
+        }
+      },
+      "binary_features": {
+        "reg_city_not_work_city": {
+          "expected_proportions": {
+            "0": 0.7695464552,
+            "1": 0.2304535448,
+            "__MISSING__": 0.0
+          }
+        },
+        "reg_city_not_live_city": {
+          "expected_proportions": {
+            "0": 0.9218271867,
+            "1": 0.0781728133,
+            "__MISSING__": 0.0
+          }
+        },
+        "live_city_not_work_city": {
+          "expected_proportions": {
+            "0": 0.8204454475,
+            "1": 0.1795545525,
+            "__MISSING__": 0.0
+          }
+        },
+        "has_car": {
+          "expected_proportions": {
+            "0": 0.6598918413,
+            "1": 0.3401081587,
+            "__MISSING__": 0.0
+          }
+        },
+        "days_employed_anom": {
+          "expected_proportions": {
+            "0": 0.8199283928,
+            "1": 0.1800716072,
+            "__MISSING__": 0.0
+          }
+        },
+        "has_prev_app": {
+          "expected_proportions": {
+            "0": 0.053507029,
+            "1": 0.946492971,
+            "__MISSING__": 0.0
+          }
+        },
+        "has_bureau": {
+          "expected_proportions": {
+            "0": 0.1431493508,
+            "1": 0.8568506492,
+            "__MISSING__": 0.0
+          }
+        },
+        "has_installments_history": {
+          "expected_proportions": {
+            "0": 0.0516014061,
+            "1": 0.9483985939,
+            "__MISSING__": 0.0
+          }
+        }
+      },
+      "categorical_features": {
+        "occupation_type": {
+          "expected_proportions": {
+            "Unknown": 0.3134554536,
+            "Laborers": 0.179460247,
+            "Sales staff": 0.1043930136,
+            "Core staff": 0.0896553294,
+            "Managers": 0.0694967009,
+            "Drivers": 0.0604953969,
+            "High skill tech staff": 0.0370068063,
+            "Accountants": 0.0319110536,
+            "Medicine staff": 0.0277616085,
+            "Security staff": 0.0218561287,
+            "Cooking staff": 0.0193358937,
+            "Cleaning staff": 0.015131166,
+            "Private service staff": 0.0086240817,
+            "Low-skill Laborers": 0.0068062606,
+            "Waiters/barmen staff": 0.004383583,
+            "Secretaries": 0.0042437506,
+            "Realty agents": 0.0024421891,
+            "HR staff": 0.0018308288,
+            "IT staff": 0.0017105079
+          },
+          "unseen_category_bucket": "__UNSEEN__",
+          "unseen_expected_proportion": 0.0
+        },
+        "organization_type": {
+          "expected_proportions": {
+            "Business Entity Type 3": 0.2211042857,
+            "XNA": 0.1800716072,
+            "Self-employed": 0.1249126048,
+            "Other": 0.0542517178,
+            "Medicine": 0.0363986979,
+            "Business Entity Type 2": 0.0343174716,
+            "Government": 0.0338329361,
+            "School": 0.0289192907,
+            "Trade: type 7": 0.0254657557,
+            "Kindergarten": 0.0223731834,
+            "Construction": 0.0218561287,
+            "Business Entity Type 1": 0.0194594665,
+            "Transport: type 4": 0.0175538436,
+            "Other_low_freq": 0.0129166111,
+            "Trade: type 3": 0.0113556913,
+            "Industry: type 9": 0.0109524537,
+            "Industry: type 3": 0.0106597813,
+            "Security": 0.0105589719,
+            "Housing": 0.0096191681,
+            "Industry: type 11": 0.0087931814,
+            "Military": 0.0085655472,
+            "Bank": 0.0081525539,
+            "Agriculture": 0.0079802023,
+            "Police": 0.0076127358,
+            "Transport: type 2": 0.0071672233,
+            "Postal": 0.0070143832,
+            "Security Ministries": 0.0064192826,
+            "Trade: type 2": 0.0061786408,
+            "Restaurant": 0.0058892202,
+            "Services": 0.005121768,
+            "University": 0.0043152928,
+            "Industry: type 7": 0.0042502545,
+            "Transport: type 3": 0.0038600245,
+            "Industry: type 1": 0.0033787409,
+            "Hotel": 0.003141351,
+            "Electricity": 0.0030893204,
+            "Industry: type 4": 0.0028519305,
+            "Trade: type 6": 0.0020519591,
+            "Industry: type 5": 0.0019478978,
+            "Insurance": 0.001941394,
+            "Telecom": 0.0018763556,
+            "Emergency": 0.0018210731
+          },
+          "unseen_category_bucket": "__UNSEEN__",
+          "unseen_expected_proportion": 0.0
+        },
+        "name_income_type": {
+          "expected_proportions": {
+            "Working": 0.5163197414,
+            "Commercial associate": 0.2328924819,
+            "Pensioner": 0.1800325842,
+            "State servant": 0.0705763371,
+            "Other_low_freq": 0.0001788554
+          },
+          "unseen_category_bucket": "__UNSEEN__",
+          "unseen_expected_proportion": 0.0
+        },
+        "name_education_type": {
+          "expected_proportions": {
+            "Secondary / secondary special": 0.710189229,
+            "Higher education": 0.2434482019,
+            "Incomplete higher": 0.0334199427,
+            "Lower secondary": 0.0124093122,
+            "Academic degree": 0.0005333143
+          },
+          "unseen_category_bucket": "__UNSEEN__",
+          "unseen_expected_proportion": 0.0
+        },
+        "code_gender": {
+          "expected_proportions": {
+            "F": 0.6583439292,
+            "M": 0.3416430632,
+            "Unknown": 1.30077e-05
+          },
+          "unseen_category_bucket": "__UNSEEN__",
+          "unseen_expected_proportion": 0.0
+        }
+      },
+      "risk_score": {
+        "boundary_rule": "(-infinity, upper_bound] for every bin; null means +infinity",
+        "upper_bounds": [
+          0.1482147161,
+          0.2051019555,
+          0.2593503659,
+          0.3161194106,
+          0.3770381539,
+          0.4434559955,
+          0.5180818096,
+          0.6038355588,
+          0.7088827711,
+          null
+        ],
+        "expected_proportions": [
+          0.1000029267,
+          0.0999964229,
+          0.1000029267,
+          0.0999964229,
+          0.0999996748,
+          0.0999996748,
+          0.1000029267,
+          0.0999996748,
+          0.0999964229,
+          0.1000029267
+        ],
+        "missing_expected_proportion": 0.0
+      },
+      "model_input_measurement_point": "application_abt_after_sanitization_and_feature_engineering"
+    },
+    "policy_decision_distribution": {
+      "approve": 0.6768245689,
+      "manual_review": 0.1190461479,
+      "reject": 0.2041292832
+    }
+  },
+  "performance_reference": {
+    "score_interpretation": "ranking_score_not_calibrated_probability",
+    "metrics": {
+      "roc_auc": 0.765,
+      "gini": 0.53,
+      "ks": 0.4051,
+      "average_precision": 0.2563,
+      "brier": 0.1909
+    },
+    "score_bands": [
+      {
+        "lower_bound": 0.0,
+        "upper_bound": 0.1,
+        "upper_bound_inclusive": false,
+        "count": 2151,
+        "proportion": 0.0349739037,
+        "mean_score": 0.0766334432,
+        "observed_default_rate": 0.009762901
+      },
+      {
+        "lower_bound": 0.1,
+        "upper_bound": 0.2,
+        "upper_bound_inclusive": false,
+        "count": 9681,
+        "proportion": 0.1574069558,
+        "mean_score": 0.1544671765,
+        "observed_default_rate": 0.0160107427
+      },
+      {
+        "lower_bound": 0.2,
+        "upper_bound": 0.3,
+        "upper_bound_inclusive": false,
+        "count": 11011,
+        "proportion": 0.1790319171,
+        "mean_score": 0.2494306158,
+        "observed_default_rate": 0.0313323041
+      },
+      {
+        "lower_bound": 0.3,
+        "upper_bound": 0.4,
+        "upper_bound_inclusive": false,
+        "count": 10143,
+        "proportion": 0.1649187844,
+        "mean_score": 0.3486397037,
+        "observed_default_rate": 0.0436754412
+      },
+      {
+        "lower_bound": 0.4,
+        "upper_bound": 0.5,
+        "upper_bound_inclusive": false,
+        "count": 8790,
+        "proportion": 0.1429198576,
+        "mean_score": 0.4488938328,
+        "observed_default_rate": 0.0643913538
+      },
+      {
+        "lower_bound": 0.5,
+        "upper_bound": 0.6,
+        "upper_bound_inclusive": false,
+        "count": 7245,
+        "proportion": 0.1177991317,
+        "mean_score": 0.5485536237,
+        "observed_default_rate": 0.1060041408
+      },
+      {
+        "lower_bound": 0.6,
+        "upper_bound": 0.7,
+        "upper_bound_inclusive": false,
+        "count": 5941,
+        "proportion": 0.096596914,
+        "mean_score": 0.6476531063,
+        "observed_default_rate": 0.1508163609
+      },
+      {
+        "lower_bound": 0.7,
+        "upper_bound": 0.8,
+        "upper_bound_inclusive": false,
+        "count": 4236,
+        "proportion": 0.068874689,
+        "mean_score": 0.7465678502,
+        "observed_default_rate": 0.2124645892
+      },
+      {
+        "lower_bound": 0.8,
+        "upper_bound": 0.9,
+        "upper_bound_inclusive": false,
+        "count": 2033,
+        "proportion": 0.0330552981,
+        "mean_score": 0.8415639088,
+        "observed_default_rate": 0.3507132317
+      },
+      {
+        "lower_bound": 0.9,
+        "upper_bound": 1.0,
+        "upper_bound_inclusive": true,
+        "count": 272,
+        "proportion": 0.0044225485,
+        "mean_score": 0.9195575008,
+        "observed_default_rate": 0.5808823529
+      }
+    ]
+  },
+  "fairness_reference": {
+    "sensitive_feature": "code_gender",
+    "groups": {
+      "F": {
+        "count": 40218,
+        "proportion": 0.653919321,
+        "observed_default_rate": 0.0687503108,
+        "roc_auc": 0.7633923342,
+        "model_positive_rate": 0.2631657467,
+        "recall_at_model_threshold": 0.6321880651,
+        "policy_decision_rates": {
+          "approve": 0.7368342533,
+          "manual_review": 0.1030881695,
+          "reject": 0.1600775772
+        }
+      },
+      "M": {
+        "count": 21284,
+        "proportion": 0.3460644196,
+        "observed_default_rate": 0.1033640293,
+        "roc_auc": 0.7534789495,
+        "model_positive_rate": 0.4295245255,
+        "recall_at_model_threshold": 0.7668181818,
+        "policy_decision_rates": {
+          "approve": 0.5704754745,
+          "manual_review": 0.1455553467,
+          "reject": 0.2839691787
+        }
+      },
+      "Unknown": {
+        "count": 1,
+        "proportion": 1.62594e-05,
+        "observed_default_rate": 0.0,
+        "roc_auc": null,
+        "model_positive_rate": 1.0,
+        "recall_at_model_threshold": null,
+        "policy_decision_rates": {
+          "approve": 0.0,
+          "manual_review": 1.0,
+          "reject": 0.0
+        }
+      }
+    }
+  },
+  "limitations": [
+    "This file materializes a proposed contract and is not generated by the current training pipeline.",
+    "Performance, calibration and fairness references come from the stratified holdout, not from the model refitted on the full ABT.",
+    "The model score is used for ranking and is not a calibrated probability of default.",
+    "In production, outcome-based metrics may represent only approved contracts when outcomes are unavailable for rejected applications.",
+    "Source missingness currently covers application_train columns that feed model features; source-quality contracts for historical tables remain to be defined.",
+    "Alert thresholds are intentionally absent because they require an explicit operational and business definition."
+  ]
+}
