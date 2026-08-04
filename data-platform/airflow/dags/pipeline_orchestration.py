@@ -154,7 +154,7 @@ with DAG(
         output_t=db_config.get("output_bureau_table"),
     )
     
-    t_abt_index = task_abt_indexes(CONN_ID, db_config)
+    t_abt_index = task_abt_indexes(CONN_ID, config)
     t_inst = task_agg_inst(CONN_ID, db_config.get("output_installments_table"))
     t_prev = task_agg_prev(CONN_ID, db_config.get("output_prev_table"))
     t_bureau = task_agg_bureau(CONN_ID, db_config.get("output_bureau_table"))
