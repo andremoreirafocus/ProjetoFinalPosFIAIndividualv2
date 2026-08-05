@@ -18,6 +18,7 @@ Essa reutilização ajuda a manter consistência entre treino e predição por c
 
 - disponibilizar a persistência relacional da plataforma;
 - criar o banco `data` na primeira inicialização;
+- provisionar o banco de testes `data_test` e o papel de menor privilégio `data_test_user`, isolado do banco `data`;
 - armazenar tabelas brutas, tabelas tratadas e a ABT `application_abt`;
 - atender Airflow, treinamento e API de predição.
 

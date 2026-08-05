@@ -93,22 +93,31 @@ def _connect(dbname: str):
 
 
 @pytest.fixture(scope="session")
-def _provision_test_database():
-    """Create the dedicated test database if it does not yet exist.
+def _verify_test_database():
+    """Verify the dedicated test database is reachable by the least-privilege role.
 
-    Not autouse: only tests that request the ``db`` fixture provision and touch
-    the database, so the pure input-validation tests can run without PostgreSQL.
+    Provisioning — the ``data_test_user`` role, the ``data_test`` database it owns,
+    and the revoke that blocks non-superusers from the pipeline database — is done
+    once, out of band, by ``postgres/init/02-create-test-role-and-db.sql`` (run
+    automatically on a fresh volume, or by hand on an existing one). The suite never
+    creates databases: the test role is intentionally ``NOCREATEDB`` and cannot reach
+    the pipeline database, so isolation cannot be undone from within the tests.
+
+    Not autouse: only tests that request the ``db`` fixture touch the database, so the
+    pure input-validation tests can run without PostgreSQL.
     """
-    admin = _connect("postgres")
     try:
-        with admin.cursor() as cur:
-            cur.execute(
-                "SELECT 1 FROM pg_database WHERE datname = %s", (TEST_DB_NAME,)
-            )
-            if cur.fetchone() is None:
-                cur.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
-    finally:
-        admin.close()
+        conn = _connect(TEST_DB_NAME)
+    except psycopg2.OperationalError as exc:
+        raise pytest.UsageError(
+            f"Cannot connect to the test database '{TEST_DB_NAME}' as "
+            f"'{TEST_DB_USER}'. Provision it once with "
+            f"postgres/init/02-create-test-role-and-db.sql — e.g. "
+            f"`docker compose exec postgres psql -U airflow -d airflow "
+            f"-f /docker-entrypoint-initdb.d/02-create-test-role-and-db.sql`. "
+            f"Original error: {exc}"
+        ) from exc
+    conn.close()
     yield
 
 
@@ -186,7 +195,7 @@ def _drop_all_public_tables(conn) -> None:
 
 
 @pytest.fixture
-def db(_provision_test_database):
+def db(_verify_test_database):
     """A helper bound to the test database, with a clean public schema."""
     conn = _connect(TEST_DB_NAME)
     _drop_all_public_tables(conn)
