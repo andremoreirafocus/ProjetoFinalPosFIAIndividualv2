@@ -49,22 +49,18 @@ with DAG(
     # --- TASK DE INGESTÃO ---
     @task(task_id="ingest_csv_source", pool="pool_ingestao")
     def task_ingest(
-        config_tabela: dict, conn_id: str, pasta_origem: str, config_file: str
+        config_tabela: dict, conn_id: str, pasta_origem: str, config: dict
     ):
 
         nome_tabela = config_tabela["table_name"]
-        tamanho_chunk = config_tabela["chunk_size"]
 
-        print(
-            f"Iniciando carga da tabela '{nome_tabela}' com chunksize de {tamanho_chunk}..."
-        )
+        print(f"Iniciando carga da tabela '{nome_tabela}'...")
 
         run_csv_ingestion(
             pasta_origem=pasta_origem,
             table_name=nome_tabela,
             conn_id=conn_id,
-            config_file=config_file,
-            chunk_size=tamanho_chunk,
+            config=config,
         )
 
     @task
@@ -123,7 +119,7 @@ with DAG(
 
     # --- INSTANCIANDO AS TAREFAS ---
     carga_inicial = task_ingest.partial(
-        conn_id=CONN_ID, pasta_origem=PASTA_DATA, config_file=CONFIG_PATH
+        conn_id=CONN_ID, pasta_origem=PASTA_DATA, config=config
     ).expand(config_tabela=tabelas_para_ingerir)
 
     cria_indices = task_criar_indices(CONN_ID)

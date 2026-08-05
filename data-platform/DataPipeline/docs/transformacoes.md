@@ -14,12 +14,12 @@ Essa escolha aproveita o otimizador do PostgreSQL, reduz movimentação de dados
 
 ## Implementação da ingestão
 
-[`ingestion.py`](../ingestion.py) recebe uma configuração de tabela por tarefa Airflow e executa:
+[`ingestion.py`](../ingestion.py) recebe o objeto de configuração já carregado e o nome da tabela por tarefa Airflow e executa:
 
-1. validação de que a tabela pertence ao escopo de `config_pipeline.json`;
+1. resolução da definição da fonte no escopo de ingestão do config e rejeição de fonte não declarada;
 2. localização do CSV por nome normalizado;
 3. tentativa de leitura UTF-8, com fallback para Latin-1;
-4. leitura iterativa com `chunksize` específico para cada fonte;
+4. leitura iterativa com o `chunk_size` declarado na definição da fonte;
 5. inferência inicial de tipos Pandas → PostgreSQL;
 6. criação da tabela no primeiro chunk;
 7. append dos blocos por `COPY FROM STDIN` com delimitador tab;

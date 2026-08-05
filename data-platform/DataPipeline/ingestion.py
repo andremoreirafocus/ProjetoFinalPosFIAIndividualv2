@@ -1,28 +1,24 @@
 import os
-import json
 import pandas as pd
 from utils import get_database_connection, map_pandas_to_postgres_types, append_dataframe_to_postgres, log_row_count
 
-def run_csv_ingestion(pasta_origem: str, table_name: str, conn_id: str, config_file: str, chunk_size: int):
-    """Executa a ingestão profissional de um único arquivo em chunks controlados,
-    adaptando-se à validação dinâmica do escopo mapeado no JSON.
-    """
-    # 1. Carrega o arquivo de configuração para validação de escopo
-    if not os.path.exists(config_file):
-        raise FileNotFoundError(f"Arquivo de configuração não encontrado: {config_file}")
-        
-    with open(config_file, "r") as f:
-        config = json.load(f)
-        
-    # Extrai a lista de objetos do JSON
-    tabelas_permitidas_config = config.get("ingestion_table", {}).get("using_csv", [])
-    
-    # Extrai apenas os nomes das tabelas para validação de escopo
-    nomes_permitidos = [t.get("table_name") for t in tabelas_permitidas_config if isinstance(t, dict)]
+def run_csv_ingestion(pasta_origem: str, table_name: str, conn_id: str, config: dict):
+    """Executa a ingestão de um único arquivo em chunks controlados.
 
-    if table_name not in nomes_permitidos:
-        raise ValueError(f"A tabela '{table_name}' Não foi listada no escopo do JSON: {nomes_permitidos}")
-        
+    O escopo da fonte e o ``chunk_size`` são resolvidos do objeto ``config`` já
+    carregado — nenhum arquivo de configuração é lido aqui.
+    """
+    # 1. Resolve a definição da fonte no escopo de ingestão do config
+    fontes = config["ingestion_table"]["using_csv"]
+    por_nome = {f["table_name"]: f for f in fontes}
+    if table_name not in por_nome:
+        raise ValueError(
+            f"A tabela '{table_name}' não está no escopo de ingestão do config: {list(por_nome)}"
+        )
+    definicao = por_nome[table_name]
+
+    chunk_size = definicao["chunk_size"]
+
     if not os.path.exists(pasta_origem):
         raise FileNotFoundError(f"A pasta de origem {pasta_origem} não existe.")
 
