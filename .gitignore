@@ -15,3 +15,4 @@ abt.csv
 /data-platform/MLOps/agent-manual-review/*.log
 /dist
 *TS.md
+*DE.md
