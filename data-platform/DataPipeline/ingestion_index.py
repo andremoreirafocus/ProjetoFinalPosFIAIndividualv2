@@ -3,31 +3,34 @@ from utils import get_database_connection
 # ---------------------------------------------------------------------------
 # Task: Criação de Índices Otimizados (Rodar ANTES das limpezas)
 # ---------------------------------------------------------------------------
-def run_create_indexes(conn_id: str):
+def run_create_indexes(conn_id: str, config: dict):
     """
-    Cria índices nas tabelas raw para otimizar as operações de limpeza e futuros JOINs.
+    Cria os índices declarados em ``config["indexes"]["raw"]`` nas tabelas raw.
+
+    Cada entrada resolve sua tabela física por ``table_ref`` em
+    ``config["database"]``, então renomear a tabela nesse bloco redireciona o
+    índice para o novo nome sem alterar esta função.
     """
     conn = get_database_connection(conn_id)
     cursor = conn.cursor()
-    
+
+    db_config = config["database"]
+    raw_indexes = config["indexes"]["raw"]
+
     print("--- Criando índices para otimizar leitura nas tabelas de origem. ---")
 
-    indexes = [
-        "CREATE INDEX IF NOT EXISTS idx_app_sk_id_curr ON application_train (sk_id_curr);",
-        "CREATE INDEX IF NOT EXISTS idx_app_org_type ON application_train (organization_type);",
-        "CREATE INDEX IF NOT EXISTS idx_app_inc_type ON application_train (name_income_type);",
-        "CREATE INDEX IF NOT EXISTS idx_app_flag_car ON application_train (flag_own_car);",
-        "CREATE INDEX IF NOT EXISTS idx_prev_sk_id_prev ON previous_application (sk_id_prev);",
-        "CREATE INDEX IF NOT EXISTS idx_prev_sk_id_curr ON previous_application (sk_id_curr);",
-        "CREATE INDEX IF NOT EXISTS idx_bur_sk_id_bureau ON bureau (sk_id_bureau);",
-        "CREATE INDEX IF NOT EXISTS idx_bur_sk_id_curr ON bureau (sk_id_curr);",
-        "CREATE INDEX IF NOT EXISTS idx_inst_sk_id_curr ON installments_payments (sk_id_curr);",
-        "CREATE INDEX IF NOT EXISTS idx_inst_sk_id_prev ON installments_payments (sk_id_prev);"
-    ]
-
-    for sql in indexes:
-        cursor.execute(sql)
+    for entrada in raw_indexes:
+        tabela = db_config[entrada["table_ref"]]
+        colunas = ", ".join(entrada["columns"])
+        print(
+            f"   -> Criando índice '{entrada['name']}' na tabela '{tabela}' "
+            f"(table_ref '{entrada['table_ref']}'), colunas ({colunas})..."
+        )
+        cursor.execute(
+            f'CREATE INDEX IF NOT EXISTS "{entrada["name"]}" ON "{tabela}" ({colunas});'
+        )
         conn.commit()
+        print(f"   -> Índice '{entrada['name']}' criado com sucesso!")
 
     cursor.close()
     conn.close()

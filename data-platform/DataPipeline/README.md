@@ -86,7 +86,7 @@ O escopo e o tamanho dos blocos são controlados por [`config_pipeline.json`](./
 |---|---|
 | `ingestion_table.using_csv` | Fontes autorizadas e tamanho de cada chunk. |
 | `database` | Nomes das tabelas brutas, tratadas e da ABT. |
-| `indexes` | Chaves declaradas para apoio à indexação. |
+| `indexes.raw` | Índices de junção e de filtro criados nas tabelas brutas, antes da limpeza. |
 | `sanitization.cardinalidade_min_freq` | Frequência mínima antes de agrupar categorias raras. |
 | `sanitization.income_winsor_q` | Quantil máximo aplicado à renda. |
 

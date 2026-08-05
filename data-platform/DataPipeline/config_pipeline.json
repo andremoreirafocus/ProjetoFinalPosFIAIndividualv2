@@ -19,9 +19,18 @@
     "abt_table": "application_abt"
   },
   "indexes": {
-    "application_train": "sk_id_curr",
-    "previous_application": "sk_id_prev",
-    "bureau": "sk_id_bureau"
+    "raw": [
+      { "name": "idx_app_sk_id_curr", "table_ref": "input_table", "columns": ["sk_id_curr"] },
+      { "name": "idx_app_org_type", "table_ref": "input_table", "columns": ["organization_type"] },
+      { "name": "idx_app_inc_type", "table_ref": "input_table", "columns": ["name_income_type"] },
+      { "name": "idx_app_flag_car", "table_ref": "input_table", "columns": ["flag_own_car"] },
+      { "name": "idx_prev_sk_id_prev", "table_ref": "input_prev_table", "columns": ["sk_id_prev"] },
+      { "name": "idx_prev_sk_id_curr", "table_ref": "input_prev_table", "columns": ["sk_id_curr"] },
+      { "name": "idx_bur_sk_id_bureau", "table_ref": "input_bureau_table", "columns": ["sk_id_bureau"] },
+      { "name": "idx_bur_sk_id_curr", "table_ref": "input_bureau_table", "columns": ["sk_id_curr"] },
+      { "name": "idx_inst_sk_id_curr", "table_ref": "input_installments_table", "columns": ["sk_id_curr"] },
+      { "name": "idx_inst_sk_id_prev", "table_ref": "input_installments_table", "columns": ["sk_id_prev"] }
+    ]
   },
   "sanitization": {
     "cardinalidade_min_freq": 500,

@@ -12,6 +12,37 @@ Os arquivos de bureau, propostas e parcelas possuem centenas de megabytes. Trans
 
 Essa escolha aproveita o otimizador do PostgreSQL, reduz movimentação de dados e mantém as transformações observáveis como tabelas intermediárias.
 
+## Visão geral da configuração
+
+Todo o pipeline é dirigido por um único arquivo, [`config_pipeline.json`](../config_pipeline.json), com quatro blocos:
+
+- `ingestion_table` — fontes CSV autorizadas para ingestão e o tamanho de chunk de cada uma.
+- `database` — nomes das tabelas brutas, tratadas e da ABT, usados por todas as demais etapas.
+- `indexes` — índices de banco a criar em cada fase (`raw`, antes da limpeza).
+- `sanitization` — parâmetros da limpeza de `application_train`.
+
+Cada seção abaixo detalha um desses blocos e mostra apenas o trecho de JSON correspondente — nunca o arquivo inteiro.
+
+## Nomenclatura das tabelas
+
+O bloco `database` de `config_pipeline.json` nomeia as tabelas brutas (`input_*`), as tratadas (`output_*`) e a ABT (`abt_table`). É a fonte usada pela ingestão, pela indexação raw e clean, pela limpeza e pela construção da ABT.
+
+Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
+
+```json
+"database": {
+  "input_table": "application_train",
+  "output_table": "application_clean",
+  "input_prev_table": "previous_application",
+  "output_prev_table": "previous_application_clean",
+  "input_bureau_table": "bureau",
+  "output_bureau_table": "bureau_clean",
+  "input_installments_table": "installments_payments",
+  "output_installments_table": "installments_clean",
+  "abt_table": "application_abt"
+}
+```
+
 ## Implementação da ingestão
 
 [`ingestion.py`](../ingestion.py) recebe o objeto de configuração já carregado e o nome da tabela por tarefa Airflow e executa:
@@ -34,6 +65,47 @@ O uso de `COPY` evita inserts linha a linha. Os chunks controlam a memória e pe
 | `bureau` | 150.000 | Histórico externo com valores e categorias. |
 | `installments_payments` | 600.000 | Fonte longa, processada com lote maior. |
 
+Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
+
+```json
+"ingestion_table": {
+  "using_csv": [
+    { "table_name": "installments_payments", "chunk_size": 600000 },
+    { "table_name": "application_train", "chunk_size": 150000 },
+    { "table_name": "previous_application", "chunk_size": 300000 },
+    { "table_name": "bureau", "chunk_size": 150000 }
+  ]
+}
+```
+
+## Implementação da indexação raw
+
+[`ingestion_index.py`](../ingestion_index.py) cria, antes das limpezas, os índices
+declarados em `indexes.raw` de [`config_pipeline.json`](../config_pipeline.json). Cada
+entrada tem `name`, `table_ref` (uma chave `input_*` de `database`, resolvida para o
+nome físico da tabela) e `columns`. Renomear uma tabela raw em `database` redireciona o
+índice automaticamente, sem alterar o código. A execução é idempotente
+(`CREATE INDEX IF NOT EXISTS`).
+
+Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
+
+```json
+"indexes": {
+  "raw": [
+    { "name": "idx_app_sk_id_curr", "table_ref": "input_table", "columns": ["sk_id_curr"] },
+    { "name": "idx_app_org_type", "table_ref": "input_table", "columns": ["organization_type"] },
+    { "name": "idx_app_inc_type", "table_ref": "input_table", "columns": ["name_income_type"] },
+    { "name": "idx_app_flag_car", "table_ref": "input_table", "columns": ["flag_own_car"] },
+    { "name": "idx_prev_sk_id_prev", "table_ref": "input_prev_table", "columns": ["sk_id_prev"] },
+    { "name": "idx_prev_sk_id_curr", "table_ref": "input_prev_table", "columns": ["sk_id_curr"] },
+    { "name": "idx_bur_sk_id_bureau", "table_ref": "input_bureau_table", "columns": ["sk_id_bureau"] },
+    { "name": "idx_bur_sk_id_curr", "table_ref": "input_bureau_table", "columns": ["sk_id_curr"] },
+    { "name": "idx_inst_sk_id_curr", "table_ref": "input_installments_table", "columns": ["sk_id_curr"] },
+    { "name": "idx_inst_sk_id_prev", "table_ref": "input_installments_table", "columns": ["sk_id_prev"] }
+  ]
+}
+```
+
 ## Implementação da limpeza
 
 [`data_sanitization.py`](../data_sanitization.py) cria novas tabelas em vez de sobrescrever as fontes brutas.
@@ -47,6 +119,15 @@ Uma CTE calcula estatísticas globais uma única vez e as aplica a todos os clie
 - percentil configurável da renda para winsorização;
 - mediana da idade do carro apenas entre clientes que possuem veículo;
 - categorias de organização e renda com frequência mínima configurada.
+
+Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
+
+```json
+"sanitization": {
+  "cardinalidade_min_freq": 500,
+  "income_winsor_q": 0.99
+}
+```
 
 As principais regras são:
 

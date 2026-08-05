@@ -1,7 +1,10 @@
 """T3 — Raw index job (`run_create_indexes`).
 
-Contract: each source table gets an index on the join/filter keys the pipeline
-uses; re-running does not duplicate; no clean-table indexes are created.
+Contract: the job receives the parsed ``config`` object and creates exactly the
+indexes declared in ``config["indexes"]["raw"]`` (Apêndice A of the
+implementation plan), each resolved by ``table_ref`` against
+``config["database"]``. Re-running does not duplicate; no clean-table indexes
+are created.
 """
 
 import pytest
@@ -9,50 +12,75 @@ import pytest
 from ingestion_index import run_create_indexes
 
 
-# Domain expectation: the join/filter keys the pipeline relies on per raw source.
-RAW_JOIN_FILTER_KEYS = {
-    "application_train": ["sk_id_curr", "organization_type", "name_income_type", "flag_own_car"],
-    "previous_application": ["sk_id_prev", "sk_id_curr"],
-    "bureau": ["sk_id_bureau", "sk_id_curr"],
-    "installments_payments": ["sk_id_curr", "sk_id_prev"],
-}
-
 CONN_ID = "postgres_data_db"
 
+RAW_DB_CONFIG = {
+    "input_table": "application_train",
+    "input_prev_table": "previous_application",
+    "input_bureau_table": "bureau",
+    "input_installments_table": "installments_payments",
+}
 
-def _create_raw_tables(db):
-    for table, columns in RAW_JOIN_FILTER_KEYS.items():
-        schema = {
-            col: ("BIGINT" if col.startswith("sk_") else "TEXT") for col in columns
-        }
+# Domain fixture: Apêndice A — the join/filter keys the pipeline relies on per
+# raw source, one entry per index actually created.
+RAW_INDEXES = [
+    {"name": "idx_app_sk_id_curr", "table_ref": "input_table", "columns": ["sk_id_curr"]},
+    {"name": "idx_app_org_type", "table_ref": "input_table", "columns": ["organization_type"]},
+    {"name": "idx_app_inc_type", "table_ref": "input_table", "columns": ["name_income_type"]},
+    {"name": "idx_app_flag_car", "table_ref": "input_table", "columns": ["flag_own_car"]},
+    {"name": "idx_prev_sk_id_prev", "table_ref": "input_prev_table", "columns": ["sk_id_prev"]},
+    {"name": "idx_prev_sk_id_curr", "table_ref": "input_prev_table", "columns": ["sk_id_curr"]},
+    {"name": "idx_bur_sk_id_bureau", "table_ref": "input_bureau_table", "columns": ["sk_id_bureau"]},
+    {"name": "idx_bur_sk_id_curr", "table_ref": "input_bureau_table", "columns": ["sk_id_curr"]},
+    {"name": "idx_inst_sk_id_curr", "table_ref": "input_installments_table", "columns": ["sk_id_curr"]},
+    {"name": "idx_inst_sk_id_prev", "table_ref": "input_installments_table", "columns": ["sk_id_prev"]},
+]
+
+
+def _config(db_config=RAW_DB_CONFIG, raw_indexes=RAW_INDEXES) -> dict:
+    return {"database": db_config, "indexes": {"raw": raw_indexes}}
+
+
+def _create_raw_tables(db, db_config=RAW_DB_CONFIG, raw_indexes=RAW_INDEXES):
+    columns_by_table: dict[str, set] = {}
+    for entry in raw_indexes:
+        table = db_config[entry["table_ref"]]
+        columns_by_table.setdefault(table, set()).update(entry["columns"])
+    for table, columns in columns_by_table.items():
+        schema = {col: ("BIGINT" if col.startswith("sk_") else "TEXT") for col in columns}
         db.create_table(table, schema)
 
 
-def _has_single_column_index(indexes: dict, column: str) -> bool:
-    return any(f"({column})" in definition for definition in indexes.values())
+@pytest.mark.integration
+def test_raw_job_creates_configured_raw_indexes(db):
+    _create_raw_tables(db)
+
+    run_create_indexes(CONN_ID, _config())
+
+    for entry in RAW_INDEXES:
+        table = RAW_DB_CONFIG[entry["table_ref"]]
+        assert entry["name"] in db.indexes(table)
 
 
 @pytest.mark.integration
-def test_raw_job_creates_expected_join_and_filter_indexes(db):
-    _create_raw_tables(db)
+def test_raw_table_ref_resolves_database_table(db):
+    db.create_table("application_train", {"sk_id_curr": "BIGINT"})  # old physical name, untouched
+    renamed_db_config = {**RAW_DB_CONFIG, "input_table": "application_train_renamed"}
+    _create_raw_tables(db, renamed_db_config)
 
-    run_create_indexes(CONN_ID)
+    run_create_indexes(CONN_ID, _config(db_config=renamed_db_config))
 
-    for table, columns in RAW_JOIN_FILTER_KEYS.items():
-        table_indexes = db.indexes(table)
-        for column in columns:
-            assert _has_single_column_index(table_indexes, column), (
-                f"expected an index on {table}.{column}"
-            )
+    assert RAW_INDEXES[0]["name"] in db.indexes("application_train_renamed")
+    assert db.indexes("application_train") == {}
 
 
 @pytest.mark.integration
 def test_raw_index_creation_is_idempotent(db):
     _create_raw_tables(db)
 
-    run_create_indexes(CONN_ID)
+    run_create_indexes(CONN_ID, _config())
     after_first_run = db.all_public_indexes()
-    run_create_indexes(CONN_ID)
+    run_create_indexes(CONN_ID, _config())
     after_second_run = db.all_public_indexes()
 
     assert after_second_run == after_first_run
@@ -62,7 +90,7 @@ def test_raw_index_creation_is_idempotent(db):
 def test_raw_job_does_not_create_clean_indexes(db):
     _create_raw_tables(db)
 
-    run_create_indexes(CONN_ID)
+    run_create_indexes(CONN_ID, _config())
 
     index_names = set(db.all_public_indexes())
     clean_index_names = {name for name in index_names if name.startswith("idx_abt_")}

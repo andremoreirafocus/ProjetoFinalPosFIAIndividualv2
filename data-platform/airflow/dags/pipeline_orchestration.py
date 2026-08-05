@@ -64,9 +64,9 @@ with DAG(
         )
 
     @task
-    def task_criar_indices(conn_id: str):
+    def task_criar_indices(conn_id: str, config: dict):
         """Cria os índices de performance antes de rodar os SQLs de limpeza"""
-        run_create_indexes(conn_id)
+        run_create_indexes(conn_id, config)
 
     # --- TASKS DE HIGIENIZAÇÃO ---
     @task(task_id="task_sanitize_installments", pool="pool_sanitization")
@@ -122,7 +122,7 @@ with DAG(
         conn_id=CONN_ID, pasta_origem=PASTA_DATA, config=config
     ).expand(config_tabela=tabelas_para_ingerir)
 
-    cria_indices = task_criar_indices(CONN_ID)
+    cria_indices = task_criar_indices(CONN_ID, config)
     
     limpeza_installments = task_sanitize_installments(
         conn_id=CONN_ID,
