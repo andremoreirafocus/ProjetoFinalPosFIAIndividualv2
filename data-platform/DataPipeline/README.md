@@ -55,6 +55,8 @@ A execução completa é coordenada pela DAG descrita no [README do Airflow](../
 | [`utils.py`](./utils.py) | Centraliza conexões, carga e utilitários compartilhados. |
 | [`config_pipeline.json`](./config_pipeline.json) | Define fontes, tabelas, chunks, índices e parâmetros de limpeza. |
 | [`requirements.txt`](./requirements.txt) | Dependências para executar os scripts do pipeline fora do Airflow. |
+| [`requirements-test.txt`](./requirements-test.txt) | Dependências dos testes: reusa `requirements.txt` e adiciona apenas as ferramentas de teste. |
+| [`tests/`](./tests) | Suíte de testes de contrato do pipeline (ver seção [Testes](#testes)). |
 | [`abt_fields.txt`](./abt_fields.txt) | Inventário textual dos campos da ABT. |
 | [`df_correlations_with_target.txt`](./df_correlations_with_target.txt) | Registro auxiliar das correlações com o alvo. |
 
@@ -348,6 +350,43 @@ As funções registram no log:
 - conclusão ou rollback em caso de erro.
 
 Esses eventos aparecem nos logs das tarefas do Airflow e permitem localizar quedas inesperadas de volumetria entre as camadas.
+
+## Testes
+
+A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks: a configuração é injetada pelo mesmo limite de ambiente que a produção usa.
+
+### Pré-requisitos
+
+1. **PostgreSQL ativo** em `localhost:5432`:
+
+   ```bash
+   docker compose -f data-platform/docker-compose.yml up -d postgres
+   ```
+
+2. **Banco e papel de teste provisionados** (`data_test` e `data_test_user`). Em um volume novo isso é automático; em um volume já existente, aplique uma vez o script de bootstrap descrito no [README do PostgreSQL](../postgres/README.md#ambiente-de-testes-isolado).
+
+3. **Dependências de teste instaladas** (produção + ferramentas de teste, a partir da raiz do repositório):
+
+   ```bash
+   python3 -m venv data-platform/DataPipeline/.venv
+   data-platform/DataPipeline/.venv/bin/python -m pip install \
+     -r data-platform/DataPipeline/requirements-test.txt
+   ```
+
+A conexão da suíte é lida de [`tests/test_database.ini`](./tests/test_database.ini) — versionado com credenciais locais de demonstração, sem leitura de variáveis de ambiente com fallback. Um guard aborta a execução se o alvo não for um banco `*_test` distinto do banco de produção.
+
+### Execução
+
+A partir de `data-platform/DataPipeline`:
+
+```bash
+cd data-platform/DataPipeline
+.venv/bin/python -m pytest                       # suíte completa
+.venv/bin/python -m pytest -m integration        # apenas testes que tocam o banco
+.venv/bin/python -m pytest -m "not integration"  # apenas validações puras (sem banco)
+```
+
+Os testes marcados como `integration` exigem o banco `data_test`; os demais rodam sem PostgreSQL.
 
 ## Componentes relacionados
 
