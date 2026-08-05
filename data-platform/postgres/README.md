@@ -28,10 +28,11 @@ Essa reutilização ajuda a manter consistência entre treino e predição por c
 postgres/
 ├── README.md
 └── init/
-    └── 01-create-data-db.sql
+    ├── 01-create-data-db.sql
+    └── 02-create-test-role-and-db.sql
 ```
 
-O script [`01-create-data-db.sql`](./init/01-create-data-db.sql) é executado automaticamente pela imagem oficial do PostgreSQL quando o volume é criado pela primeira vez.
+Os scripts em `init/` são executados automaticamente pela imagem oficial do PostgreSQL quando o volume é criado pela primeira vez, em ordem de nome. O [`01-create-data-db.sql`](./init/01-create-data-db.sql) cria o banco `data`; o [`02-create-test-role-and-db.sql`](./init/02-create-test-role-and-db.sql) provisiona o ambiente de testes (ver seção abaixo).
 
 ## Inicialização
 
@@ -45,10 +46,11 @@ O serviço publica a porta `5432` e possui verificação de saúde com `pg_isrea
 
 ## Conexões
 
-| Uso | Banco | Host no Docker | Host local | Porta |
-|---|---|---|---|---|
-| Metadados do Airflow | `airflow` | `postgres` | `localhost` | `5432` |
-| Dados do projeto | `data` | `postgres` | `localhost` | `5432` |
+| Uso | Banco | Papel | Host no Docker | Host local | Porta |
+|---|---|---|---|---|---|
+| Metadados do Airflow | `airflow` | `airflow` | `postgres` | `localhost` | `5432` |
+| Dados do projeto | `data` | `airflow` | `postgres` | `localhost` | `5432` |
+| Suíte de testes | `data_test` | `data_test_user` | `postgres` | `localhost` | `5432` |
 
 As credenciais e os nomes dos bancos do ambiente acadêmico estão definidos no arquivo [`.env`](../.env), lido pelo Docker Compose. Em outro ambiente, devem ser substituídos por variáveis e segredos próprios.
 
@@ -65,7 +67,7 @@ As tabelas são recriadas para tornar explícita a reconstrução do estado deri
 
 ## Implementação da inicialização
 
-O Compose inicia a imagem `postgres:15` com o banco padrão `airflow`. O diretório `postgres/init` é montado como `/docker-entrypoint-initdb.d`, mecanismo nativo da imagem oficial. O script [`01-create-data-db.sql`](./init/01-create-data-db.sql) cria o banco adicional `data` antes da inicialização dos consumidores.
+O Compose inicia a imagem `postgres:15` com o banco padrão `airflow`. O diretório `postgres/init` é montado como `/docker-entrypoint-initdb.d`, mecanismo nativo da imagem oficial. Os scripts são executados como superusuário, conectados ao banco `airflow`, em ordem de nome: o [`01-create-data-db.sql`](./init/01-create-data-db.sql) cria o banco `data` e, em seguida, o [`02-create-test-role-and-db.sql`](./init/02-create-test-role-and-db.sql) provisiona o ambiente de testes — tudo antes da inicialização dos consumidores.
 
 O health check executa `pg_isready` no banco `airflow`. Serviços dependentes podem aguardar esse estado antes de executar migrações ou abrir conexões.
 
@@ -79,6 +81,22 @@ O health check executa `pg_isready` no banco `airflow`. Serviços dependentes po
 | API | `data` | Engine SQLAlchemy com validação de conexão. |
 
 Dentro da rede Docker o hostname é `postgres`; fora dela é `localhost`.
+
+## Ambiente de testes isolado
+
+A suíte automatizada nunca acessa o banco de produção `data`. O script [`02-create-test-role-and-db.sql`](./init/02-create-test-role-and-db.sql) provisiona um ambiente dedicado:
+
+- o papel de menor privilégio `data_test_user` (sem superusuário, sem criação de banco);
+- o banco `data_test`, do qual esse papel é dono e onde a suíte cria e remove suas próprias tabelas;
+- a remoção do `CONNECT` público sobre `data`, de modo que nenhum papel comum — inclusive o de testes — consiga conectar ao banco de produção. O superusuário `airflow` não é afetado, então Airflow e API continuam operando normalmente.
+
+O script é idempotente. Em um volume novo ele roda automaticamente na inicialização. Em um volume já existente, os scripts de `init/` não são reaplicados, então rode-o uma vez manualmente:
+
+```bash
+docker compose exec postgres \
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -f /docker-entrypoint-initdb.d/02-create-test-role-and-db.sql
+```
 
 ## Observação sobre o volume
 
