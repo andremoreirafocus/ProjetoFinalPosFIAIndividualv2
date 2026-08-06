@@ -18,7 +18,6 @@ class PredictionService:
         "model",
         "features",
         "decision_threshold",
-        "metrics",
     }
 
     def __init__(self, model_path: Path) -> None:

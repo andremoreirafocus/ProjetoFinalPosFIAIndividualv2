@@ -33,7 +33,6 @@ def build_artifact(
             else {"occupation_type": ["Laborers", "Managers"]}
         ),
         "decision_threshold": threshold,
-        "metrics": {"roc_auc": 0.75},
         "config_version": "test-v1",
         "trained_at_utc": "2026-07-14T00:00:00+00:00",
     }
