@@ -151,6 +151,7 @@ def test_save_artifacts_persists_model_artifact_as_received_and_writes_reference
         "hyperparameters": {},
         "decision_threshold": 0.5,
         "trained_at_utc": TRAINED_AT_UTC,
+        "config_version": MODEL_VERSION,
     }
     eval_model_metrics = {"roc_auc": 0.75}
     output_path = tmp_path / "model.pkl"
@@ -166,7 +167,52 @@ def test_save_artifacts_persists_model_artifact_as_received_and_writes_reference
     with output_path.open("rb") as file:
         saved_model_artifact = pickle.load(file)
 
-    assert saved_reference["model_version"] == feature_reference["model_version"]
+    assert saved_model_artifact["config_version"] == saved_reference["model_version"]
+    assert saved_model_artifact["trained_at_utc"] == saved_reference["trained_at_utc"]
     assert saved_eval_model_metrics["test_metrics"] == eval_model_metrics
     assert sorted(saved_model_artifact) == sorted(model_artifact)
     assert output_path.is_file()
+
+
+@pytest.mark.parametrize(
+    "model_artifact_overrides",
+    [
+        {"config_version": "outra-versao"},
+        {"trained_at_utc": "2026-01-01T00:00:00+00:00"},
+    ],
+    ids=["config_version_diverge", "trained_at_utc_diverge"],
+)
+def test_save_artifacts_rejects_diverging_identity_and_writes_nothing(
+    model: LGBMClassifier,
+    X: pd.DataFrame,
+    y: pd.Series,
+    tmp_path: Path,
+    model_artifact_overrides: dict,
+) -> None:
+    feature_reference = build_feature_reference(
+        model,
+        X,
+        y,
+        ["occupation"],
+        MODEL_VERSION,
+        TRAINED_AT_UTC,
+        SHAP_SAMPLE_SIZE,
+        RANDOM_STATE,
+    )
+    model_artifact = {
+        "model": model,
+        "algorithm": "LightGBM",
+        "hyperparameters": {},
+        "decision_threshold": 0.5,
+        "trained_at_utc": TRAINED_AT_UTC,
+        "config_version": MODEL_VERSION,
+        **model_artifact_overrides,
+    }
+    output_path = tmp_path / "model.pkl"
+
+    with pytest.raises(ValueError):
+        save_artifacts(model_artifact, {"roc_auc": 0.75}, feature_reference, output_path)
+
+    assert not output_path.exists()
+    assert not (tmp_path / "eval_model_metrics.json").exists()
+    assert not (tmp_path / "feature_reference.json").exists()

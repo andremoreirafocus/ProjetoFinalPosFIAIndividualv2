@@ -176,7 +176,18 @@ def save_artifacts(
     feature_reference: dict[str, Any],
     output_path: Path,
 ) -> None:
-    """Salva modelo, métricas e referências estatísticas versionadas."""
+    """Salva modelo, métricas e referências estatísticas versionadas.
+
+    Recusa publicar um conjunto cujo artefato e baseline não pertençam ao mesmo
+    treinamento; nesse caso, nenhum arquivo é gravado.
+    """
+    if model_artifact["config_version"] != feature_reference["model_version"]:
+        raise ValueError("A versão do baseline diverge da versão do artefato.")
+    if model_artifact["trained_at_utc"] != feature_reference["trained_at_utc"]:
+        raise ValueError(
+            "O instante de treinamento do baseline diverge do artefato."
+        )
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("wb") as file:
         pickle.dump(model_artifact, file)
@@ -246,13 +257,21 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    print(f"[CLI] Iniciando pipeline de treinamento com config: {args.config}")
+
     config = load_config(args.config)
     X, y = load_training_data(
         config, conn_id="postgres_data_db", sample_size=args.sample_size
     )
+    print("\n" + "="*60)
+    print(f"[CLI] Iniciando treinamento. Versão: {config['metadata']['version']}")
+    print("="*60)
     model_artifact, eval_model_metrics = train(config, X, y)
+    print("\n" + "="*60)
+    print("[CLI] Treinamento concluído com sucesso.")
+    print("="*60 + "\n")
 
-    print("[referencias] Calculando baseline estatístico e TreeSHAP global...")
+    print("Calculando baseline estatístico e TreeSHAP global...")
     feature_reference = build_feature_reference(
         model_artifact["model"],
         X,
@@ -263,11 +282,13 @@ def main() -> None:
         config["parameters"]["reference"]["shap_sample_size"],
         config["parameters"]["random_state"],
     )
-    print("[referencias] Baseline calculado com sucesso.")
+    print("Baseline calculado com sucesso.")
 
     output_path = args.output_path or project_path(config["metadata"]["artifact"])
+    print(f"Salvando artefatos em: {output_path}")
     save_artifacts(model_artifact, eval_model_metrics, feature_reference, output_path)
-
+    print("Artefatos salvos com sucesso.")
+    print("[CLI] Pipeline de treinamento finalizado com sucesso.")
 
 if __name__ == "__main__":
     main()

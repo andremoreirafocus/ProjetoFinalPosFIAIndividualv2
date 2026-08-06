@@ -165,6 +165,10 @@ sobrescrever — a gravação falharia no meio da sequência e o conjunto public
 incoerente. Em uma cópia nova do repositório elas só aparecem após um treinamento; até
 lá, a API não carrega e os notebooks de avaliação não rodam.
 
+A publicação valida a identidade do conjunto antes de gravar qualquer arquivo:
+`save_artifacts` recusa um artefato e um baseline que não pertençam ao mesmo
+treinamento — `config_version`/`model_version` e `trained_at_utc` precisam coincidir.
+
 O contrato de cada artefato está em [`docs/artefatos.md`](./docs/artefatos.md).
 
 ## Componentes relacionados
