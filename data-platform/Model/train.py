@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import pickle
 from datetime import datetime, timezone
 from pathlib import Path
@@ -234,7 +233,7 @@ def build_feature_reference(
 ) -> dict[str, Any]:
     """Monta o baseline versionado consumível pela API e por agentes."""
     params = config["parameters"]
-    shap_sample_size = params.get("reference", {}).get("shap_sample_size", 2000)
+    shap_sample_size = params["reference"]["shap_sample_size"]
     scores = model.predict_proba(X)[:, 1]
     return {
         "model_version": config["metadata"]["version"],
