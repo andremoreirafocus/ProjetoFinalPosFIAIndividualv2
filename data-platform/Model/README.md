@@ -23,7 +23,7 @@ Essa finalidade orienta a **escolha das métricas de avaliação**, que prioriza
 - **Brier** e a curva de calibração diagnosticam o quanto o score se afasta de uma probabilidade observável;
 - **matriz de confusão, recall e métricas econômicas de corte** traduzem o modelo em decisão de negócio.
 
-Os **valores** de cada execução vivem nos notebooks e em [`artifacts/metrics.json`](./artifacts/metrics.json) — esta documentação descreve o *método*, não os números (que variam a cada re-treino).
+Os **valores** de cada execução vivem nos notebooks e em [`artifacts/eval_model_metrics.json`](./artifacts/eval_model_metrics.json) — esta documentação descreve o *método*, não os números (que variam a cada re-treino).
 
 ## Modelo atual
 
@@ -98,6 +98,7 @@ O holdout mede generalização e não participa do ajuste final durante a compar
 | `parameters.split` | Holdout, estratificação e semente. |
 | `parameters.classifier` | Algoritmo e hiperparâmetros do LightGBM. |
 | `parameters.inference` | Threshold de classe persistido no artefato. |
+| `parameters.reference` | Tamanho da amostra TreeSHAP usada no baseline populacional. Obrigatória: sua ausência interrompe o treinamento. |
 | `validation` | Folds, iterações e tamanho da amostra de busca. |
 | `model_results` | Justificativa e métricas de referência da seleção. |
 
@@ -123,6 +124,7 @@ Os **valores exatos** de cada hiperparâmetro ficam em [`config_model.json`](./c
 | [`validacao_modelos.ipynb`](./validacao_modelos.ipynb) | Compara algoritmos e configurações, controla overfitting e seleciona o modelo. |
 | [`evaluation.ipynb`](./evaluation.ipynb) | Avalia desempenho, threshold, explicabilidade, fairness e monitoramento. |
 | [`requirements.txt`](./requirements.txt) | Dependências da modelagem. |
+| [`tests/`](./tests/) | Testes do componente de modelagem. |
 | [`artifacts/`](./artifacts/) | Modelos persistidos, métricas e resultados de comparação. |
 
 ## Notebooks
@@ -175,7 +177,7 @@ Treinamento reduzido para validação rápida:
 ```bash
 PYTHONPATH=DataPipeline Model/.venv/bin/python Model/train.py \
   --sample-size 5000 \
-  --output /tmp/lightgbm_abt_smoke.pkl
+  --output-path /tmp/lightgbm_abt_smoke.pkl
 ```
 
 O treinamento oficial também é a última etapa da DAG `pipeline_orchestration`.
@@ -190,7 +192,9 @@ O treinamento oficial também é a última etapa da DAG `pipeline_orchestration`
 6. Gera relatório de classificação no threshold configurado.
 7. Retreina o LightGBM final com toda a ABT.
 8. Calcula o baseline estatístico das features, do score e a importância TreeSHAP global.
-9. Persiste modelo, features, categorias, métricas, metadados e referências.
+9. Persiste os três artefatos da execução: o modelo com features, categorias e
+   metadados em `lightgbm_abt.pkl`; as métricas do holdout em `eval_model_metrics.json`; o
+   baseline populacional em `feature_reference.json`.
 
 O parâmetro `--sample-size` limita a consulta e existe para smoke tests. Ele não deve ser usado para gerar o artefato oficial.
 
@@ -208,7 +212,7 @@ O comando consulta o cliente em `application_abt`, carrega `artifacts/lightgbm_a
 | Artefato | Finalidade |
 |---|---|
 | `artifacts/lightgbm_abt.pkl` | Modelo LightGBM oficial e metadados necessários à inferência. |
-| [`artifacts/metrics.json`](./artifacts/metrics.json) | Métricas e hiperparâmetros da execução persistida. |
+| [`artifacts/eval_model_metrics.json`](./artifacts/eval_model_metrics.json) | Fonte única das métricas do holdout, com o algoritmo, os hiperparâmetros e o threshold da execução persistida. |
 | `artifacts/feature_reference.json` | Distribuições das features e do score, referências por target e importância TreeSHAP global. |
 | [`artifacts/model_comparison.csv`](./artifacts/model_comparison.csv) | Resultado histórico de comparação de modelos. |
 
@@ -225,13 +229,16 @@ O Pickle oficial é um dicionário com os elementos necessários para que outro 
 | `categorical_features` | Features que precisam manter dtype categórico. |
 | `categories` | Categorias conhecidas durante o treinamento. |
 | `decision_threshold` | Corte usado para produzir `predicted_class`. |
-| `metrics` | Métricas do holdout do modelo de avaliação. |
 | `algorithm` | Identificação do algoritmo. |
 | `hyperparameters` | Configuração utilizada no ajuste. |
 | `trained_at_utc` | Data e hora do treinamento. |
 | `config_version` | Versão lógica da configuração. |
 
 O `train.py` salva a lista ordenada na chave `features`, que é consumida diretamente pela API como contrato de entrada do modelo.
+
+As métricas não integram o Pickle. Elas medem o **modelo de avaliação** no holdout, não
+o modelo final do artefato, e nenhum consumidor da inferência as utiliza — por isso
+vivem apenas em `eval_model_metrics.json`, legível sem carregar o binário.
 
 ### Referências para explicação e para o agente acelerador de revisão de crédito
 
@@ -271,7 +278,7 @@ Em vez de fixar números aqui (que mudam a cada re-treino), a confiabilidade da 
 - **Coerência EDA → poder preditivo → modelo:** as variáveis mais importantes (permutação/SHAP) coincidem com as apontadas pela EDA e têm sentido de negócio — argumento contra vazamento.
 - **Governança:** desempenho e decisão por subgrupo e um plano de monitoramento (desempenho, estabilidade dos dados/PSI, calibração, fairness) fecham o critério de rastreabilidade e conformidade.
 
-Os **valores** de cada execução ficam em [`artifacts/metrics.json`](./artifacts/metrics.json) e nos notebooks, sempre no contexto da execução que os produziu — os notebooks podem refletir estágios de seleção ou execuções distintas do artefato oficial.
+Os **valores** de cada execução ficam em [`artifacts/eval_model_metrics.json`](./artifacts/eval_model_metrics.json) e nos notebooks, sempre no contexto da execução que os produziu — os notebooks podem refletir estágios de seleção ou execuções distintas do artefato oficial.
 
 ## Thresholds e política de crédito
 

@@ -80,7 +80,7 @@ airflow/data/csv
 | Agregação | tabelas temporárias por `sk_id_curr` | Converte relações um-para-muitos em features por cliente. |
 | Analítica | `application_abt` | Contrato tabular compartilhado entre análise, treinamento e inferência. |
 | Modelagem | `config_model.json`, notebooks, `train.py` | Seleciona, avalia e treina o LightGBM. |
-| Artefatos | `lightgbm_abt.pkl`, `metrics.json`, `feature_reference.json` | Transportam o modelo e seus metadados, as métricas da avaliação e as referências estatísticas. |
+| Artefatos | `lightgbm_abt.pkl`, `eval_model_metrics.json`, `feature_reference.json` | Transportam o modelo e seus metadados, as métricas da avaliação e as referências estatísticas. |
 | Serving | FastAPI e política de crédito | Expõe o score e converte faixas em recomendações. |
 | Experiência | Streamlit | Permite demonstrar preenchimento, recuperação e consulta de clientes. |
 
@@ -113,7 +113,7 @@ airflow/data/csv
 2. A DAG carrega as quatro fontes no banco `data`.
 3. O pipeline cria tabelas tratadas e agregações por `sk_id_curr`.
 4. A tabela `application_abt` consolida as features preditoras em uma linha por cliente.
-5. O treinamento selecionado gera `Model/artifacts/lightgbm_abt.pkl`, `metrics.json` e `feature_reference.json`.
+5. O treinamento selecionado gera `Model/artifacts/lightgbm_abt.pkl`, `eval_model_metrics.json` e `feature_reference.json`.
 6. A API carrega o artefato e consulta a ABT quando recebe um identificador de cliente.
 7. A política transforma o score em aprovação, revisão manual ou rejeição demonstrativa.
 8. O Streamlit disponibiliza formulário, recuperação editável e consulta direta.

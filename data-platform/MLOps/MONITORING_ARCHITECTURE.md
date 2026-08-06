@@ -73,7 +73,7 @@ Quando apenas operações concedidas produzem desfecho observável, essas métri
 
 O treinamento já produz os artefatos necessários para iniciar as comparações:
 
-- `metrics.json`, com as métricas do holdout;
+- `eval_model_metrics.json`, com as métricas do holdout;
 - `feature_reference.json`, com distribuições das features e do score;
 - artefato do modelo, com features, categorias, threshold e versão da configuração.
 
@@ -115,7 +115,7 @@ Para gerar `monitoring_reference.json`, a etapa de treinamento executada pela DA
 O *model registry* proposto substituirá a sobrescrita como mecanismo de disponibilização dos modelos. Cada treinamento registrará uma nova versão imutável como candidata, associando:
 
 - modelo treinado e configuração utilizada;
-- `metrics.json`;
+- `eval_model_metrics.json`;
 - `feature_reference.json`;
 - `monitoring_reference.json`;
 - data de treinamento e identificação dos dados de origem.

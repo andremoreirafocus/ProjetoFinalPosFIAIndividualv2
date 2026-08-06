@@ -74,7 +74,7 @@ Build, execução local e testes estão documentados em [DEVELOPMENT.md](DEVELOP
 ```text
 Model/artifacts/
 ├── lightgbm_abt.pkl       # gerado pelo treinamento
-├── metrics.json
+├── eval_model_metrics.json
 ├── feature_reference.json
 └── model_comparison.csv
 ```

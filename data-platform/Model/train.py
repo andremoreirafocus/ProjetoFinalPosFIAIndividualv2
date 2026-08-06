@@ -254,8 +254,14 @@ def build_feature_reference(
     }
 
 
-def train(config: dict[str, Any], conn_id: str = "postgres_data_db", sample_size: int | None = None) -> dict[str, Any]:
-    """Treina, avalia no holdout e retreina o modelo final na base completa."""
+def train(
+    config: dict[str, Any], conn_id: str = "postgres_data_db", sample_size: int | None = None
+) -> tuple[dict[str, Any], dict[str, float], dict[str, Any]]:
+    """Treina, avalia no holdout e retreina o modelo final na base completa.
+
+    Devolve o artefato do modelo, as métricas do holdout e o baseline populacional
+    como valores distintos.
+    """
     print("\n" + "="*60)
     print(f"[MLOPS-TRAIN] INICIANDO PIPELINE DE MODELAGEM - VE REGISTRO: {config['metadata']['version']}")
     print("="*60)
@@ -328,49 +334,50 @@ def train(config: dict[str, Any], conn_id: str = "postgres_data_db", sample_size
     print("[MLOPS-TRAIN] PIPELINE DE TREINAMENTO CONCLUÍDA COM SUCESSO")
     print("="*60 + "\n")
 
-    return {
+    model_artifact = {
         "model": final_model,
         "features": list(X.columns),
         "decision_threshold": threshold,
         "categorical_features": categoricals,
         "categories": {c: [str(v) for v in X[c].cat.categories] for c in categoricals},
-        "metrics": metrics,
         "algorithm": config["parameters"]["classifier"]["algorithm"],
         "hyperparameters": config["parameters"]["classifier"]["hyperparameters"],
         "trained_at_utc": trained_at_utc,
         "config_version": config["metadata"]["version"],
-        "_feature_reference": feature_reference,
     }
+    return model_artifact, metrics, feature_reference
 
 
-def save_artifact(artifact: dict[str, Any], output: Path) -> None:
+def save_artifacts(
+    model_artifact: dict[str, Any],
+    metrics: dict[str, float],
+    feature_reference: dict[str, Any],
+    output_path: Path,
+) -> None:
     """Salva modelo, métricas e referências estatísticas versionadas."""
-    output.parent.mkdir(parents=True, exist_ok=True)
-    persisted_artifact = {
-        key: value for key, value in artifact.items() if key != "_feature_reference"
-    }
-    with output.open("wb") as file:
-        pickle.dump(persisted_artifact, file)
-        
-    metrics_path = output.parent / "metrics.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("wb") as file:
+        pickle.dump(model_artifact, file)
+
+    metrics_path = output_path.parent / "eval_model_metrics.json"
     resumo = {
-        "algorithm": artifact["algorithm"],
-        "hyperparameters": artifact["hyperparameters"],
-        "test_metrics": artifact["metrics"],
-        "decision_threshold": artifact["decision_threshold"],
-        "trained_at_utc": artifact["trained_at_utc"],
+        "algorithm": model_artifact["algorithm"],
+        "hyperparameters": model_artifact["hyperparameters"],
+        "test_metrics": metrics,
+        "decision_threshold": model_artifact["decision_threshold"],
+        "trained_at_utc": model_artifact["trained_at_utc"],
     }
     metrics_path.write_text(json.dumps(resumo, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    reference_path = output.parent / "feature_reference.json"
+    reference_path = output_path.parent / "feature_reference.json"
     reference_path.write_text(
         json.dumps(
-            artifact["_feature_reference"], indent=2, ensure_ascii=False, allow_nan=False
+            feature_reference, indent=2, ensure_ascii=False, allow_nan=False
         ),
         encoding="utf-8",
     )
-    print(f"[artefato] Modelo salvo em: {output}")
-    print(f"[artefato] Metricas salvas em: {metrics_path}")
+    print(f"[artefato] Modelo salvo em: {output_path}")
+    print(f"[artefato] Metricas do modelo de avaliacao salvas em: {metrics_path}")
     print(f"[artefato] Referencias salvas em: {reference_path}")
 
 
@@ -383,25 +390,27 @@ def run_training_pipeline(conn_id: str, abt_table: str):
     # Garante que a tabela vinda da DAG sobrescreva a do config se necessário
     config["metadata"]["abt_table"] = abt_table
     
-    artifact = train(config, conn_id=conn_id)
-    output = project_path(config["metadata"]["artifact"])
-    save_artifact(artifact, output)
+    model_artifact, metrics, feature_reference = train(config, conn_id=conn_id)
+    output_path = project_path(config["metadata"]["artifact"])
+    save_artifacts(model_artifact, metrics, feature_reference, output_path)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Treino local do modelo")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH, help="Caminho do config_model.json")
     parser.add_argument("--sample-size", type=int, default=None, help="Le apenas N linhas da ABT (smoke test rapido)")
-    parser.add_argument("--output", type=Path, default=None, help="Sobrescreve o caminho do artefato")
+    parser.add_argument("--output-path", type=Path, default=None, help="Sobrescreve o caminho do artefato")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
-    artifact = train(config, conn_id="postgres_data_db", sample_size=args.sample_size)
-    output = args.output or project_path(config["metadata"]["artifact"])
-    save_artifact(artifact, output)
+    model_artifact, metrics, feature_reference = train(
+        config, conn_id="postgres_data_db", sample_size=args.sample_size
+    )
+    output_path = args.output_path or project_path(config["metadata"]["artifact"])
+    save_artifacts(model_artifact, metrics, feature_reference, output_path)
 
 
 if __name__ == "__main__":

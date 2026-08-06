@@ -81,7 +81,7 @@ Em vez de fixar números que mudam a cada re-treino, a confiança na solução s
 - reconhecimento explícito de que o score é **ranking de risco, não probabilidade calibrada** (a calibração fica registrada como próximo passo);
 - **governança** por subgrupo e um **plano de monitoramento** (desempenho, estabilidade/PSI, calibração, fairness).
 
-Os **valores** de cada execução ficam nos notebooks e em `Model/artifacts/metrics.json`, no contexto da execução que os produziu.
+Os **valores** de cada execução ficam nos notebooks e em `Model/artifacts/eval_model_metrics.json`, no contexto da execução que os produziu.
 
 ## Implementações críticas
 
