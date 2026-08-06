@@ -45,7 +45,7 @@ def project_path(configured_path: str) -> Path:
     return DATA_PLATFORM_DIR / configured_path
 
 
-def load_training_data(config: dict[str, Any], conn_id: str = "postgres_data_db", sample_size: int | None = None):
+def load_training_data(config: dict[str, Any], conn_id: str|None = None, sample_size: int | None = None):
     """Le a ABT do Postgres usando utils e devolve X, y com as categoricas como 'category'."""
     # Utilizando a conexão padrão do projeto para Airflow/Localbox
     conn = get_database_connection(conn_id=conn_id, silent=False)

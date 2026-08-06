@@ -67,7 +67,7 @@ def run_csv_ingestion(pasta_origem: str, table_name: str, conn_id: str, config: 
                 conn.commit()
                 is_first_chunk = False
             
-            append_dataframe_to_postgres(chunk_df, table_name)
+            append_dataframe_to_postgres(chunk_df, table_name, conn_id)
 
             log_row_count(cursor, table_name, "Saída")
             

@@ -2,7 +2,7 @@ import io
 import pandas as pd
 import os
 
-def get_database_connection(conn_id: str = "postgres_data_db", silent: bool = False):
+def get_database_connection(conn_id: str|None = None, silent: bool = False):
     """Retorna uma conexão ativa com o banco.
 
     Detecta automaticamente se está rodando dentro do fluxo do Airflow (usa
@@ -37,7 +37,7 @@ def get_database_connection(conn_id: str = "postgres_data_db", silent: bool = Fa
     return engine.raw_connection()
 
 
-def get_database_engine(conn_id: str = "postgres_data_db", silent: bool = False):
+def get_database_engine(conn_id: str | None = None, silent: bool = False):
     """Retorna um Engine do SQLAlchemy (ideal para pd.read_sql em notebooks).
 
     Usa a mesma deteccao de ambiente da get_database_connection, mas devolve o
@@ -98,9 +98,7 @@ def map_pandas_to_postgres_types(df: pd.DataFrame) -> list:
         colunas.append(f'"{col_nome}" {pg_type}')
     return colunas
 
-def append_dataframe_to_postgres(
-    df: pd.DataFrame, table_name: str, conn_id: str = "postgres_data_db"
-):
+def append_dataframe_to_postgres(df: pd.DataFrame, table_name: str, conn_id: str):
     """Insere os dados de um chunk em uma tabela já existente usando a conexão híbrida."""
     conn = get_database_connection(conn_id, silent=True)
     cursor = conn.cursor()

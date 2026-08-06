@@ -17,7 +17,7 @@ ARTIFACT_PATH = MODEL_DIR / "artifacts/lightgbm_abt.pkl"
 load_dotenv(DATA_PLATFORM_DIR / ".env")
 
 
-def get_database_connection(conn_id: str = "postgres_data_db", silent: bool = False):
+def get_database_connection(conn_id: str | None = None, silent: bool = False):
     """Retorna uma conexão ativa com o banco.
 
     Detecta automaticamente se está rodando dentro do fluxo do Airflow (usa
