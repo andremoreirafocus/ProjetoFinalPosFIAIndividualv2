@@ -91,7 +91,7 @@ O escopo e o tamanho dos blocos são controlados por [`config_pipeline.json`](./
 | `sanitization.cardinalidade_min_freq` | Frequência mínima antes de agrupar categorias raras. |
 | `sanitization.income_winsor_q` | Quantil máximo aplicado à renda. |
 
-O Airflow lê essa configuração no carregamento da DAG e distribui os parâmetros às tarefas. Alterar nomes de tabela ou regras de sanitização deve ser coordenado com a DAG, notebooks e configuração do modelo.
+O Airflow lê essa configuração no carregamento da DAG, via `load_pipeline_config` (`utils.py`), e distribui os parâmetros às tarefas. Todas as chaves são obrigatórias — não há defaults aplicados pelo pipeline; a ausência de qualquer uma delas falha no carregamento da DAG. Alterar nomes de tabela ou regras de sanitização deve ser coordenado com a DAG, notebooks e configuração do modelo.
 
 ## Execução
 

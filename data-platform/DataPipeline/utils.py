@@ -66,17 +66,15 @@ def get_database_engine(conn_id: str = "postgres_data_db", silent: bool = False)
     return create_engine(conn_str)
 
 
-def load_pipeline_config(path: str = None) -> dict:
-    """Carrega o config_pipeline.json (por padrao, o que fica ao lado deste utils.py).
+def load_pipeline_config(path: str) -> dict:
+    """Carrega e retorna o conteúdo de `config_pipeline.json` a partir de `path`.
 
-    Evita chumbar nomes de tabela/parametros nos notebooks — le a mesma fonte
-    de verdade que a DAG (Airflow) usa.
+    `path` é obrigatório: não há caminho default nem inferência de arquivo "ao
+    lado" deste módulo. Isola o I/O de configuração da camada de orquestração.
     """
     import json
-    from pathlib import Path
 
-    cfg_path = Path(path) if path else Path(__file__).resolve().parent / "config_pipeline.json"
-    with open(cfg_path, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 

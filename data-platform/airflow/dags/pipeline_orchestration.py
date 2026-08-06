@@ -1,7 +1,6 @@
 from datetime import datetime
 import sys
 import os
-import json
 
 # Mapeamento dos caminhos do projeto
 sys.path.append("/opt/airflow/DataPipeline")
@@ -9,6 +8,7 @@ sys.path.append("/opt/airflow/Model")
 
 from ingestion import run_csv_ingestion
 from ingestion_index import run_create_indexes
+from utils import load_pipeline_config
 from data_sanitization import (
     run_sanitization,
     run_prev_sanitization,
@@ -32,13 +32,12 @@ CONN_ID = "postgres_data_db"
 PASTA_DATA = "/opt/airflow/data/csv"
 CONFIG_PATH = "/opt/airflow/DataPipeline/config_pipeline.json"
 
-with open(CONFIG_PATH, "r") as f:
-    config = json.load(f)
+config = load_pipeline_config(CONFIG_PATH)
 
 # Extração das chaves do JSON para distribuição nas tasks
 tabelas_para_ingerir = config.get("ingestion_table", {}).get("using_csv", [])
 db_config = config.get("database", {})
-sanitization_params = config.get("sanitization", {})
+sanitization_params = config["sanitization"]
 
 with DAG(
     dag_id="pipeline_orchestration",
@@ -134,8 +133,8 @@ with DAG(
         conn_id=CONN_ID,
         input_t=db_config.get("input_table"),
         output_t=db_config.get("output_table"),
-        min_freq=sanitization_params.get("cardinalidade_min_freq", 500),
-        winsor_q=sanitization_params.get("income_winsor_q", 0.99),
+        min_freq=sanitization_params["cardinalidade_min_freq"],
+        winsor_q=sanitization_params["income_winsor_q"],
     )
 
     limpeza_prev = task_sanitize_prev(
