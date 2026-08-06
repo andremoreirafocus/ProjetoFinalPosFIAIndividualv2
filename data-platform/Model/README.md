@@ -46,6 +46,7 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 |---|---|
 | [`config_model.json`](./config_model.json) | Fonte de configuração das features, hiperparâmetros, split, threshold e resultados de referência. |
 | [`train.py`](./train.py) | Treina, avalia e publica o conjunto de artefatos. |
+| [`feature_reference.py`](./feature_reference.py) | Calcula o baseline populacional e a referência TreeSHAP global. |
 | [`predict.py`](./predict.py) | Executa inferência local para um cliente da ABT. |
 | [`validacao_modelos.ipynb`](./validacao_modelos.ipynb) | Compara algoritmos e configurações, controla overfitting e seleciona o modelo. |
 | [`evaluation.ipynb`](./evaluation.ipynb) | Avalia desempenho, threshold, explicabilidade, fairness e monitoramento. |

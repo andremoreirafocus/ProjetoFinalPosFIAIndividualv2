@@ -6,10 +6,14 @@ import pandas as pd
 import pytest
 from lightgbm import LGBMClassifier
 
-from train import build_feature_reference, save_artifacts
+from feature_reference import build_feature_reference
+from train import save_artifacts
 
 
+MODEL_VERSION = "test-v1"
 TRAINED_AT_UTC = "2026-07-14T00:00:00+00:00"
+SHAP_SAMPLE_SIZE = 4
+RANDOM_STATE = 123
 
 
 @pytest.fixture
@@ -30,45 +34,38 @@ def y() -> pd.Series:
 
 
 @pytest.fixture
-def config() -> dict:
-    return {
-        "metadata": {"version": "test-v1"},
-        "parameters": {
-            "random_state": 123,
-            "reference": {"shap_sample_size": 4},
-        },
-    }
-
-
-@pytest.fixture
 def model(X: pd.DataFrame, y: pd.Series) -> LGBMClassifier:
     return LGBMClassifier(
         n_estimators=3,
         num_leaves=3,
         min_child_samples=1,
         verbosity=-1,
-        random_state=123,
+        random_state=RANDOM_STATE,
     ).fit(X, y)
 
 
 def test_builds_numeric_categorical_score_and_shap_references(
-    model: LGBMClassifier, X: pd.DataFrame, y: pd.Series, config: dict
+    model: LGBMClassifier, X: pd.DataFrame, y: pd.Series
 ) -> None:
     feature_reference = build_feature_reference(
-        model, X, y, ["occupation"], config, TRAINED_AT_UTC
+        model,
+        X,
+        y,
+        ["occupation"],
+        MODEL_VERSION,
+        TRAINED_AT_UTC,
+        SHAP_SAMPLE_SIZE,
+        RANDOM_STATE,
     )
 
-    assert feature_reference["model_version"] == config["metadata"]["version"]
+    assert feature_reference["model_version"] == MODEL_VERSION
     assert feature_reference["row_count"] == len(X)
     assert "income" in feature_reference["numeric_features"]
     assert feature_reference["categorical_features"]["occupation"]["count"]["A"] == 3
     assert (
         feature_reference["categorical_features"]["occupation"]["frequency"]["A"] == 0.5
     )
-    assert (
-        feature_reference["global_shap"]["sample_size"]
-        == config["parameters"]["reference"]["shap_sample_size"]
-    )
+    assert feature_reference["global_shap"]["sample_size"] == SHAP_SAMPLE_SIZE
     assert len(feature_reference["global_shap"]["feature_importance"]) == len(X.columns)
     shap_feature = feature_reference["global_shap"]["feature_importance"][0]
     assert "p50_abs_shap" in shap_feature
@@ -76,11 +73,18 @@ def test_builds_numeric_categorical_score_and_shap_references(
 
 
 def test_percentile_grid_uses_the_published_key_format(
-    model: LGBMClassifier, X: pd.DataFrame, y: pd.Series, config: dict
+    model: LGBMClassifier, X: pd.DataFrame, y: pd.Series
 ) -> None:
     """O formato das chaves é contrato: a API o interpreta como ``int(key[1:])``."""
     feature_reference = build_feature_reference(
-        model, X, y, ["occupation"], config, TRAINED_AT_UTC
+        model,
+        X,
+        y,
+        ["occupation"],
+        MODEL_VERSION,
+        TRAINED_AT_UTC,
+        SHAP_SAMPLE_SIZE,
+        RANDOM_STATE,
     )
 
     percentiles = feature_reference["numeric_features"]["income"]["percentiles"]
@@ -89,10 +93,17 @@ def test_percentile_grid_uses_the_published_key_format(
 
 
 def test_adds_rates_only_to_binary_numeric_features(
-    model: LGBMClassifier, X: pd.DataFrame, y: pd.Series, config: dict
+    model: LGBMClassifier, X: pd.DataFrame, y: pd.Series
 ) -> None:
     feature_reference = build_feature_reference(
-        model, X, y, ["occupation"], config, TRAINED_AT_UTC
+        model,
+        X,
+        y,
+        ["occupation"],
+        MODEL_VERSION,
+        TRAINED_AT_UTC,
+        SHAP_SAMPLE_SIZE,
+        RANDOM_STATE,
     )
     assert "binary_rates" not in feature_reference["numeric_features"]["income"]
 
@@ -101,10 +112,17 @@ def test_adds_rates_only_to_binary_numeric_features(
         n_estimators=3,
         min_child_samples=1,
         verbosity=-1,
-        random_state=123,
+        random_state=RANDOM_STATE,
     ).fit(with_flag, y)
     binary_reference = build_feature_reference(
-        binary_model, with_flag, y, [], config, TRAINED_AT_UTC
+        binary_model,
+        with_flag,
+        y,
+        [],
+        MODEL_VERSION,
+        TRAINED_AT_UTC,
+        SHAP_SAMPLE_SIZE,
+        RANDOM_STATE,
     )
 
     assert binary_reference["numeric_features"]["binary_flag"]["binary_rates"] == {
@@ -115,10 +133,17 @@ def test_adds_rates_only_to_binary_numeric_features(
 
 
 def test_save_artifacts_persists_model_artifact_as_received_and_writes_reference(
-    model: LGBMClassifier, X: pd.DataFrame, y: pd.Series, config: dict, tmp_path: Path
+    model: LGBMClassifier, X: pd.DataFrame, y: pd.Series, tmp_path: Path
 ) -> None:
     feature_reference = build_feature_reference(
-        model, X, y, ["occupation"], config, TRAINED_AT_UTC
+        model,
+        X,
+        y,
+        ["occupation"],
+        MODEL_VERSION,
+        TRAINED_AT_UTC,
+        SHAP_SAMPLE_SIZE,
+        RANDOM_STATE,
     )
     model_artifact = {
         "model": model,

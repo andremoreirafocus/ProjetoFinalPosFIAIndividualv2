@@ -79,7 +79,7 @@ Assim, cada camada acrescenta somente a informação de sua responsabilidade:
 
 | Camada | Informação disponibilizada ao agente acelerador de revisão de crédito |
 |---|---|
-| `train.py` | Baseline populacional e referência SHAP global versionados. |
+| `feature_reference.py` (invocado por `train.py`) | Baseline populacional e referência SHAP global versionados. |
 | API | Score, política, SHAP local e comparação do cliente com o baseline. |
 | Catálogo | Significado de negócio e autorização de uso de cada feature. |
 | Agente acelerador de revisão de crédito | Organização narrativa das evidências permitidas. |
