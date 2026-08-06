@@ -30,6 +30,12 @@
       { "name": "idx_bur_sk_id_curr", "table_ref": "input_bureau_table", "columns": ["sk_id_curr"] },
       { "name": "idx_inst_sk_id_curr", "table_ref": "input_installments_table", "columns": ["sk_id_curr"] },
       { "name": "idx_inst_sk_id_prev", "table_ref": "input_installments_table", "columns": ["sk_id_prev"] }
+    ],
+    "clean": [
+      { "name": "idx_abt_application_clean_sk_id_curr", "table_ref": "output_table", "columns": ["sk_id_curr"] },
+      { "name": "idx_abt_previous_application_clean_sk_id_curr", "table_ref": "output_prev_table", "columns": ["sk_id_curr"] },
+      { "name": "idx_abt_bureau_clean_sk_id_curr", "table_ref": "output_bureau_table", "columns": ["sk_id_curr"] },
+      { "name": "idx_abt_installments_clean_sk_id_curr", "table_ref": "output_installments_table", "columns": ["sk_id_curr"] }
     ]
   },
   "sanitization": {

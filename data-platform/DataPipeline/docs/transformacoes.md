@@ -18,7 +18,7 @@ Todo o pipeline é dirigido por um único arquivo, [`config_pipeline.json`](../c
 
 - `ingestion_table` — fontes CSV autorizadas para ingestão e o tamanho de chunk de cada uma.
 - `database` — nomes das tabelas brutas, tratadas e da ABT, usados por todas as demais etapas.
-- `indexes` — índices de banco a criar em cada fase (`raw`, antes da limpeza).
+- `indexes` — índices de banco a criar em cada fase (`raw`, antes da limpeza; `clean`, antes do join da ABT).
 - `sanitization` — parâmetros da limpeza de `application_train`.
 
 Cada seção abaixo detalha um desses blocos e mostra apenas o trecho de JSON correspondente — nunca o arquivo inteiro.
@@ -150,6 +150,28 @@ As principais regras são:
 - `installments_clean` mantém as colunas necessárias e remove linhas sem chaves, vencimento ou valor de parcela.
 
 As tabelas tratadas recebem índices novamente porque são recriadas a cada execução.
+
+## Implementação da indexação clean
+
+[`data_sanitization_index.py`](../data_sanitization_index.py) cria, depois das limpezas
+e antes do join da ABT, os índices declarados em `indexes.clean` de
+`config_pipeline.json`. Cada entrada tem `name`, `table_ref` (uma chave `output_*` de
+`database`, resolvida para o nome físico da tabela tratada) e `columns`. Um `table_ref`
+que resolve para um nome vazio ou ausente falha com `ValueError`. A execução é
+idempotente (`CREATE INDEX IF NOT EXISTS`).
+
+Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
+
+```json
+"indexes": {
+  "clean": [
+    { "name": "idx_abt_application_clean_sk_id_curr", "table_ref": "output_table", "columns": ["sk_id_curr"] },
+    { "name": "idx_abt_previous_application_clean_sk_id_curr", "table_ref": "output_prev_table", "columns": ["sk_id_curr"] },
+    { "name": "idx_abt_bureau_clean_sk_id_curr", "table_ref": "output_bureau_table", "columns": ["sk_id_curr"] },
+    { "name": "idx_abt_installments_clean_sk_id_curr", "table_ref": "output_installments_table", "columns": ["sk_id_curr"] }
+  ]
+}
+```
 
 ## Implementação das agregações
 
