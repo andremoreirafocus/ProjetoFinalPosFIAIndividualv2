@@ -1,0 +1,5 @@
+# Test environment = production runtime deps + test tooling.
+# Production dependencies are the single source of truth in requirements.txt.
+-r requirements.txt
+
+pytest==8.3.4

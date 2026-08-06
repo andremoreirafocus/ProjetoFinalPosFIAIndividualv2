@@ -124,6 +124,8 @@ Os **valores exatos** de cada hiperparâmetro ficam em [`config_model.json`](./c
 | [`validacao_modelos.ipynb`](./validacao_modelos.ipynb) | Compara algoritmos e configurações, controla overfitting e seleciona o modelo. |
 | [`evaluation.ipynb`](./evaluation.ipynb) | Avalia desempenho, threshold, explicabilidade, fairness e monitoramento. |
 | [`requirements.txt`](./requirements.txt) | Dependências da modelagem. |
+| [`requirements-test.txt`](./requirements-test.txt) | Dependências de produção mais o pytest. |
+| [`pytest.ini`](./pytest.ini) | Raiz de importação e caminho da suíte de testes. |
 | [`tests/`](./tests/) | Testes do componente de modelagem. |
 | [`artifacts/`](./artifacts/) | Modelos persistidos, métricas e resultados de comparação. |
 
@@ -157,6 +159,23 @@ Model/.venv/bin/python -m pip install -r Model/requirements.txt
 ```
 
 O PostgreSQL deve estar disponível e a ABT `application_abt` deve ter sido criada pelo [pipeline de dados](../DataPipeline/README.md).
+
+## Testes
+
+A suíte de testes do componente roda com pytest, a partir da própria pasta `Model`:
+
+```bash
+cd data-platform/Model
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-test.txt
+.venv/bin/python -m pytest
+```
+
+[`requirements-test.txt`](./requirements-test.txt) instala as dependências de produção
+mais o pytest; [`pytest.ini`](./pytest.ini) declara a raiz de importação no componente —
+a mesma que a DAG compõe em tempo de execução — mais `../DataPipeline`, necessária
+enquanto `train.py` importar `utils`. Nenhuma variável de ambiente é exigida: os testes
+não acessam o PostgreSQL nem dependem de um artefato treinado.
 
 ## Treinamento
 
