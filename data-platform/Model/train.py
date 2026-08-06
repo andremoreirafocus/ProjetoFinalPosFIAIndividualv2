@@ -107,46 +107,35 @@ def credit_metrics(y_true: np.ndarray, proba: np.ndarray) -> dict[str, float]:
 
 
 def train(
-    config: dict[str, Any], conn_id: str = "postgres_data_db", sample_size: int | None = None
-) -> tuple[dict[str, Any], dict[str, float], dict[str, Any]]:
-    """Treina, avalia no holdout e retreina o modelo final na base completa.
+    config: dict[str, Any], X: pd.DataFrame, y: pd.Series
+) -> tuple[dict[str, Any], dict[str, float]]:
+    """Avalia a configuração no holdout e retreina o modelo final com toda a população.
 
-    Devolve o artefato do modelo, as métricas do holdout e o baseline populacional
-    como valores distintos.
+    Recebe os dados já carregados; não acessa o banco. Devolve o artefato do modelo e
+    as métricas do modelo de avaliação como valores distintos.
     """
-    print("\n" + "="*60)
-    print(f"[MLOPS-TRAIN] INICIANDO PIPELINE DE MODELAGEM - VE REGISTRO: {config['metadata']['version']}")
-    print("="*60)
-    
-    X, y = load_training_data(config, conn_id, sample_size)
     params = config["parameters"]
     seed = params["random_state"]
     threshold = params["inference"]["decision_threshold"]
-
     # Log da proporção do Target original (bom para monitorar desbalanceamento)
     taxa_inadimplencia = y.mean() * 100
     print(f"[dados] Volumetria total da ABT: {len(y):,} registros")
     print(f"[dados] Proporção da classe positiva (Target=1): {taxa_inadimplencia:.2f}%")
-
     X_train, X_test, y_train, y_test = train_test_split(
         X, y,
         test_size=params["split"]["test_size"],
         stratify=y if params["split"]["stratify"] else None,
         random_state=seed,
-    )
-    
+    )  
     print(f"[split] Dados divididos com sucesso (test_size={params['split']['test_size']}):")
     print(f"        -> Treino: {X_train.shape[0]:,} linhas")
     print(f"        -> Teste (Holdout): {X_test.shape[0]:,} linhas")
-
     # 1) Modelo de avaliacao
     print("\n[treino] Ajustando modelo de avaliação no conjunto de Treino...")
     eval_model = build_model(config).fit(X_train, y_train)
-    
     print("[avaliacao] Calculando predições e métricas no Holdout...")
     score = eval_model.predict_proba(X_test)[:, 1]
     eval_model_metrics = credit_metrics(y_test.to_numpy(), score)
-    
     # Exibe as métricas de forma estruturada no log do Airflow
     print("-" * 50)
     print("[AVALIAÇÃO - MÉTRICAS DE RISCO DE CRÉDITO]")
@@ -156,38 +145,17 @@ def train(
     print(f"  - Avg Precision:     {eval_model_metrics['average_precision']:.4f}")
     print(f"  - Brier Score Loss:  {eval_model_metrics['brier']:.4f}")
     print("-" * 50)
-
     # Adiciona o relatório padrão do scikit-learn para ver precision/recall por classe
     y_pred_class = (score >= threshold).astype(int)
     report = classification_report(y_test, y_pred_class, target_names=["Adimplente (0)", "Inadimplente (1)"])
     print("[avaliacao] Relatório de Classificação de Negócio:")
     print(report)
-
     # 2) Modelo final
     print("\n[treino] Retreinando o modelo final com 100% dos dados da ABT...")
     final_model = build_model(config).fit(X, y)
     print("[treino] Modelo final ajustado com sucesso.")
-
     categoricals = [c for c in config["variables"]["categorical_features"] if c in X.columns]
     trained_at_utc = datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-    print("[referencias] Calculando baseline estatístico e TreeSHAP global...")
-    feature_reference = build_feature_reference(
-        final_model,
-        X,
-        y,
-        categoricals,
-        config["metadata"]["version"],
-        trained_at_utc,
-        params["reference"]["shap_sample_size"],
-        seed,
-    )
-    print("[referencias] Baseline calculado com sucesso.")
-    
-    print("\n" + "="*60)
-    print("[MLOPS-TRAIN] PIPELINE DE TREINAMENTO CONCLUÍDA COM SUCESSO")
-    print("="*60 + "\n")
-
     model_artifact = {
         "model": final_model,
         "features": list(X.columns),
@@ -199,7 +167,7 @@ def train(
         "trained_at_utc": trained_at_utc,
         "config_version": config["metadata"]["version"],
     }
-    return model_artifact, eval_model_metrics, feature_reference
+    return model_artifact, eval_model_metrics
 
 
 def save_artifacts(
@@ -240,14 +208,33 @@ def run_training_pipeline(conn_id: str, abt_table: str):
     """Ponto de entrada oficial para a Task da DAG do Airflow."""
     print(f"[AIRFLOW TASK] Iniciando pipeline de treinamento para a tabela: {abt_table}")
     config = load_config(DEFAULT_CONFIG_PATH)
-    
     # Garante que a tabela vinda da DAG sobrescreva a do config se necessário
     config["metadata"]["abt_table"] = abt_table
-    
-    model_artifact, eval_model_metrics, feature_reference = train(config, conn_id=conn_id)
+    X, y = load_training_data(config, conn_id=conn_id)
+    print("\n" + "="*60)
+    print(f"[MLOPS-TRAIN] Iniciando treinamento. Versão: {config['metadata']['version']}")
+    print("="*60)
+    model_artifact, eval_model_metrics = train(config, X, y)
+    print("\n" + "="*60)
+    print("[MLOPS-TRAIN] Treinamento concluído com sucesso.")
+    print("="*60 + "\n")
+    print("[referencias] Calculando baseline estatístico e TreeSHAP global...")
+    feature_reference = build_feature_reference(
+        model_artifact["model"],
+        X,
+        y,
+        model_artifact["categorical_features"],
+        config["metadata"]["version"],
+        model_artifact["trained_at_utc"],
+        config["parameters"]["reference"]["shap_sample_size"],
+        config["parameters"]["random_state"],
+    )
+    print("[referencias] Baseline calculado com sucesso.")
     output_path = project_path(config["metadata"]["artifact"])
+    print(f"Salvando artefatos em: {output_path}")
     save_artifacts(model_artifact, eval_model_metrics, feature_reference, output_path)
-
+    print("Artefatos salvos com sucesso.")
+    print("[AIRFLOW TASK] Pipeline de treinamento finalizado com sucesso.")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Treino local do modelo")
@@ -260,9 +247,24 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
-    model_artifact, eval_model_metrics, feature_reference = train(
+    X, y = load_training_data(
         config, conn_id="postgres_data_db", sample_size=args.sample_size
     )
+    model_artifact, eval_model_metrics = train(config, X, y)
+
+    print("[referencias] Calculando baseline estatístico e TreeSHAP global...")
+    feature_reference = build_feature_reference(
+        model_artifact["model"],
+        X,
+        y,
+        model_artifact["categorical_features"],
+        config["metadata"]["version"],
+        model_artifact["trained_at_utc"],
+        config["parameters"]["reference"]["shap_sample_size"],
+        config["parameters"]["random_state"],
+    )
+    print("[referencias] Baseline calculado com sucesso.")
+
     output_path = args.output_path or project_path(config["metadata"]["artifact"])
     save_artifacts(model_artifact, eval_model_metrics, feature_reference, output_path)
 

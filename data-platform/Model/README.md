@@ -125,17 +125,20 @@ O parâmetro `--sample-size` limita a consulta e existe para smoke tests. Ele n�
 
 ### O que `train.py` executa
 
+`run_training_pipeline` (DAG) e `main` (CLI) compõem as mesmas etapas, com origem de
+configuração e da conexão distintas:
+
 1. Carrega e valida as seções obrigatórias da configuração.
-2. Consulta a ABT no PostgreSQL.
-3. Seleciona as features de entrada configuradas e converte as categóricas.
-4. Cria holdout estratificado para avaliação da configuração.
-5. Treina o modelo de avaliação e calcula AUC, Gini, KS, Average Precision e Brier.
-6. Gera relatório de classificação no threshold configurado.
-7. Retreina o LightGBM final com toda a ABT.
-8. Calcula o baseline estatístico das features, do score e a importância TreeSHAP global.
-9. Persiste os três artefatos da execução: o modelo com features, categorias e
-   metadados em `lightgbm_abt.pkl`; as métricas do holdout em `eval_model_metrics.json`; o
-   baseline populacional em `feature_reference.json`.
+2. `load_training_data` consulta a ABT no PostgreSQL, seleciona as features de entrada
+   configuradas e converte as categóricas.
+3. `train` cria o holdout estratificado, treina o modelo de avaliação e calcula AUC,
+   Gini, KS, Average Precision e Brier; em seguida retreina o LightGBM final com toda a
+   ABT. Não acessa o banco — recebe os dados já carregados.
+4. `build_feature_reference` calcula o baseline estatístico das features, do score e a
+   importância TreeSHAP global sobre o modelo final e a mesma população do ajuste.
+5. `save_artifacts` persiste os três artefatos da execução: o modelo com features,
+   categorias e metadados em `lightgbm_abt.pkl`; as métricas do modelo de avaliação em
+   `eval_model_metrics.json`; o baseline populacional em `feature_reference.json`.
 
 ## Inferência local
 
