@@ -89,7 +89,7 @@ exatamente uma referência estatística, numérica ou categórica, e uma referê
 SHAP global. A ausência ou a ambiguidade dessas referências impede a ativação.
 Referências extras não impedem a carga, mas geram um warning no log.
 
-O artefato precisa conter modelo, threshold, métricas e a lista de features na chave obrigatória `features`, que é a única aceita pela API.
+O artefato precisa conter modelo, threshold e a lista de features na chave obrigatória `features`, que é a única aceita pela API.
 
 ## Preparação para inferência
 
