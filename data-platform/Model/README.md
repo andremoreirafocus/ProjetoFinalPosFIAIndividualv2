@@ -23,7 +23,7 @@ Essa finalidade orienta a **escolha das métricas de avaliação**, que prioriza
 - **Brier** e a curva de calibração diagnosticam o quanto o score se afasta de uma probabilidade observável;
 - **matriz de confusão, recall e métricas econômicas de corte** traduzem o modelo em decisão de negócio.
 
-Os **valores** de cada execução vivem nos notebooks e em [`artifacts/eval_model_metrics.json`](./artifacts/eval_model_metrics.json) — esta documentação descreve o *método*, não os números (que variam a cada re-treino).
+Os **valores** de cada execução vivem nos notebooks e em `artifacts/eval_model_metrics.json` — esta documentação descreve o *método*, não os números (que variam a cada re-treino).
 
 ## Modelo atual
 
@@ -209,12 +209,19 @@ O comando consulta o cliente em `application_abt`, carrega `artifacts/lightgbm_a
 
 ## Artefatos
 
-| Artefato | Finalidade |
-|---|---|
-| `artifacts/lightgbm_abt.pkl` | Modelo LightGBM oficial e metadados necessários à inferência. |
-| [`artifacts/eval_model_metrics.json`](./artifacts/eval_model_metrics.json) | Fonte única das métricas do holdout, com o algoritmo, os hiperparâmetros e o threshold da execução persistida. |
-| `artifacts/feature_reference.json` | Distribuições das features e do score, referências por target e importância TreeSHAP global. |
-| [`artifacts/model_comparison.csv`](./artifacts/model_comparison.csv) | Resultado histórico de comparação de modelos. |
+| Artefato | Finalidade | Versionado |
+|---|---|---|
+| `artifacts/lightgbm_abt.pkl` | Modelo LightGBM oficial e metadados necessários à inferência. | não |
+| `artifacts/eval_model_metrics.json` | Fonte única das métricas do holdout, com o algoritmo, os hiperparâmetros e o threshold da execução persistida. | não |
+| `artifacts/feature_reference.json` | Distribuições das features e do score, referências por target e importância TreeSHAP global. | não |
+| [`artifacts/model_comparison.csv`](./artifacts/model_comparison.csv) | Resultado histórico de comparação de modelos. | sim |
+
+As três saídas do treinamento não são versionadas: são reproduzíveis por `train.py` e
+sobrescritas a cada execução. Versioná-las faria o clone criá-las com o dono e a
+permissão do usuário local, que o usuário do contêiner do Airflow não consegue
+sobrescrever — a gravação falharia no meio da sequência e o conjunto publicado ficaria
+incoerente. Em uma cópia nova do repositório elas só aparecem após um treinamento; até
+lá, a API não carrega e os notebooks de avaliação não rodam.
 
 Atualmente, os três artefatos da execução oficial são gravados nos mesmos caminhos e substituem os arquivos anteriores. A proposta de [monitoramento do modelo em produção](../MLOps/MONITORING_ARCHITECTURE.md) introduz um *model registry* para preservar cada versão junto com sua configuração, métricas e baselines, além de controlar promoção e rollback.
 
@@ -278,7 +285,7 @@ Em vez de fixar números aqui (que mudam a cada re-treino), a confiabilidade da 
 - **Coerência EDA → poder preditivo → modelo:** as variáveis mais importantes (permutação/SHAP) coincidem com as apontadas pela EDA e têm sentido de negócio — argumento contra vazamento.
 - **Governança:** desempenho e decisão por subgrupo e um plano de monitoramento (desempenho, estabilidade dos dados/PSI, calibração, fairness) fecham o critério de rastreabilidade e conformidade.
 
-Os **valores** de cada execução ficam em [`artifacts/eval_model_metrics.json`](./artifacts/eval_model_metrics.json) e nos notebooks, sempre no contexto da execução que os produziu — os notebooks podem refletir estágios de seleção ou execuções distintas do artefato oficial.
+Os **valores** de cada execução ficam em `artifacts/eval_model_metrics.json` e nos notebooks, sempre no contexto da execução que os produziu — os notebooks podem refletir estágios de seleção ou execuções distintas do artefato oficial.
 
 ## Thresholds e política de crédito
 
