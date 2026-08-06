@@ -116,15 +116,17 @@ class FeatureReferenceTest(unittest.TestCase):
             "decision_threshold": 0.5,
             "trained_at_utc": "2026-07-14T00:00:00+00:00",
         }
-        metrics = {"roc_auc": 0.75}
+        eval_model_metrics = {"roc_auc": 0.75}
 
         with tempfile.TemporaryDirectory() as tmp:
             output_path = Path(tmp) / "model.pkl"
-            save_artifacts(model_artifact, metrics, feature_reference, output_path)
+            save_artifacts(
+                model_artifact, eval_model_metrics, feature_reference, output_path
+            )
             saved_reference = json.loads(
                 (Path(tmp) / "feature_reference.json").read_text(encoding="utf-8")
             )
-            saved_metrics = json.loads(
+            saved_eval_model_metrics = json.loads(
                 (Path(tmp) / "eval_model_metrics.json").read_text(encoding="utf-8")
             )
             with output_path.open("rb") as file:
@@ -134,7 +136,9 @@ class FeatureReferenceTest(unittest.TestCase):
                 saved_reference["model_version"],
                 feature_reference["model_version"],
             )
-            self.assertEqual(saved_metrics["test_metrics"], metrics)
+            self.assertEqual(
+                saved_eval_model_metrics["test_metrics"], eval_model_metrics
+            )
             self.assertEqual(sorted(saved_model_artifact), sorted(model_artifact))
             self.assertTrue(output_path.is_file())
 

@@ -9,9 +9,14 @@
 abt.csv
 .venv
 /data-platform/Model/.venv/**
-# artefato do modelo (binario; reproduzivel via train.py). metrics.json fica versionado.
+# Saidas do treinamento: reproduziveis por train.py e sobrescritas a cada execucao.
+# Versiona-las faz o clone criar arquivos com dono e permissao do usuario local, que o
+# usuario do contêiner do Airflow nao consegue sobrescrever — a gravacao falha no meio da
+# sequencia e o conjunto publicado fica incoerente.
 /data-platform/Model/artifacts/*.pkl
 /data-platform/Model/artifacts/*.joblib
+/data-platform/Model/artifacts/eval_model_metrics.json
+/data-platform/Model/artifacts/feature_reference.json
 /data-platform/MLOps/agent-manual-review/*.log
 /dist
 *TS.md

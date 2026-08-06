@@ -293,16 +293,16 @@ def train(
     
     print("[avaliacao] Calculando predições e métricas no Holdout...")
     score = eval_model.predict_proba(X_test)[:, 1]
-    metrics = credit_metrics(y_test.to_numpy(), score)
+    eval_model_metrics = credit_metrics(y_test.to_numpy(), score)
     
     # Exibe as métricas de forma estruturada no log do Airflow
     print("-" * 50)
     print("[AVALIAÇÃO - MÉTRICAS DE RISCO DE CRÉDITO]")
-    print(f"  - ROC AUC:           {metrics['roc_auc']:.4f}")
-    print(f"  - GINI:              {metrics['gini']:.4f}")
-    print(f"  - KS:                {metrics['ks']:.4f}")
-    print(f"  - Avg Precision:     {metrics['average_precision']:.4f}")
-    print(f"  - Brier Score Loss:  {metrics['brier']:.4f}")
+    print(f"  - ROC AUC:           {eval_model_metrics['roc_auc']:.4f}")
+    print(f"  - GINI:              {eval_model_metrics['gini']:.4f}")
+    print(f"  - KS:                {eval_model_metrics['ks']:.4f}")
+    print(f"  - Avg Precision:     {eval_model_metrics['average_precision']:.4f}")
+    print(f"  - Brier Score Loss:  {eval_model_metrics['brier']:.4f}")
     print("-" * 50)
 
     # Adiciona o relatório padrão do scikit-learn para ver precision/recall por classe
@@ -345,12 +345,12 @@ def train(
         "trained_at_utc": trained_at_utc,
         "config_version": config["metadata"]["version"],
     }
-    return model_artifact, metrics, feature_reference
+    return model_artifact, eval_model_metrics, feature_reference
 
 
 def save_artifacts(
     model_artifact: dict[str, Any],
-    metrics: dict[str, float],
+    eval_model_metrics: dict[str, float],
     feature_reference: dict[str, Any],
     output_path: Path,
 ) -> None:
@@ -363,7 +363,7 @@ def save_artifacts(
     resumo = {
         "algorithm": model_artifact["algorithm"],
         "hyperparameters": model_artifact["hyperparameters"],
-        "test_metrics": metrics,
+        "test_metrics": eval_model_metrics,
         "decision_threshold": model_artifact["decision_threshold"],
         "trained_at_utc": model_artifact["trained_at_utc"],
     }
@@ -390,9 +390,9 @@ def run_training_pipeline(conn_id: str, abt_table: str):
     # Garante que a tabela vinda da DAG sobrescreva a do config se necessário
     config["metadata"]["abt_table"] = abt_table
     
-    model_artifact, metrics, feature_reference = train(config, conn_id=conn_id)
+    model_artifact, eval_model_metrics, feature_reference = train(config, conn_id=conn_id)
     output_path = project_path(config["metadata"]["artifact"])
-    save_artifacts(model_artifact, metrics, feature_reference, output_path)
+    save_artifacts(model_artifact, eval_model_metrics, feature_reference, output_path)
 
 
 def parse_args() -> argparse.Namespace:
@@ -406,11 +406,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
-    model_artifact, metrics, feature_reference = train(
+    model_artifact, eval_model_metrics, feature_reference = train(
         config, conn_id="postgres_data_db", sample_size=args.sample_size
     )
     output_path = args.output_path or project_path(config["metadata"]["artifact"])
-    save_artifacts(model_artifact, metrics, feature_reference, output_path)
+    save_artifacts(model_artifact, eval_model_metrics, feature_reference, output_path)
 
 
 if __name__ == "__main__":
