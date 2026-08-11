@@ -1,4 +1,4 @@
-from utils import get_database_connection, log_row_count
+from db import get_database_connection, log_row_count
 import os
 
 def run_postgres_to_csv_export(conn_id: str, source_table: str, output_dir_path: str):

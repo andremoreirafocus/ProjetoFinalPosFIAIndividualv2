@@ -10,7 +10,7 @@ A função `run_postgres_to_csv_export` recebe três parâmetros:
 
 | Parâmetro | Finalidade |
 |---|---|
-| `conn_id` | Identificador mantido pelo utilitário de conexão compartilhado. Na execução manual local, `utils.py` utiliza o PostgreSQL em `localhost:5432/data`. |
+| `conn_id` | Identificador mantido pelo utilitário de conexão compartilhado. Na execução manual local, `db.py` utiliza o PostgreSQL em `localhost:5432/data`. |
 | `source_table` | Nome da tabela que será exportada. |
 | `output_dir_path` | Diretório de destino. O nome final é montado como `<source_table>.csv`. |
 
@@ -45,7 +45,7 @@ set +a
 ```
 
 O carregamento de `../.env` exporta para o processo local as variáveis de conexão
-com o PostgreSQL usadas por `utils.py`.
+com o PostgreSQL usadas por `db.py`.
 
 Na configuração atual do bloco `__main__`, o comando exporta:
 

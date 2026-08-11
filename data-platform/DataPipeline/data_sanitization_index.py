@@ -1,4 +1,4 @@
-from utils import get_database_connection
+from db import get_database_connection
 
 def run_abt_indexes(conn_id: str, config: dict):
     """

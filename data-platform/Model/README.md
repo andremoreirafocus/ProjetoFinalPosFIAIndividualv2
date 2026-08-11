@@ -96,7 +96,7 @@ python3 -m venv .venv
 [`requirements-test.txt`](./requirements-test.txt) instala as dependências de produção
 mais o pytest; [`pytest.ini`](./pytest.ini) declara a raiz de importação no componente —
 a mesma que a DAG compõe em tempo de execução — mais `../DataPipeline`, necessária
-enquanto `train.py` importar `utils`. Nenhuma variável de ambiente é exigida: os testes
+enquanto `train.py` importar `db`. Nenhuma variável de ambiente é exigida: os testes
 não acessam o PostgreSQL nem dependem de um artefato treinado.
 
 ## Treinamento
@@ -110,7 +110,7 @@ PYTHONPATH=DataPipeline Model/.venv/bin/python Model/train.py
 ```
 
 O carregamento de `.env` exporta para o processo local as variáveis de conexão
-com o PostgreSQL usadas por `DataPipeline/utils.py`. No Airflow, a conexão é
+com o PostgreSQL usadas por `DataPipeline/db.py`. No Airflow, a conexão é
 fornecida pelo `PostgresHook` e essa preparação manual não é necessária.
 
 Treinamento reduzido para validação rápida:

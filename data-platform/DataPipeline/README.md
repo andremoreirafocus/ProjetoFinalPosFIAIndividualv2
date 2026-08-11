@@ -61,7 +61,7 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 | [`data_sanitization_index.py`](./data_sanitization_index.py) | Recria índices nas tabelas tratadas. |
 | [`abt_transform.py`](./abt_transform.py) | Agrega históricos e constrói a ABT. |
 | [`export_data.py`](./export_data.py) | Utilitário manual para exportar tabelas do PostgreSQL como arquivos CSV de entrega. |
-| [`utils.py`](./utils.py) | Conexões e utilitários de banco compartilhados. |
+| [`db.py`](./db.py) | Conexão, mapeamento de tipos para DDL, gravação via `COPY` e volumetria. |
 | [`config.py`](./config.py) | Carga do `config_pipeline.json`. |
 | [`config_pipeline.json`](./config_pipeline.json) | Define fontes, tabelas, chunks, índices e parâmetros de limpeza. |
 | [`requirements.txt`](./requirements.txt) | Dependências para executar os scripts do pipeline fora do Airflow. |

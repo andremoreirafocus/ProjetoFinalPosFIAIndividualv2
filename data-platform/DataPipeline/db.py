@@ -1,3 +1,10 @@
+"""Acesso ao banco de dados do pipeline.
+
+Reúne a resolução de conexão, o mapeamento de dtypes para DDL, a gravação de DataFrame via
+`COPY` e a contagem de linhas. É a fronteira única de banco do componente, consumida pelas
+tarefas do pipeline, pela task de treino do `Model` e pelos notebooks de análise.
+"""
+
 import io
 import pandas as pd
 import os
@@ -71,7 +78,7 @@ def map_pandas_to_postgres_types(df: pd.DataFrame) -> list:
     colunas = []
     for col, dtype in zip(df.columns, df.dtypes):
         col_nome = str(col).lower().replace("-", "_").replace(" ", "_").replace(".", "_")
-        
+
         if "int" in str(dtype):
             pg_type = "BIGINT"
         elif "float" in str(dtype):
@@ -82,7 +89,7 @@ def map_pandas_to_postgres_types(df: pd.DataFrame) -> list:
             pg_type = "TIMESTAMP"
         else:
             pg_type = "TEXT"
-            
+
         colunas.append(f'"{col_nome}" {pg_type}')
     return colunas
 
@@ -104,36 +111,6 @@ def append_dataframe_to_postgres(df: pd.DataFrame, table_name: str, conn_id: str
     except Exception as e:
         conn.rollback()
         raise RuntimeError(f"Falha no append do chunk na tabela {table_name}: {str(e)}")
-    finally:
-        cursor.close()
-        conn.close()
-
-def save_dataframe_to_postgres(df: pd.DataFrame, table_name: str, conn_id: str):
-    """Cria/Recria a tabela e insere os dados de forma ultra rápida usando a conexão híbrida."""
-    # Busca a conexão com banco de dados
-    conn = get_database_connection(conn_id, silent=True)
-    cursor = conn.cursor()
-
-    linhas = len(df)
-    print(f"[LOAD INIT] Recriando tabela '{table_name}'...")
-    try:
-        colunas_sql = map_pandas_to_postgres_types(df)
-        cursor.execute(f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
-        cursor.execute(cursor.execute(f'CREATE TABLE "{table_name}" ({", ".join(colunas_sql)});'))
-
-        output = io.StringIO()
-        df.to_csv(output, sep="\t", header=False, index=False)
-        output.seek(0)
-
-        print(f"Carregando {len(df)} linhas na tabela '{table_name}' via COPY...")
-        cursor.copy_expert(f'COPY "{table_name}" FROM STDIN WITH CSV DELIMITER \'\t\' NULL \'\'',output)
-
-        conn.commit()
-        print(f"[LOAD INIT] Sucesso! Tabela '{table_name}' carregada com {linhas:,} linhas.")
-
-    except Exception as e:
-        conn.rollback()
-        raise RuntimeError(f"Falha crítica na gravação da tabela {table_name}: {str(e)}")
     finally:
         cursor.close()
         conn.close()

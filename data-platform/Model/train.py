@@ -24,7 +24,7 @@ from lightgbm import LGBMClassifier
 from feature_reference import build_feature_reference
 
 # Reaproveitando a conexão inteligente do projeto
-from utils import get_database_connection
+from db import get_database_connection
 
 MODEL_DIR = Path(__file__).resolve().parent
 DATA_PLATFORM_DIR = MODEL_DIR.parent

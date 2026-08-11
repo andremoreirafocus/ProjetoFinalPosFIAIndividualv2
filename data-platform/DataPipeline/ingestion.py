@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from utils import get_database_connection, map_pandas_to_postgres_types, append_dataframe_to_postgres, log_row_count
+from db import get_database_connection, map_pandas_to_postgres_types, append_dataframe_to_postgres, log_row_count
 
 def run_csv_ingestion(pasta_origem: str, table_name: str, conn_id: str, config: dict):
     """Executa a ingestão de um único arquivo em chunks controlados.

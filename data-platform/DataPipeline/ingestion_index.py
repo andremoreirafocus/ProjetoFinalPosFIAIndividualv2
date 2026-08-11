@@ -1,4 +1,4 @@
-from utils import get_database_connection
+from db import get_database_connection
 
 # ---------------------------------------------------------------------------
 # Task: Criação de Índices Otimizados (Rodar ANTES das limpezas)
