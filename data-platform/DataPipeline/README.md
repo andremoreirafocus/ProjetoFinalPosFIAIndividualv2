@@ -102,17 +102,19 @@ contexto é declarado por quem já o conhece, não inferido do ambiente:
 | Função | Contexto |
 |---|---|
 | `get_pghook_database_connection(conn_id)` | tarefa da DAG do Airflow |
-| `get_pg_database_connection(connection_str)` | script local, notebook e testes |
+| `get_pg_database_connection(connection_str)` | script local e suíte de testes |
+| `get_database_engine(connection_str)` | notebooks, onde `pd.read_sql` espera um Engine |
 
 `get_db_connection_str_from_env()` é a única fronteira que lê o ambiente: monta a string
 a partir das variáveis `POSTGRES_*`, todas obrigatórias.
 
 ```python
 conn = get_pg_database_connection(get_db_connection_str_from_env())
+engine = get_database_engine(get_db_connection_str_from_env())
 ```
 
-`get_database_connection` e `get_database_engine` permanecem no módulo, ainda resolvendo
-a conexão pelo estado do processo, e serão removidas conforme seus chamadores migrarem.
+`get_database_connection` permanece no módulo, ainda resolvendo a conexão pelo estado do
+processo, e será removida conforme seus chamadores migrarem.
 
 ## Execução
 

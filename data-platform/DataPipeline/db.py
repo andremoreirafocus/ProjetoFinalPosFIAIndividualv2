@@ -104,33 +104,20 @@ def get_database_connection(conn_id: str|None = None, silent: bool = False):
     return engine.raw_connection()
 
 
-def get_database_engine(conn_id: str | None = None, silent: bool = False):
-    """Retorna um Engine do SQLAlchemy (ideal para pd.read_sql em notebooks).
+def get_database_engine(connection_str: str, silent: bool = False):
+    """Retorna um Engine do SQLAlchemy a partir da string recebida.
 
-    Usa a mesma deteccao de ambiente da get_database_connection, mas devolve o
-    Engine (nao a conexao crua) — evitando o warning do pandas com DBAPI cru.
+    Para os notebooks, onde o Engine — e não a conexão crua — é o que `pd.read_sql`
+    espera. Não lê ambiente: o destino é inteiramente determinado pelo argumento.
     """
-    if "AIRFLOW_HOME" in os.environ:
-        try:
-            from airflow.providers.postgres.hooks.postgres import PostgresHook
-
-            if not silent:
-                print(f"[CONEXÃO] Ambiente Airflow detectado. Engine via PostgresHook('{conn_id}').")
-            return PostgresHook(postgres_conn_id=conn_id).get_sqlalchemy_engine()
-        except ImportError:
-            if not silent:
-                print("[CONEXÃO] AIRFLOW_HOME ativa, mas falha ao importar PostgresHook. Fallback SQLAlchemy...")
-
     from sqlalchemy import create_engine
+    from sqlalchemy.engine import make_url
 
-    host = os.getenv("POSTGRES_HOST") if os.path.exists("/.dockerenv") else "localhost"
-    conn_str = (
-        f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}"
-        f"@{host}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DATA_DB')}"
-    )
+    engine = create_engine(connection_str)
     if not silent:
-        print(f"[CONEXÃO] Execução isolada detectada (Local/Notebook). Engine SQLAlchemy em '{host}'.")
-    return create_engine(conn_str)
+        url = make_url(connection_str)
+        print(f"[CONEXÃO] Engine SQLAlchemy em '{url.host}', banco '{url.database}'.")
+    return engine
 
 
 def map_pandas_to_postgres_types(df: pd.DataFrame) -> list:
