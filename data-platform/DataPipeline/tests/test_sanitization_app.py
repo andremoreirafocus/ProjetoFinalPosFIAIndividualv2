@@ -86,58 +86,58 @@ def _row(sk_id_curr: int, **overrides) -> dict:
     return {"sk_id_curr": sk_id_curr, **DEFAULTS, **overrides}
 
 
-def _sanitize(db, rows, min_freq, winsor_q):
-    db.create_table(INPUT_TABLE, APPLICATION_SCHEMA)
-    db.insert(INPUT_TABLE, rows)
+def _sanitize(test_db, rows, min_freq, winsor_q):
+    test_db.create_table(INPUT_TABLE, APPLICATION_SCHEMA)
+    test_db.insert(INPUT_TABLE, rows)
     run_sanitization(CONN_ID, INPUT_TABLE, OUTPUT_TABLE, min_freq, winsor_q)
 
 
-def _clean_by_sk(db, sk_id_curr: int) -> dict:
-    rows = db.fetch_dicts(
+def _clean_by_sk(test_db, sk_id_curr: int) -> dict:
+    rows = test_db.fetch_dicts(
         f'SELECT * FROM "{OUTPUT_TABLE}" WHERE sk_id_curr = %s', (sk_id_curr,)
     )
     return rows[0]
 
 
 @pytest.mark.integration
-def test_output_has_one_row_per_input_row(db):
+def test_output_has_one_row_per_input_row(test_db):
     rows = [_row(1), _row(2), _row(3), _row(4)]
-    _sanitize(db, rows, min_freq=1, winsor_q=0.99)
-    assert db.row_count(OUTPUT_TABLE) == len(rows)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=0.99)
+    assert test_db.row_count(OUTPUT_TABLE) == len(rows)
 
 
 @pytest.mark.integration
-def test_ext_sources_null_imputed_with_median(db):
+def test_ext_sources_null_imputed_with_median(test_db):
     rows = [
         _row(1, ext_source_1=0.2),
         _row(2, ext_source_1=0.4),
         _row(3, ext_source_1=0.6),
         _row(4, ext_source_1=None),
     ]
-    _sanitize(db, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=0.99)
 
     expected_median = statistics.median([0.2, 0.4, 0.6])
-    assert _clean_by_sk(db, 4)["ext_source_1"] == pytest.approx(expected_median)
+    assert _clean_by_sk(test_db, 4)["ext_source_1"] == pytest.approx(expected_median)
 
-    clean = db.fetch_dicts(f'SELECT ext_source_1 FROM "{OUTPUT_TABLE}"')
+    clean = test_db.fetch_dicts(f'SELECT ext_source_1 FROM "{OUTPUT_TABLE}"')
     assert all(row["ext_source_1"] is not None for row in clean)
 
 
 @pytest.mark.integration
-def test_ext_source_mean_reflects_imputed_sources(db):
+def test_ext_source_mean_reflects_imputed_sources(test_db):
     rows = [_row(1, ext_source_1=0.2, ext_source_2=0.4, ext_source_3=0.6), _row(2), _row(3)]
-    _sanitize(db, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=0.99)
 
-    assert _clean_by_sk(db, 1)["ext_source_mean"] == pytest.approx((0.2 + 0.4 + 0.6) / 3)
+    assert _clean_by_sk(test_db, 1)["ext_source_mean"] == pytest.approx((0.2 + 0.4 + 0.6) / 3)
 
 
 @pytest.mark.integration
-def test_income_is_winsorized_at_configured_quantile(db):
+def test_income_is_winsorized_at_configured_quantile(test_db):
     incomes = [100000, 120000, 140000, 160000, 5_000_000]
     rows = [_row(index + 1, amt_income_total=value) for index, value in enumerate(incomes)]
     winsor_q = 0.75
 
-    _sanitize(db, rows, min_freq=1, winsor_q=winsor_q)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=winsor_q)
 
     position = winsor_q * (len(incomes) - 1)
     assert position == int(position)  # cap lands exactly on a data point
@@ -145,12 +145,12 @@ def test_income_is_winsorized_at_configured_quantile(db):
 
     outlier_sk = incomes.index(5_000_000) + 1
     below_cap_sk = incomes.index(120000) + 1
-    assert _clean_by_sk(db, outlier_sk)["amt_income_total"] == pytest.approx(cap)
-    assert _clean_by_sk(db, below_cap_sk)["amt_income_total"] == pytest.approx(120000)
+    assert _clean_by_sk(test_db, outlier_sk)["amt_income_total"] == pytest.approx(cap)
+    assert _clean_by_sk(test_db, below_cap_sk)["amt_income_total"] == pytest.approx(120000)
 
 
 @pytest.mark.integration
-def test_zero_or_null_income_imputed_with_median(db):
+def test_zero_or_null_income_imputed_with_median(test_db):
     valid_incomes = [100000, 150000, 200000]
     rows = [
         _row(1, amt_income_total=100000),
@@ -159,15 +159,15 @@ def test_zero_or_null_income_imputed_with_median(db):
         _row(4, amt_income_total=0),
         _row(5, amt_income_total=None),
     ]
-    _sanitize(db, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=0.99)
 
     expected_median = statistics.median(valid_incomes)
-    assert _clean_by_sk(db, 4)["amt_income_total"] == pytest.approx(expected_median)
-    assert _clean_by_sk(db, 5)["amt_income_total"] == pytest.approx(expected_median)
+    assert _clean_by_sk(test_db, 4)["amt_income_total"] == pytest.approx(expected_median)
+    assert _clean_by_sk(test_db, 5)["amt_income_total"] == pytest.approx(expected_median)
 
 
 @pytest.mark.integration
-def test_rare_categories_folded_at_min_freq_boundary(db):
+def test_rare_categories_folded_at_min_freq_boundary(test_db):
     rows = [
         _row(1, organization_type="Frequent"),
         _row(2, organization_type="Frequent"),
@@ -175,83 +175,83 @@ def test_rare_categories_folded_at_min_freq_boundary(db):
     ]
     min_freq = 2  # 'Frequent' count 2 (kept); 'Rare' count 1 (folded)
 
-    _sanitize(db, rows, min_freq=min_freq, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=min_freq, winsor_q=0.99)
 
-    assert _clean_by_sk(db, 3)["organization_type"] == "Other_low_freq"
-    assert _clean_by_sk(db, 1)["organization_type"] == "Frequent"
+    assert _clean_by_sk(test_db, 3)["organization_type"] == "Other_low_freq"
+    assert _clean_by_sk(test_db, 1)["organization_type"] == "Frequent"
 
 
 @pytest.mark.integration
-def test_frequent_categories_are_preserved(db):
+def test_frequent_categories_are_preserved(test_db):
     rows = [_row(1, organization_type="Government"), _row(2, organization_type="Government")]
-    _sanitize(db, rows, min_freq=2, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=2, winsor_q=0.99)
 
-    assert _clean_by_sk(db, 1)["organization_type"] == "Government"
+    assert _clean_by_sk(test_db, 1)["organization_type"] == "Government"
 
 
 @pytest.mark.integration
-def test_employment_anomaly_sets_flag_and_zeroes_years(db):
+def test_employment_anomaly_sets_flag_and_zeroes_years(test_db):
     rows = [_row(1, days_employed=365243), _row(2, days_employed=-3650)]
-    _sanitize(db, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=0.99)
 
-    anomalous = _clean_by_sk(db, 1)
+    anomalous = _clean_by_sk(test_db, 1)
     assert anomalous["days_employed_anom"] == 1
     assert float(anomalous["years_employed"]) == pytest.approx(0)
 
-    normal = _clean_by_sk(db, 2)
+    normal = _clean_by_sk(test_db, 2)
     assert normal["days_employed_anom"] == 0
     assert float(normal["years_employed"]) == pytest.approx(3650 / 365.25)
 
 
 @pytest.mark.integration
-def test_car_ownership_derives_flag_and_age_imputation(db):
+def test_car_ownership_derives_flag_and_age_imputation(test_db):
     rows = [
         _row(1, flag_own_car="Y", own_car_age=10),
         _row(2, flag_own_car="Y", own_car_age=20),
         _row(3, flag_own_car="Y", own_car_age=None),
         _row(4, flag_own_car="N", own_car_age=99),
     ]
-    _sanitize(db, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=0.99)
 
     median_car_age = statistics.median([10, 20])  # over the 'Y' rows with a value
 
-    imputed = _clean_by_sk(db, 3)
+    imputed = _clean_by_sk(test_db, 3)
     assert imputed["has_car"] == 1
     assert imputed["own_car_age"] == pytest.approx(median_car_age)
 
-    with_age = _clean_by_sk(db, 1)
+    with_age = _clean_by_sk(test_db, 1)
     assert with_age["has_car"] == 1
     assert with_age["own_car_age"] == pytest.approx(10)
 
-    without_car = _clean_by_sk(db, 4)
+    without_car = _clean_by_sk(test_db, 4)
     assert without_car["has_car"] == 0
     assert without_car["own_car_age"] == pytest.approx(0)
 
 
 @pytest.mark.integration
-def test_age_is_derived_in_years(db):
+def test_age_is_derived_in_years(test_db):
     rows = [_row(1, days_birth=-12000)]
-    _sanitize(db, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=0.99)
 
-    assert float(_clean_by_sk(db, 1)["age"]) == pytest.approx(12000 / 365.25)
+    assert float(_clean_by_sk(test_db, 1)["age"]) == pytest.approx(12000 / 365.25)
 
 
 @pytest.mark.integration
-def test_missing_categoricals_become_unknown(db):
+def test_missing_categoricals_become_unknown(test_db):
     rows = [_row(1, occupation_type=None, name_education_type=None, code_gender="XNA")]
-    _sanitize(db, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=0.99)
 
-    clean = _clean_by_sk(db, 1)
+    clean = _clean_by_sk(test_db, 1)
     assert clean["occupation_type"] == "Unknown"
     assert clean["name_education_type"] == "Unknown"
     assert clean["code_gender"] == "Unknown"
 
 
 @pytest.mark.integration
-def test_identifier_and_target_are_preserved(db):
+def test_identifier_and_target_are_preserved(test_db):
     rows = [_row(700, target=1), _row(701, target=0)]
-    _sanitize(db, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(test_db, rows, min_freq=1, winsor_q=0.99)
 
-    clean = _clean_by_sk(db, 700)
+    clean = _clean_by_sk(test_db, 700)
     assert clean["sk_id_curr"] == 700
     assert clean["target"] == 1

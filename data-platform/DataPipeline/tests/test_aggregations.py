@@ -28,27 +28,27 @@ def _prev(customer, prev_id, status):
     return {"sk_id_curr": customer, "sk_id_prev": prev_id, "name_contract_status": status}
 
 
-def _run_prev_agg(db, rows):
-    db.create_table("previous_application_clean", PREV_CLEAN_SCHEMA)
-    db.insert("previous_application_clean", rows)
+def _run_prev_agg(test_db, rows):
+    test_db.create_table("previous_application_clean", PREV_CLEAN_SCHEMA)
+    test_db.insert("previous_application_clean", rows)
     create_agg_previous_application(CONN_ID, "previous_application_clean")
 
 
 @pytest.mark.integration
-def test_prev_aggregation_is_one_row_per_customer(db):
+def test_prev_aggregation_is_one_row_per_customer(test_db):
     rows = [
         _prev(1, 11, "Refused"),
         _prev(1, 12, "Approved"),
         _prev(2, 21, "Approved"),
     ]
-    _run_prev_agg(db, rows)
+    _run_prev_agg(test_db, rows)
 
     distinct_customers = {row["sk_id_curr"] for row in rows}
-    assert db.row_count("tmp_prev_application_agg") == len(distinct_customers)
+    assert test_db.row_count("tmp_prev_application_agg") == len(distinct_customers)
 
 
 @pytest.mark.integration
-def test_prev_refused_rate_matches_fixture(db):
+def test_prev_refused_rate_matches_fixture(test_db):
     rows = [
         _prev(1, 11, "Refused"),
         _prev(1, 12, "Approved"),
@@ -57,9 +57,9 @@ def test_prev_refused_rate_matches_fixture(db):
         _prev(2, 21, "Approved"),
         _prev(2, 22, "Approved"),
     ]
-    _run_prev_agg(db, rows)
+    _run_prev_agg(test_db, rows)
 
-    agg = {r["sk_id_curr"]: r["prev_refused_rate"] for r in db.fetch_dicts("SELECT * FROM tmp_prev_application_agg")}
+    agg = {r["sk_id_curr"]: r["prev_refused_rate"] for r in test_db.fetch_dicts("SELECT * FROM tmp_prev_application_agg")}
 
     def refused_rate(customer):
         total = [r for r in rows if r["sk_id_curr"] == customer]
@@ -96,22 +96,22 @@ def _bureau(customer, bureau_id, **overrides):
     return row
 
 
-def _run_bureau_agg(db, rows):
-    db.create_table("bureau_clean", BUREAU_CLEAN_SCHEMA)
-    db.insert("bureau_clean", rows)
+def _run_bureau_agg(test_db, rows):
+    test_db.create_table("bureau_clean", BUREAU_CLEAN_SCHEMA)
+    test_db.insert("bureau_clean", rows)
     create_agg_bureau(CONN_ID, "bureau_clean")
 
 
 @pytest.mark.integration
-def test_bureau_aggregation_metrics_match_fixture(db):
+def test_bureau_aggregation_metrics_match_fixture(test_db):
     rows = [
         _bureau(1, 101, days_credit=-100, credit_active="Active", amt_credit_sum=1000, amt_credit_sum_debt=100, credit_day_overdue=5),
         _bureau(1, 102, days_credit=-200, credit_active="Closed", amt_credit_sum=500, amt_credit_sum_debt=200, credit_day_overdue=0),
         _bureau(1, 103, days_credit=-300, credit_active="Active", amt_credit_sum=500, amt_credit_sum_debt=0, credit_day_overdue=0),
     ]
-    _run_bureau_agg(db, rows)
+    _run_bureau_agg(test_db, rows)
 
-    agg = db.fetch_dicts("SELECT * FROM tmp_bureau_agg WHERE sk_id_curr = 1")[0]
+    agg = test_db.fetch_dicts("SELECT * FROM tmp_bureau_agg WHERE sk_id_curr = 1")[0]
 
     days = [row["days_credit"] for row in rows]
     active = [row for row in rows if row["credit_active"] == "Active"]
@@ -131,11 +131,11 @@ def test_bureau_aggregation_metrics_match_fixture(db):
 
 
 @pytest.mark.integration
-def test_bureau_debt_credit_ratio_handles_zero_credit(db):
+def test_bureau_debt_credit_ratio_handles_zero_credit(test_db):
     rows = [_bureau(9, 900, amt_credit_sum=0, amt_credit_sum_debt=50)]
-    _run_bureau_agg(db, rows)
+    _run_bureau_agg(test_db, rows)
 
-    agg = db.fetch_dicts("SELECT * FROM tmp_bureau_agg WHERE sk_id_curr = 9")[0]
+    agg = test_db.fetch_dicts("SELECT * FROM tmp_bureau_agg WHERE sk_id_curr = 9")[0]
     assert agg["bureau_debt_credit_ratio"] is None
 
 
@@ -155,36 +155,36 @@ def _installment(customer, days_instalment, days_entry_payment):
     }
 
 
-def _run_installments_agg(db, rows):
-    db.create_table("installments_clean", INSTALLMENTS_CLEAN_SCHEMA)
-    db.insert("installments_clean", rows)
+def _run_installments_agg(test_db, rows):
+    test_db.create_table("installments_clean", INSTALLMENTS_CLEAN_SCHEMA)
+    test_db.insert("installments_clean", rows)
     create_agg_installments(CONN_ID, "installments_clean")
 
 
 @pytest.mark.integration
-def test_installments_late_rate_matches_fixture(db):
+def test_installments_late_rate_matches_fixture(test_db):
     rows = [
         _installment(1, -100, -90),   # paid late (diff +10)
         _installment(1, -100, -100),  # on time (diff 0)
         _installment(1, -100, -110),  # early (diff -10)
         _installment(1, -100, -80),   # paid late (diff +20)
     ]
-    _run_installments_agg(db, rows)
+    _run_installments_agg(test_db, rows)
 
-    agg = db.fetch_dicts("SELECT * FROM tmp_installments_agg WHERE sk_id_curr = 1")[0]
+    agg = test_db.fetch_dicts("SELECT * FROM tmp_installments_agg WHERE sk_id_curr = 1")[0]
     late = [r for r in rows if (r["days_entry_payment"] - r["days_instalment"]) > 0]
     assert float(agg["inst_late_payment_rate"]) == pytest.approx(len(late) / len(rows))
 
 
 @pytest.mark.integration
-def test_aggregations_group_by_customer(db):
+def test_aggregations_group_by_customer(test_db):
     rows = [
         _installment(1, -100, -90),
         _installment(1, -100, -100),
         _installment(2, -100, -90),
         _installment(2, -100, -80),
     ]
-    _run_installments_agg(db, rows)
+    _run_installments_agg(test_db, rows)
 
     distinct_customers = {row["sk_id_curr"] for row in rows}
-    assert db.row_count("tmp_installments_agg") == len(distinct_customers)
+    assert test_db.row_count("tmp_installments_agg") == len(distinct_customers)

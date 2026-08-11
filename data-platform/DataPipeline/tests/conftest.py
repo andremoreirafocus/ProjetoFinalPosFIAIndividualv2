@@ -103,7 +103,7 @@ def _verify_test_database():
     creates databases: the test role is intentionally ``NOCREATEDB`` and cannot reach
     the pipeline database, so isolation cannot be undone from within the tests.
 
-    Not autouse: only tests that request the ``db`` fixture touch the database, so the
+    Not autouse: only tests that request the ``test_db`` fixture touch the database, so the
     pure input-validation tests can run without PostgreSQL.
     """
     try:
@@ -195,7 +195,7 @@ def _drop_all_public_tables(conn) -> None:
 
 
 @pytest.fixture
-def db(_verify_test_database):
+def test_db(_verify_test_database):
     """A helper bound to the test database, with a clean public schema."""
     conn = _connect(TEST_DB_NAME)
     _drop_all_public_tables(conn)

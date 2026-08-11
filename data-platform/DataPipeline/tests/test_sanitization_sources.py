@@ -42,30 +42,30 @@ def _prev(sk_id_prev, **overrides):
     return row
 
 
-def _run_prev(db, rows):
-    db.create_table("previous_application", PREV_SCHEMA)
-    db.insert("previous_application", rows)
+def _run_prev(test_db, rows):
+    test_db.create_table("previous_application", PREV_SCHEMA)
+    test_db.insert("previous_application", rows)
     run_prev_sanitization(CONN_ID, "previous_application", "previous_application_clean")
 
 
-def _prev_by_id(db, sk_id_prev):
-    return db.fetch_dicts(
+def _prev_by_id(test_db, sk_id_prev):
+    return test_db.fetch_dicts(
         'SELECT * FROM previous_application_clean WHERE sk_id_prev = %s', (sk_id_prev,)
     )[0]
 
 
 @pytest.mark.integration
-def test_prev_contract_status_is_normalized(db):
-    _run_prev(db, [_prev(1, name_contract_status="REFUSED "), _prev(2, name_contract_status="approved")])
+def test_prev_contract_status_is_normalized(test_db):
+    _run_prev(test_db, [_prev(1, name_contract_status="REFUSED "), _prev(2, name_contract_status="approved")])
 
-    assert _prev_by_id(db, 1)["name_contract_status"] == "Refused"
-    assert _prev_by_id(db, 2)["name_contract_status"] == "Approved"
+    assert _prev_by_id(test_db, 1)["name_contract_status"] == "Refused"
+    assert _prev_by_id(test_db, 2)["name_contract_status"] == "Approved"
 
 
 @pytest.mark.integration
-def test_prev_amount_is_floored_at_zero(db):
+def test_prev_amount_is_floored_at_zero(test_db):
     _run_prev(
-        db,
+        test_db,
         [
             _prev(1, amt_application=-50),
             _prev(2, amt_application=None),
@@ -73,24 +73,24 @@ def test_prev_amount_is_floored_at_zero(db):
         ],
     )
 
-    assert float(_prev_by_id(db, 1)["amt_application"]) == 0
-    assert float(_prev_by_id(db, 2)["amt_application"]) == 0
-    assert float(_prev_by_id(db, 3)["amt_application"]) == 250
+    assert float(_prev_by_id(test_db, 1)["amt_application"]) == 0
+    assert float(_prev_by_id(test_db, 2)["amt_application"]) == 0
+    assert float(_prev_by_id(test_db, 3)["amt_application"]) == 250
 
 
 @pytest.mark.integration
-def test_prev_untouched_columns_are_preserved(db):
-    _run_prev(db, [_prev(1, name_contract_type="Revolving loans")])
+def test_prev_untouched_columns_are_preserved(test_db):
+    _run_prev(test_db, [_prev(1, name_contract_type="Revolving loans")])
 
-    assert _prev_by_id(db, 1)["name_contract_type"] == "Revolving loans"
+    assert _prev_by_id(test_db, 1)["name_contract_type"] == "Revolving loans"
 
 
 @pytest.mark.integration
-def test_prev_row_count_is_preserved(db):
+def test_prev_row_count_is_preserved(test_db):
     rows = [_prev(1), _prev(2), _prev(3)]
-    _run_prev(db, rows)
+    _run_prev(test_db, rows)
 
-    assert db.row_count("previous_application_clean") == len(rows)
+    assert test_db.row_count("previous_application_clean") == len(rows)
 
 
 # --- bureau ------------------------------------------------------------------
@@ -135,43 +135,43 @@ def _bureau(sk_id_bureau, **overrides):
     return row
 
 
-def _run_bureau(db, rows):
-    db.create_table("bureau", BUREAU_SCHEMA)
-    db.insert("bureau", rows)
+def _run_bureau(test_db, rows):
+    test_db.create_table("bureau", BUREAU_SCHEMA)
+    test_db.insert("bureau", rows)
     run_bureau_sanitization(CONN_ID, "bureau", "bureau_clean")
 
 
-def _bureau_by_id(db, sk_id_bureau):
-    return db.fetch_dicts(
+def _bureau_by_id(test_db, sk_id_bureau):
+    return test_db.fetch_dicts(
         'SELECT * FROM bureau_clean WHERE sk_id_bureau = %s', (sk_id_bureau,)
     )[0]
 
 
 @pytest.mark.integration
-def test_bureau_monetary_nulls_become_zero(db):
+def test_bureau_monetary_nulls_become_zero(test_db):
     overrides = {column: None for column in BUREAU_ZERO_FILLED_COLUMNS}
-    _run_bureau(db, [_bureau(1, **overrides)])
+    _run_bureau(test_db, [_bureau(1, **overrides)])
 
-    clean = _bureau_by_id(db, 1)
+    clean = _bureau_by_id(test_db, 1)
     for column in BUREAU_ZERO_FILLED_COLUMNS:
         assert float(clean[column]) == 0
 
 
 @pytest.mark.integration
-def test_bureau_categoricals_are_trimmed(db):
-    _run_bureau(db, [_bureau(1, credit_active=" Active ", credit_type=" Consumer credit ")])
+def test_bureau_categoricals_are_trimmed(test_db):
+    _run_bureau(test_db, [_bureau(1, credit_active=" Active ", credit_type=" Consumer credit ")])
 
-    clean = _bureau_by_id(db, 1)
+    clean = _bureau_by_id(test_db, 1)
     assert clean["credit_active"] == "Active"
     assert clean["credit_type"] == "Consumer credit"
 
 
 @pytest.mark.integration
-def test_bureau_row_count_is_preserved(db):
+def test_bureau_row_count_is_preserved(test_db):
     rows = [_bureau(1), _bureau(2), _bureau(3)]
-    _run_bureau(db, rows)
+    _run_bureau(test_db, rows)
 
-    assert db.row_count("bureau_clean") == len(rows)
+    assert test_db.row_count("bureau_clean") == len(rows)
 
 
 # --- installments_payments ---------------------------------------------------
@@ -215,16 +215,16 @@ def _installment(uid, **overrides):
     return row
 
 
-def _run_installments(db, rows):
-    db.create_table("installments_payments", INSTALLMENTS_SCHEMA)
-    db.insert("installments_payments", rows)
+def _run_installments(test_db, rows):
+    test_db.create_table("installments_payments", INSTALLMENTS_SCHEMA)
+    test_db.insert("installments_payments", rows)
     run_installments_sanitization(CONN_ID, "installments_payments", "installments_clean")
 
 
 @pytest.mark.integration
-def test_installments_rows_with_required_nulls_are_dropped(db):
+def test_installments_rows_with_required_nulls_are_dropped(test_db):
     _run_installments(
-        db,
+        test_db,
         [
             _installment(1),
             _installment(2, sk_id_curr=None),
@@ -235,20 +235,20 @@ def test_installments_rows_with_required_nulls_are_dropped(db):
         ],
     )
 
-    survivors = {r["sk_id_curr"] for r in db.fetch_dicts("SELECT sk_id_curr FROM installments_clean")}
+    survivors = {r["sk_id_curr"] for r in test_db.fetch_dicts("SELECT sk_id_curr FROM installments_clean")}
     assert survivors == {1, 6}
 
 
 @pytest.mark.integration
-def test_installments_valid_rows_are_preserved(db):
-    _run_installments(db, [_installment(1), _installment(2)])
+def test_installments_valid_rows_are_preserved(test_db):
+    _run_installments(test_db, [_installment(1), _installment(2)])
 
-    survivors = {r["sk_id_curr"] for r in db.fetch_dicts("SELECT sk_id_curr FROM installments_clean")}
+    survivors = {r["sk_id_curr"] for r in test_db.fetch_dicts("SELECT sk_id_curr FROM installments_clean")}
     assert survivors == {1, 2}
 
 
 @pytest.mark.integration
-def test_installments_keeps_only_selected_columns(db):
-    _run_installments(db, [_installment(1)])
+def test_installments_keeps_only_selected_columns(test_db):
+    _run_installments(test_db, [_installment(1)])
 
-    assert set(db.table_columns("installments_clean")) == SELECTED_INSTALLMENT_COLUMNS
+    assert set(test_db.table_columns("installments_clean")) == SELECTED_INSTALLMENT_COLUMNS

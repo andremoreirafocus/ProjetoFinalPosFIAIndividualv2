@@ -49,40 +49,40 @@ def _config(sources: list[tuple[str, int]]) -> dict:
 
 
 @pytest.mark.integration
-def test_declared_source_is_ingested(db, tmp_path):
+def test_declared_source_is_ingested(test_db, tmp_path):
     source = tmp_path / "csv"
     _write_csv(source, TABLE, CUSTOMERS)
 
     run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, 1000)]))
 
-    assert db.table_exists(TABLE)
-    assert db.row_count(TABLE) == len(CUSTOMERS)
+    assert test_db.table_exists(TABLE)
+    assert test_db.row_count(TABLE) == len(CUSTOMERS)
 
 
 @pytest.mark.integration
-def test_all_csv_rows_are_persisted(db, tmp_path):
+def test_all_csv_rows_are_persisted(test_db, tmp_path):
     source = tmp_path / "csv"
     _write_csv(source, TABLE, CUSTOMERS)
 
     run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, 1000)]))
 
-    assert db.row_count(TABLE) == len(CUSTOMERS)
+    assert test_db.row_count(TABLE) == len(CUSTOMERS)
 
 
 @pytest.mark.integration
-def test_csv_columns_and_values_are_preserved(db, tmp_path):
+def test_csv_columns_and_values_are_preserved(test_db, tmp_path):
     source = tmp_path / "csv"
     _write_csv(source, TABLE, CUSTOMERS)
 
     run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, 1000)]))
 
-    assert set(db.table_columns(TABLE)) == set(CUSTOMERS[0].keys())
-    persisted = db.fetch_dicts(f'SELECT * FROM "{TABLE}" ORDER BY sk_id_curr')
+    assert set(test_db.table_columns(TABLE)) == set(CUSTOMERS[0].keys())
+    persisted = test_db.fetch_dicts(f'SELECT * FROM "{TABLE}" ORDER BY sk_id_curr')
     assert persisted == sorted(CUSTOMERS, key=lambda row: row["sk_id_curr"])
 
 
 @pytest.mark.integration
-def test_reingestion_rebuilds_without_duplication(db, tmp_path):
+def test_reingestion_rebuilds_without_duplication(test_db, tmp_path):
     source = tmp_path / "csv"
     _write_csv(source, TABLE, CUSTOMERS)
     config = _config([(TABLE, 1000)])
@@ -90,11 +90,11 @@ def test_reingestion_rebuilds_without_duplication(db, tmp_path):
     run_csv_ingestion(str(source), TABLE, CONN_ID, config)
     run_csv_ingestion(str(source), TABLE, CONN_ID, config)
 
-    assert db.row_count(TABLE) == len(CUSTOMERS)
+    assert test_db.row_count(TABLE) == len(CUSTOMERS)
 
 
 @pytest.mark.integration
-def test_ingestion_uses_chunk_size_from_source_definition(db, tmp_path):
+def test_ingestion_uses_chunk_size_from_source_definition(test_db, tmp_path):
     # A chunk_size smaller than the row count, declared only in the config source
     # definition. No chunk_size is passed to the routine, so loading every row proves
     # the value was resolved from the configuration and used to iterate.
@@ -105,11 +105,11 @@ def test_ingestion_uses_chunk_size_from_source_definition(db, tmp_path):
 
     run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, small_chunk)]))
 
-    assert db.row_count(TABLE) == len(CUSTOMERS)
+    assert test_db.row_count(TABLE) == len(CUSTOMERS)
 
 
 @pytest.mark.integration
-def test_ingestion_does_not_require_config_file(db, tmp_path):
+def test_ingestion_does_not_require_config_file(test_db, tmp_path):
     # Only a CSV exists; no config file is written anywhere. The in-memory config
     # object is sufficient for the call to succeed.
     source = tmp_path / "csv"
@@ -117,7 +117,7 @@ def test_ingestion_does_not_require_config_file(db, tmp_path):
 
     run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, 1000)]))
 
-    assert db.row_count(TABLE) == len(CUSTOMERS)
+    assert test_db.row_count(TABLE) == len(CUSTOMERS)
     assert not list(tmp_path.glob("*.json"))  # no configuration file was needed
 
 
