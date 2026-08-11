@@ -1,7 +1,7 @@
 """Shared test fixtures for the DataPipeline Phase 1 suite.
 
 The production functions obtain their own connection through
-``utils.get_database_connection``, which — outside Airflow and outside Docker —
+``db.get_database_connection``, which — outside Airflow and outside Docker —
 builds a SQLAlchemy engine from the ``POSTGRES_*`` environment variables and
 connects to ``localhost``. We drive the real functions against a *dedicated test
 database* by setting those variables here from an explicit test configuration

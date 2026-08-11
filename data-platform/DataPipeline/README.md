@@ -94,6 +94,26 @@ O escopo e o tamanho dos blocos são controlados por [`config_pipeline.json`](./
 
 O Airflow lê essa configuração no carregamento da DAG, via `load_pipeline_config` (`config.py`), e distribui os parâmetros às tarefas. Todas as chaves são obrigatórias — não há defaults aplicados pelo pipeline; a ausência de qualquer uma delas falha no carregamento da DAG. Alterar nomes de tabela ou regras de sanitização deve ser coordenado com a DAG, notebooks e configuração do modelo.
 
+## Conexão com o banco
+
+Em [`db.py`](./db.py), o mecanismo de conexão é escolhido por qual função se chama — o
+contexto é declarado por quem já o conhece, não inferido do ambiente:
+
+| Função | Contexto |
+|---|---|
+| `get_pghook_database_connection(conn_id)` | tarefa da DAG do Airflow |
+| `get_pg_database_connection(connection_str)` | script local, notebook e testes |
+
+`get_db_connection_str_from_env()` é a única fronteira que lê o ambiente: monta a string
+a partir das variáveis `POSTGRES_*`, todas obrigatórias.
+
+```python
+conn = get_pg_database_connection(get_db_connection_str_from_env())
+```
+
+`get_database_connection` e `get_database_engine` permanecem no módulo, ainda resolvendo
+a conexão pelo estado do processo, e serão removidas conforme seus chamadores migrarem.
+
 ## Execução
 
 O caminho recomendado é iniciar PostgreSQL e Airflow e disparar a DAG `pipeline_orchestration`:
