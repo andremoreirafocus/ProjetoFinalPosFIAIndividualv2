@@ -61,7 +61,8 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 | [`data_sanitization_index.py`](./data_sanitization_index.py) | Recria índices nas tabelas tratadas. |
 | [`abt_transform.py`](./abt_transform.py) | Agrega históricos e constrói a ABT. |
 | [`export_data.py`](./export_data.py) | Utilitário manual para exportar tabelas do PostgreSQL como arquivos CSV de entrega. |
-| [`utils.py`](./utils.py) | Centraliza conexões, carga e utilitários compartilhados. |
+| [`utils.py`](./utils.py) | Conexões e utilitários de banco compartilhados. |
+| [`config.py`](./config.py) | Carga do `config_pipeline.json`. |
 | [`config_pipeline.json`](./config_pipeline.json) | Define fontes, tabelas, chunks, índices e parâmetros de limpeza. |
 | [`requirements.txt`](./requirements.txt) | Dependências para executar os scripts do pipeline fora do Airflow. |
 | [`requirements-test.txt`](./requirements-test.txt) | Dependências dos testes: reusa `requirements.txt` e adiciona apenas as ferramentas de teste. |
@@ -91,7 +92,7 @@ O escopo e o tamanho dos blocos são controlados por [`config_pipeline.json`](./
 | `sanitization.cardinalidade_min_freq` | Frequência mínima antes de agrupar categorias raras. |
 | `sanitization.income_winsor_q` | Quantil máximo aplicado à renda. |
 
-O Airflow lê essa configuração no carregamento da DAG, via `load_pipeline_config` (`utils.py`), e distribui os parâmetros às tarefas. Todas as chaves são obrigatórias — não há defaults aplicados pelo pipeline; a ausência de qualquer uma delas falha no carregamento da DAG. Alterar nomes de tabela ou regras de sanitização deve ser coordenado com a DAG, notebooks e configuração do modelo.
+O Airflow lê essa configuração no carregamento da DAG, via `load_pipeline_config` (`config.py`), e distribui os parâmetros às tarefas. Todas as chaves são obrigatórias — não há defaults aplicados pelo pipeline; a ausência de qualquer uma delas falha no carregamento da DAG. Alterar nomes de tabela ou regras de sanitização deve ser coordenado com a DAG, notebooks e configuração do modelo.
 
 ## Execução
 

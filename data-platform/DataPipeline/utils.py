@@ -66,18 +66,6 @@ def get_database_engine(conn_id: str | None = None, silent: bool = False):
     return create_engine(conn_str)
 
 
-def load_pipeline_config(path: str) -> dict:
-    """Carrega e retorna o conteúdo de `config_pipeline.json` a partir de `path`.
-
-    `path` é obrigatório: não há caminho default nem inferência de arquivo "ao
-    lado" deste módulo. Isola o I/O de configuração da camada de orquestração.
-    """
-    import json
-
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
 def map_pandas_to_postgres_types(df: pd.DataFrame) -> list:
     """Mapeia os dtypes do Pandas para tipos de dados compatíveis com o PostgreSQL."""
     colunas = []

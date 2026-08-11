@@ -9,7 +9,7 @@ import json
 
 import pytest
 
-from utils import load_pipeline_config
+from config import load_pipeline_config
 
 
 def test_load_pipeline_config_returns_parsed_content(tmp_path):
@@ -30,7 +30,7 @@ def test_load_pipeline_config_missing_file_fails_clearly(tmp_path):
 
 
 def test_load_pipeline_config_requires_explicit_path():
-    # No default path, and no inference of a file "next to" utils.py: calling
+    # No default path, and no inference of a file "next to" config.py: calling
     # without a path must fail on the missing argument itself.
     with pytest.raises(TypeError):
         load_pipeline_config()

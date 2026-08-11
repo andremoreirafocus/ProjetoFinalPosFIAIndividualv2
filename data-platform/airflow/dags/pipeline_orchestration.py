@@ -8,7 +8,7 @@ sys.path.append("/opt/airflow/Model")
 
 from ingestion import run_csv_ingestion
 from ingestion_index import run_create_indexes
-from utils import load_pipeline_config
+from config import load_pipeline_config
 from data_sanitization import (
     run_sanitization,
     run_prev_sanitization,
