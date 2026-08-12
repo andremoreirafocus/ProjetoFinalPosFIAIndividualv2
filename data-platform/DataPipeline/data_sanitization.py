@@ -4,7 +4,7 @@ data_sanitization.py — Limpeza e padronização (Home Credit) via ELT (SQL Pur
 Processamento transferido 100% para dentro do PostgreSQL.
 Funções puras: todas as configurações são recebidas por parâmetro via DAG (Airflow).
 """
-from db import get_database_connection, log_row_count
+from db import log_row_count
 
 def get_table_columns(cursor, table_name: str) -> list:
     """Busca dinamicamente a lista de colunas de uma tabela no PostgreSQL."""
@@ -19,9 +19,8 @@ def get_table_columns(cursor, table_name: str) -> list:
 # ---------------------------------------------------------------------------
 # application_train
 # ---------------------------------------------------------------------------
-def run_sanitization(conn_id: str, input_table: str, output_table: str, min_freq: int, winsor_q: float):
+def run_sanitization(conn, input_table: str, output_table: str, min_freq: int, winsor_q: float):
     """Higieniza application_train usando SQL nativo para estatísticas globais e regras lógicas."""
-    conn = get_database_connection(conn_id)
     cursor = conn.cursor()
 
     print(f"Limpando '{input_table}' -> '{output_table}' (ELT via PostgreSQL)...")
@@ -114,16 +113,14 @@ def run_sanitization(conn_id: str, input_table: str, output_table: str, min_freq
     conn.commit()
     log_row_count(cursor, output_table, "Saída")
     cursor.close()
-    conn.close()
     print(f"--- Application Train higienizado! Tabela: '{output_table}' ---")
 
 
 # ---------------------------------------------------------------------------
 # previous_application 
 # ---------------------------------------------------------------------------
-def run_prev_sanitization(conn_id: str, input_table: str, output_table: str):
+def run_prev_sanitization(conn, input_table: str, output_table: str):
     """Constrói SQL dinâmico para limpar previous_application preservando colunas não alteradas."""
-    conn = get_database_connection(conn_id)
     cursor = conn.cursor()
 
     print(f"Limpando '{input_table}' -> '{output_table}' (ELT via SQL dinâmico)...")
@@ -150,16 +147,14 @@ def run_prev_sanitization(conn_id: str, input_table: str, output_table: str):
     conn.commit()
     log_row_count(cursor, output_table, "Saída")
     cursor.close()
-    conn.close()
     print(f"--- Previous Application limpo! Tabela '{output_table}' ---")
 
 
 # ---------------------------------------------------------------------------
 # bureau 
 # ---------------------------------------------------------------------------
-def run_bureau_sanitization(conn_id: str, input_table: str, output_table: str):
+def run_bureau_sanitization(conn, input_table: str, output_table: str):
     """Constrói SQL dinâmico para limpar bureau preservando colunas não alteradas."""
-    conn = get_database_connection(conn_id)
     cursor = conn.cursor()
 
     print(f"Limpando '{input_table}' -> '{output_table}' (ELT via SQL dinâmico)...")
@@ -188,16 +183,14 @@ def run_bureau_sanitization(conn_id: str, input_table: str, output_table: str):
     conn.commit()
     log_row_count(cursor, output_table, "Saída")
     cursor.close()
-    conn.close()
     print(f"--- Bureau limpo! Tabela '{output_table}' ---")
 
 
 # ---------------------------------------------------------------------------
 # installments_payments
 # ---------------------------------------------------------------------------
-def run_installments_sanitization(conn_id: str, input_table: str, output_table: str):
+def run_installments_sanitization(conn, input_table: str, output_table: str):
     """Filtro de linhas válidas em SQL nativo."""
-    conn = get_database_connection(conn_id)
     cursor = conn.cursor()
 
     print(f"Filtrando '{input_table}' -> '{output_table}' (ELT)...")
@@ -220,5 +213,4 @@ def run_installments_sanitization(conn_id: str, input_table: str, output_table: 
     conn.commit()
     log_row_count(cursor, output_table, "Saída")
     cursor.close()
-    conn.close()
     print(f"--- Installments filtrado! Tabela '{output_table}' ---")

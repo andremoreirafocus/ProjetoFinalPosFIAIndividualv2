@@ -17,9 +17,6 @@ from data_sanitization import (
 )
 
 
-CONN_ID = "postgres_data_db"
-
-
 # --- previous_application ----------------------------------------------------
 PREV_SCHEMA = {
     "sk_id_curr": "BIGINT",
@@ -42,10 +39,10 @@ def _prev(sk_id_prev, **overrides):
     return row
 
 
-def _run_prev(test_db, rows):
+def _run_prev(test_db, conexao, rows):
     test_db.create_table("previous_application", PREV_SCHEMA)
     test_db.insert("previous_application", rows)
-    run_prev_sanitization(CONN_ID, "previous_application", "previous_application_clean")
+    run_prev_sanitization(conexao, "previous_application", "previous_application_clean")
 
 
 def _prev_by_id(test_db, sk_id_prev):
@@ -55,17 +52,18 @@ def _prev_by_id(test_db, sk_id_prev):
 
 
 @pytest.mark.integration
-def test_prev_contract_status_is_normalized(test_db):
-    _run_prev(test_db, [_prev(1, name_contract_status="REFUSED "), _prev(2, name_contract_status="approved")])
+def test_prev_contract_status_is_normalized(test_db, conexao):
+    _run_prev(test_db, conexao, [_prev(1, name_contract_status="REFUSED "), _prev(2, name_contract_status="approved")])
 
     assert _prev_by_id(test_db, 1)["name_contract_status"] == "Refused"
     assert _prev_by_id(test_db, 2)["name_contract_status"] == "Approved"
 
 
 @pytest.mark.integration
-def test_prev_amount_is_floored_at_zero(test_db):
+def test_prev_amount_is_floored_at_zero(test_db, conexao):
     _run_prev(
         test_db,
+        conexao,
         [
             _prev(1, amt_application=-50),
             _prev(2, amt_application=None),
@@ -79,16 +77,16 @@ def test_prev_amount_is_floored_at_zero(test_db):
 
 
 @pytest.mark.integration
-def test_prev_untouched_columns_are_preserved(test_db):
-    _run_prev(test_db, [_prev(1, name_contract_type="Revolving loans")])
+def test_prev_untouched_columns_are_preserved(test_db, conexao):
+    _run_prev(test_db, conexao, [_prev(1, name_contract_type="Revolving loans")])
 
     assert _prev_by_id(test_db, 1)["name_contract_type"] == "Revolving loans"
 
 
 @pytest.mark.integration
-def test_prev_row_count_is_preserved(test_db):
+def test_prev_row_count_is_preserved(test_db, conexao):
     rows = [_prev(1), _prev(2), _prev(3)]
-    _run_prev(test_db, rows)
+    _run_prev(test_db, conexao, rows)
 
     assert test_db.row_count("previous_application_clean") == len(rows)
 
@@ -135,10 +133,10 @@ def _bureau(sk_id_bureau, **overrides):
     return row
 
 
-def _run_bureau(test_db, rows):
+def _run_bureau(test_db, conexao, rows):
     test_db.create_table("bureau", BUREAU_SCHEMA)
     test_db.insert("bureau", rows)
-    run_bureau_sanitization(CONN_ID, "bureau", "bureau_clean")
+    run_bureau_sanitization(conexao, "bureau", "bureau_clean")
 
 
 def _bureau_by_id(test_db, sk_id_bureau):
@@ -148,9 +146,9 @@ def _bureau_by_id(test_db, sk_id_bureau):
 
 
 @pytest.mark.integration
-def test_bureau_monetary_nulls_become_zero(test_db):
+def test_bureau_monetary_nulls_become_zero(test_db, conexao):
     overrides = {column: None for column in BUREAU_ZERO_FILLED_COLUMNS}
-    _run_bureau(test_db, [_bureau(1, **overrides)])
+    _run_bureau(test_db, conexao, [_bureau(1, **overrides)])
 
     clean = _bureau_by_id(test_db, 1)
     for column in BUREAU_ZERO_FILLED_COLUMNS:
@@ -158,8 +156,8 @@ def test_bureau_monetary_nulls_become_zero(test_db):
 
 
 @pytest.mark.integration
-def test_bureau_categoricals_are_trimmed(test_db):
-    _run_bureau(test_db, [_bureau(1, credit_active=" Active ", credit_type=" Consumer credit ")])
+def test_bureau_categoricals_are_trimmed(test_db, conexao):
+    _run_bureau(test_db, conexao, [_bureau(1, credit_active=" Active ", credit_type=" Consumer credit ")])
 
     clean = _bureau_by_id(test_db, 1)
     assert clean["credit_active"] == "Active"
@@ -167,9 +165,9 @@ def test_bureau_categoricals_are_trimmed(test_db):
 
 
 @pytest.mark.integration
-def test_bureau_row_count_is_preserved(test_db):
+def test_bureau_row_count_is_preserved(test_db, conexao):
     rows = [_bureau(1), _bureau(2), _bureau(3)]
-    _run_bureau(test_db, rows)
+    _run_bureau(test_db, conexao, rows)
 
     assert test_db.row_count("bureau_clean") == len(rows)
 
@@ -215,16 +213,17 @@ def _installment(uid, **overrides):
     return row
 
 
-def _run_installments(test_db, rows):
+def _run_installments(test_db, conexao, rows):
     test_db.create_table("installments_payments", INSTALLMENTS_SCHEMA)
     test_db.insert("installments_payments", rows)
-    run_installments_sanitization(CONN_ID, "installments_payments", "installments_clean")
+    run_installments_sanitization(conexao, "installments_payments", "installments_clean")
 
 
 @pytest.mark.integration
-def test_installments_rows_with_required_nulls_are_dropped(test_db):
+def test_installments_rows_with_required_nulls_are_dropped(test_db, conexao):
     _run_installments(
         test_db,
+        conexao,
         [
             _installment(1),
             _installment(2, sk_id_curr=None),
@@ -240,15 +239,31 @@ def test_installments_rows_with_required_nulls_are_dropped(test_db):
 
 
 @pytest.mark.integration
-def test_installments_valid_rows_are_preserved(test_db):
-    _run_installments(test_db, [_installment(1), _installment(2)])
+def test_installments_valid_rows_are_preserved(test_db, conexao):
+    _run_installments(test_db, conexao, [_installment(1), _installment(2)])
 
     survivors = {r["sk_id_curr"] for r in test_db.fetch_dicts("SELECT sk_id_curr FROM installments_clean")}
     assert survivors == {1, 2}
 
 
 @pytest.mark.integration
-def test_installments_keeps_only_selected_columns(test_db):
-    _run_installments(test_db, [_installment(1)])
+def test_installments_keeps_only_selected_columns(test_db, conexao):
+    _run_installments(test_db, conexao, [_installment(1)])
 
     assert set(test_db.table_columns("installments_clean")) == SELECTED_INSTALLMENT_COLUMNS
+
+
+MARCADOR = "marcador_de_transacao"
+
+
+@pytest.mark.integration
+def test_sanitizacao_opera_na_conexao_recebida(test_db, conexao):
+    """A conexão recebida é a que executa: o `commit` da função encerra esta transação."""
+    test_db.create_table("previous_application", PREV_SCHEMA)
+    test_db.create_table(MARCADOR, {"valor": "BIGINT"})
+    with conexao.cursor() as cursor:
+        cursor.execute(f'INSERT INTO "{MARCADOR}" (valor) VALUES (1)')
+
+    run_prev_sanitization(conexao, "previous_application", "previous_application_clean")
+
+    assert test_db.row_count(MARCADOR) == 1

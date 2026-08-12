@@ -71,22 +71,38 @@ with DAG(
     # --- TASKS DE HIGIENIZAÇÃO ---
     @task(task_id="task_sanitize_installments", pool="pool_sanitization")
     def task_sanitize_installments(conn_id: str, input_t: str, output_t: str):
-        run_installments_sanitization(conn_id, input_t, output_t)
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            run_installments_sanitization(conn, input_t, output_t)
+        finally:
+            conn.close()
 
     @task(task_id="task_sanitize_app", pool="pool_sanitization")
     def task_sanitize_app(
         conn_id: str, input_t: str, output_t: str, min_freq: int, winsor_q: float
     ):
         """Sanitiza application_train usando parâmetros explícitos (sem chunk_size)"""
-        run_sanitization(conn_id, input_t, output_t, min_freq, winsor_q)
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            run_sanitization(conn, input_t, output_t, min_freq, winsor_q)
+        finally:
+            conn.close()
 
     @task(task_id="task_sanitize_prev", pool="pool_sanitization")
     def task_sanitize_prev(conn_id: str, input_t: str, output_t: str):
-        run_prev_sanitization(conn_id, input_t, output_t)
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            run_prev_sanitization(conn, input_t, output_t)
+        finally:
+            conn.close()
 
     @task(task_id="task_sanitize_bureau", pool="pool_sanitization")
     def task_sanitize_bureau(conn_id: str, input_t: str, output_t: str):
-        run_bureau_sanitization(conn_id, input_t, output_t)
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            run_bureau_sanitization(conn, input_t, output_t)
+        finally:
+            conn.close()
 
     @task
     def task_abt_indexes(conn_id: str, config: dict):

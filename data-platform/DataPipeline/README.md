@@ -131,7 +131,9 @@ Depois, acesse http://localhost:8080, localize `pipeline_orchestration` e inicie
 
 ## Testes
 
-A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks: a configuração é injetada pelo mesmo limite de ambiente que a produção usa.
+A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks.
+
+As funções que já recebem a conexão por parâmetro — sanitização, agregações e ABT — são exercitadas pela mesma fronteira que a produção usa: onde a task da DAG entrega a conexão aberta pelo `PostgresHook`, o teste entrega a do `data_test`. As demais ainda resolvem a conexão a partir das variáveis de ambiente que o `conftest.py` prepara a partir do arquivo de configuração de teste.
 
 ### Pré-requisitos
 
