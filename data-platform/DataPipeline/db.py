@@ -149,9 +149,11 @@ def map_pandas_to_postgres_types(df: pd.DataFrame) -> list:
         colunas.append(f'"{col_nome}" {pg_type}')
     return colunas
 
-def append_dataframe_to_postgres(df: pd.DataFrame, table_name: str, conn_id: str):
-    """Insere os dados de um chunk em uma tabela já existente usando a conexão híbrida."""
-    conn = get_database_connection(conn_id, silent=True)
+def append_dataframe_to_postgres(df: pd.DataFrame, table_name: str, conn):
+    """Insere os dados de um chunk numa tabela já existente, pela conexão recebida.
+
+    Não abre nem fecha a conexão: quem a abriu é quem a fecha.
+    """
     cursor = conn.cursor()
     linhas = len(df)
 
@@ -169,7 +171,6 @@ def append_dataframe_to_postgres(df: pd.DataFrame, table_name: str, conn_id: str
         raise RuntimeError(f"Falha no append do chunk na tabela {table_name}: {str(e)}")
     finally:
         cursor.close()
-        conn.close()
 
 def log_row_count(cursor, table_name: str, context: str):
     """

@@ -15,7 +15,6 @@ import pytest
 from ingestion import run_csv_ingestion
 
 
-CONN_ID = "postgres_data_db"
 TABLE = "application_train"
 
 # Domain fixture: five loan applicants with target and income.
@@ -49,32 +48,32 @@ def _config(sources: list[tuple[str, int]]) -> dict:
 
 
 @pytest.mark.integration
-def test_declared_source_is_ingested(test_db, tmp_path):
+def test_declared_source_is_ingested(test_db, conexao, tmp_path):
     source = tmp_path / "csv"
     _write_csv(source, TABLE, CUSTOMERS)
 
-    run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, 1000)]))
+    run_csv_ingestion(str(source), TABLE, conexao, _config([(TABLE, 1000)]))
 
     assert test_db.table_exists(TABLE)
     assert test_db.row_count(TABLE) == len(CUSTOMERS)
 
 
 @pytest.mark.integration
-def test_all_csv_rows_are_persisted(test_db, tmp_path):
+def test_all_csv_rows_are_persisted(test_db, conexao, tmp_path):
     source = tmp_path / "csv"
     _write_csv(source, TABLE, CUSTOMERS)
 
-    run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, 1000)]))
+    run_csv_ingestion(str(source), TABLE, conexao, _config([(TABLE, 1000)]))
 
     assert test_db.row_count(TABLE) == len(CUSTOMERS)
 
 
 @pytest.mark.integration
-def test_csv_columns_and_values_are_preserved(test_db, tmp_path):
+def test_csv_columns_and_values_are_preserved(test_db, conexao, tmp_path):
     source = tmp_path / "csv"
     _write_csv(source, TABLE, CUSTOMERS)
 
-    run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, 1000)]))
+    run_csv_ingestion(str(source), TABLE, conexao, _config([(TABLE, 1000)]))
 
     assert set(test_db.table_columns(TABLE)) == set(CUSTOMERS[0].keys())
     persisted = test_db.fetch_dicts(f'SELECT * FROM "{TABLE}" ORDER BY sk_id_curr')
@@ -82,19 +81,19 @@ def test_csv_columns_and_values_are_preserved(test_db, tmp_path):
 
 
 @pytest.mark.integration
-def test_reingestion_rebuilds_without_duplication(test_db, tmp_path):
+def test_reingestion_rebuilds_without_duplication(test_db, conexao, tmp_path):
     source = tmp_path / "csv"
     _write_csv(source, TABLE, CUSTOMERS)
     config = _config([(TABLE, 1000)])
 
-    run_csv_ingestion(str(source), TABLE, CONN_ID, config)
-    run_csv_ingestion(str(source), TABLE, CONN_ID, config)
+    run_csv_ingestion(str(source), TABLE, conexao, config)
+    run_csv_ingestion(str(source), TABLE, conexao, config)
 
     assert test_db.row_count(TABLE) == len(CUSTOMERS)
 
 
 @pytest.mark.integration
-def test_ingestion_uses_chunk_size_from_source_definition(test_db, tmp_path):
+def test_ingestion_uses_chunk_size_from_source_definition(test_db, conexao, tmp_path):
     # A chunk_size smaller than the row count, declared only in the config source
     # definition. No chunk_size is passed to the routine, so loading every row proves
     # the value was resolved from the configuration and used to iterate.
@@ -103,19 +102,19 @@ def test_ingestion_uses_chunk_size_from_source_definition(test_db, tmp_path):
     small_chunk = 2
     assert small_chunk < len(CUSTOMERS)
 
-    run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, small_chunk)]))
+    run_csv_ingestion(str(source), TABLE, conexao, _config([(TABLE, small_chunk)]))
 
     assert test_db.row_count(TABLE) == len(CUSTOMERS)
 
 
 @pytest.mark.integration
-def test_ingestion_does_not_require_config_file(test_db, tmp_path):
+def test_ingestion_does_not_require_config_file(test_db, conexao, tmp_path):
     # Only a CSV exists; no config file is written anywhere. The in-memory config
     # object is sufficient for the call to succeed.
     source = tmp_path / "csv"
     _write_csv(source, TABLE, CUSTOMERS)
 
-    run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, 1000)]))
+    run_csv_ingestion(str(source), TABLE, conexao, _config([(TABLE, 1000)]))
 
     assert test_db.row_count(TABLE) == len(CUSTOMERS)
     assert not list(tmp_path.glob("*.json"))  # no configuration file was needed
@@ -127,14 +126,14 @@ def test_undeclared_source_is_rejected(tmp_path):
     config = _config([("some_other_source", 1000)])
 
     with pytest.raises(ValueError):
-        run_csv_ingestion(str(source), TABLE, CONN_ID, config)
+        run_csv_ingestion(str(source), TABLE, None, config)
 
 
 def test_missing_source_folder_fails_clearly(tmp_path):
     missing_folder = tmp_path / "does_not_exist"
 
     with pytest.raises(FileNotFoundError):
-        run_csv_ingestion(str(missing_folder), TABLE, CONN_ID, _config([(TABLE, 1000)]))
+        run_csv_ingestion(str(missing_folder), TABLE, None, _config([(TABLE, 1000)]))
 
 
 def test_missing_matching_file_fails_clearly(tmp_path):
@@ -142,4 +141,21 @@ def test_missing_matching_file_fails_clearly(tmp_path):
     source.mkdir()
 
     with pytest.raises(FileNotFoundError):
-        run_csv_ingestion(str(source), TABLE, CONN_ID, _config([(TABLE, 1000)]))
+        run_csv_ingestion(str(source), TABLE, None, _config([(TABLE, 1000)]))
+
+
+MARCADOR = "marcador_de_transacao"
+
+
+@pytest.mark.integration
+def test_ingestao_opera_na_conexao_recebida(test_db, conexao, tmp_path):
+    """A conexão recebida é a que executa: o `commit` da ingestão encerra esta transação."""
+    source = tmp_path / "csv"
+    _write_csv(source, TABLE, CUSTOMERS)
+    test_db.create_table(MARCADOR, {"valor": "BIGINT"})
+    with conexao.cursor() as cursor:
+        cursor.execute(f'INSERT INTO "{MARCADOR}" (valor) VALUES (1)')
+
+    run_csv_ingestion(str(source), TABLE, conexao, _config([(TABLE, 1000)]))
+
+    assert test_db.row_count(MARCADOR) == 1

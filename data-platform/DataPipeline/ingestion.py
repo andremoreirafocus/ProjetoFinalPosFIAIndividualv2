@@ -1,8 +1,8 @@
 import os
 import pandas as pd
-from db import get_database_connection, map_pandas_to_postgres_types, append_dataframe_to_postgres, log_row_count
+from db import map_pandas_to_postgres_types, append_dataframe_to_postgres, log_row_count
 
-def run_csv_ingestion(pasta_origem: str, table_name: str, conn_id: str, config: dict):
+def run_csv_ingestion(pasta_origem: str, table_name: str, conn, config: dict):
     """Executa a ingestão de um único arquivo em chunks controlados.
 
     O escopo da fonte e o ``chunk_size`` são resolvidos do objeto ``config`` já
@@ -49,7 +49,6 @@ def run_csv_ingestion(pasta_origem: str, table_name: str, conn_id: str, config: 
     # 4. Gravação de alta performance via COPY EXPERT estruturado por chunks
     is_first_chunk = True
 
-    conn = get_database_connection(conn_id)
     cursor = conn.cursor()
     
     try:
@@ -67,7 +66,7 @@ def run_csv_ingestion(pasta_origem: str, table_name: str, conn_id: str, config: 
                 conn.commit()
                 is_first_chunk = False
             
-            append_dataframe_to_postgres(chunk_df, table_name, conn_id)
+            append_dataframe_to_postgres(chunk_df, table_name, conn)
 
             log_row_count(cursor, table_name, "Saída")
             
@@ -76,6 +75,5 @@ def run_csv_ingestion(pasta_origem: str, table_name: str, conn_id: str, config: 
         raise RuntimeError(f"Falha crítica durante a ingestão por chunks da tabela {table_name}: {str(e)}")
     finally:
         cursor.close()
-        conn.close()
 
     print(f"Ingestão da tabela '{table_name}' concluída com sucesso")

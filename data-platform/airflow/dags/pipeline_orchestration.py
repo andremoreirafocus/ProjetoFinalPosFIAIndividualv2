@@ -56,12 +56,16 @@ with DAG(
 
         print(f"Iniciando carga da tabela '{nome_tabela}'...")
 
-        run_csv_ingestion(
-            pasta_origem=pasta_origem,
-            table_name=nome_tabela,
-            conn_id=conn_id,
-            config=config,
-        )
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            run_csv_ingestion(
+                pasta_origem=pasta_origem,
+                table_name=nome_tabela,
+                conn=conn,
+                config=config,
+            )
+        finally:
+            conn.close()
 
     @task
     def task_criar_indices(conn_id: str, config: dict):
