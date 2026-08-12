@@ -78,41 +78,6 @@ def get_pghook_database_connection(conn_id: str, silent: bool = False):
     return PostgresHook(postgres_conn_id=conn_id).get_conn()
 
 
-def get_database_connection(conn_id: str|None = None, silent: bool = False):
-    """Retorna uma conexão ativa com o banco.
-
-    Detecta automaticamente se está rodando dentro do fluxo do Airflow (usa
-    PostgresHook) ou de forma isolada (usa SQLAlchemy).
-    """
-    # Se a variável de ambiente do Airflow existir, usamos o Hook Nativo
-    if "AIRFLOW_HOME" in os.environ:
-        try:
-            from airflow.providers.postgres.hooks.postgres import PostgresHook
-
-            if not silent:
-                print(f"[CONEXÃO] Ambiente Airflow detectado. Usando PostgresHook('{conn_id}').")
-            pg_hook = PostgresHook(postgres_conn_id=conn_id)
-            return pg_hook.get_conn()
-        except ImportError:
-            if not silent:
-                print("[CONEXÃO] Aviso: AIRFLOW_HOME ativa, mas falha ao importar PostgresHook. Tentando fallback para SQLAlchemy...")
-
-    # Fallback para execução local/notebook via SQLAlchemy
-    from sqlalchemy import create_engine
-
-    # Mantém a seleção original de host: nome do serviço no Docker e localhost fora dele.
-    host = os.getenv("POSTGRES_HOST") if os.path.exists("/.dockerenv") else "localhost"
-    conn_str = (
-        f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}"
-        f"@{host}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DATA_DB')}"
-    )
-
-    if not silent:
-        print(f"[CONEXÃO] Execução isolada detectada (Local/Notebook). Conectando via SQLAlchemy em '{host}'.")
-    engine = create_engine(conn_str)
-    return engine.raw_connection()
-
-
 def get_database_engine(connection_str: str, silent: bool = False):
     """Retorna um Engine do SQLAlchemy a partir da string recebida.
 

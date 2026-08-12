@@ -112,7 +112,7 @@ def test_variavel_obrigatoria_ausente_falha_nomeando_qual(ambiente_de_conexao, a
 
 
 @pytest.mark.integration
-def test_conexao_abre_no_banco_nomeado_pela_string_recebida(test_db):
+def test_conexao_abre_no_banco_nomeado_pela_string_recebida(test_db, ambiente_do_banco_de_teste):
     test_db.create_table(TABELA, {"sk_id_curr": "BIGINT", "target": "BIGINT"})
     test_db.insert(TABELA, CLIENTES)
 

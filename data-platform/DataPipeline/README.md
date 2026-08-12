@@ -105,6 +105,10 @@ contexto é declarado por quem já o conhece, não inferido do ambiente:
 | `get_pg_database_connection(connection_str)` | script local e suíte de testes |
 | `get_database_engine(connection_str)` | notebooks, onde `pd.read_sql` espera um Engine |
 
+As funções do pipeline — ingestão, índices, sanitização, agregações, ABT e exportação —
+**recebem a conexão já aberta** e não a resolvem: quem abre é quem fecha. Na DAG isso é
+feito por cada task; na suíte de testes, pela fixture que aponta para o banco de teste.
+
 `get_db_connection_str_from_env()` é a única fronteira que lê o ambiente: monta a string
 a partir das variáveis `POSTGRES_*`, todas obrigatórias. Aceita um `host` opcional que
 sobrepõe `POSTGRES_HOST`, para quem roda fora da rede do compose — é o caso do CLI de
@@ -115,8 +119,8 @@ conn = get_pg_database_connection(get_db_connection_str_from_env())
 engine = get_database_engine(get_db_connection_str_from_env())
 ```
 
-`get_database_connection` permanece no módulo, ainda resolvendo a conexão pelo estado do
-processo, e será removida conforme seus chamadores migrarem.
+Nenhuma função lê variável de ambiente para decidir mecanismo ou host, e não há mais
+detecção de contexto por `AIRFLOW_HOME` ou `/.dockerenv`.
 
 ## Execução
 
@@ -133,7 +137,7 @@ Depois, acesse http://localhost:8080, localize `pipeline_orchestration` e inicie
 
 A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks.
 
-As funções que já recebem a conexão por parâmetro — sanitização, agregações e ABT — são exercitadas pela mesma fronteira que a produção usa: onde a task da DAG entrega a conexão aberta pelo `PostgresHook`, o teste entrega a do `data_test`. As demais ainda resolvem a conexão a partir das variáveis de ambiente que o `conftest.py` prepara a partir do arquivo de configuração de teste.
+As funções são exercitadas pela mesma fronteira que a produção usa: onde a task da DAG entrega a conexão aberta pelo `PostgresHook`, o teste entrega a do `data_test`. A suíte não escreve em variáveis de ambiente — só os testes da própria função que lê o ambiente declaram essas variáveis, por fixture explícita.
 
 ### Pré-requisitos
 

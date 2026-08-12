@@ -50,7 +50,7 @@ def test_engine_aponta_para_o_banco_nomeado_na_string_recebida():
 
 
 @pytest.mark.integration
-def test_engine_executa_consulta_no_banco_configurado(test_db):
+def test_engine_executa_consulta_no_banco_configurado(test_db, ambiente_do_banco_de_teste):
     test_db.create_table(TABELA, {"sk_id_curr": "BIGINT", "target": "BIGINT"})
     test_db.insert(TABELA, CLIENTES)
 
@@ -63,7 +63,7 @@ def test_engine_executa_consulta_no_banco_configurado(test_db):
 
 
 @pytest.mark.integration
-def test_engine_alimenta_read_sql_como_nos_notebooks(test_db):
+def test_engine_alimenta_read_sql_como_nos_notebooks(test_db, ambiente_do_banco_de_teste):
     test_db.create_table(TABELA, {"sk_id_curr": "BIGINT", "target": "BIGINT"})
     test_db.insert(TABELA, CLIENTES)
 

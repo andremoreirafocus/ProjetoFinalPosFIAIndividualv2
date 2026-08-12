@@ -1,11 +1,9 @@
 """Shared test fixtures for the DataPipeline Phase 1 suite.
 
-The production functions obtain their own connection through
-``db.get_database_connection``, which — outside Airflow and outside Docker —
-builds a SQLAlchemy engine from the ``POSTGRES_*`` environment variables and
-connects to ``localhost``. We drive the real functions against a *dedicated test
-database* by setting those variables here from an explicit test configuration
-file, so no call is mocked, patched or intercepted.
+The production functions receive an open connection from whoever calls them — the
+Airflow task opens it through the ``PostgresHook``; the suite opens it against a
+*dedicated test database* and injects it through the very same parameter, so no
+call is mocked, patched or intercepted.
 
 Configuration is explicit and deterministic: it is read from
 ``tests/test_database.ini`` and every key is required — there is no environment
@@ -68,16 +66,6 @@ if TEST_DB_NAME == PIPELINE_DB_NAME or not TEST_DB_NAME.endswith("_test"):
         f"Refusing to run: the test database '{TEST_DB_NAME}' must differ from the "
         f"pipeline database '{PIPELINE_DB_NAME}' and end with '_test'."
     )
-
-# Point the production code's get_database_connection at the test database
-# (it reads POSTGRES_*). Values come from the test config file above, never from
-# the ambient environment.
-os.environ.pop("AIRFLOW_HOME", None)  # force the SQLAlchemy path deterministically
-os.environ["POSTGRES_HOST"] = TEST_DB_HOST
-os.environ["POSTGRES_PORT"] = TEST_DB_PORT
-os.environ["POSTGRES_USER"] = TEST_DB_USER
-os.environ["POSTGRES_PASSWORD"] = TEST_DB_PASSWORD
-os.environ["POSTGRES_DATA_DB"] = TEST_DB_NAME
 
 
 def _connect(dbname: str, autocommit: bool = True):
@@ -192,6 +180,33 @@ def _drop_all_public_tables(conn) -> None:
         tables = [row[0] for row in cur.fetchall()]
         for table in tables:
             cur.execute(f'DROP TABLE IF EXISTS "{table}" CASCADE;')
+
+
+@pytest.fixture
+def ambiente_do_banco_de_teste():
+    """Declara as ``POSTGRES_*`` apontando para o banco de teste, e restaura ao fim.
+
+    Só os testes de `get_db_connection_str_from_env` — a única fronteira que lê o
+    ambiente — precisam dela. Nenhuma função de produção lê ambiente, então a suíte não
+    escreve mais nessas variáveis de forma global.
+    """
+    variaveis = {
+        "POSTGRES_HOST": TEST_DB_HOST,
+        "POSTGRES_PORT": TEST_DB_PORT,
+        "POSTGRES_USER": TEST_DB_USER,
+        "POSTGRES_PASSWORD": TEST_DB_PASSWORD,
+        "POSTGRES_DATA_DB": TEST_DB_NAME,
+    }
+    anteriores = {nome: os.environ.get(nome) for nome in variaveis}
+    os.environ.update(variaveis)
+    try:
+        yield
+    finally:
+        for nome, valor in anteriores.items():
+            if valor is None:
+                os.environ.pop(nome, None)
+            else:
+                os.environ[nome] = valor
 
 
 @pytest.fixture
