@@ -66,7 +66,11 @@ with DAG(
     @task
     def task_criar_indices(conn_id: str, config: dict):
         """Cria os índices de performance antes de rodar os SQLs de limpeza"""
-        run_create_indexes(conn_id, config)
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            run_create_indexes(conn, config)
+        finally:
+            conn.close()
 
     # --- TASKS DE HIGIENIZAÇÃO ---
     @task(task_id="task_sanitize_installments", pool="pool_sanitization")
@@ -107,7 +111,11 @@ with DAG(
     @task
     def task_abt_indexes(conn_id: str, config: dict):
         """Cria os índices nas tabelas_clean preparatórias para a ABT."""
-        run_abt_indexes(conn_id, config)
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            run_abt_indexes(conn, config)
+        finally:
+            conn.close()
 
     # --- TASKS INTERMEDIÁRIAS PARA AGREGACAO (PROCESSADAS VIA SQL NO BANCO) ---
     @task(task_id="agg_intermediate_prev", pool="pool_aggregation")

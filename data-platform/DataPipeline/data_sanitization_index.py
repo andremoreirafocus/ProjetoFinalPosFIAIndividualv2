@@ -1,6 +1,4 @@
-from db import get_database_connection
-
-def run_abt_indexes(conn_id: str, config: dict):
+def run_abt_indexes(conn, config: dict):
     """
     Cria os índices declarados em ``config["indexes"]["clean"]`` nas tabelas
     higienizadas (_clean), otimizando os JOINs da ABT.
@@ -13,10 +11,9 @@ def run_abt_indexes(conn_id: str, config: dict):
     ausente falha com ``ValueError``, identificando a entrada malformada.
 
     Args:
-        conn_id (str): Identificador da conexão com o banco (Airflow ou SQLAlchemy).
+        conn: Conexão DBAPI já aberta, fornecida pelo chamador.
         config (dict): Dicionário de configuração já carregado.
     """
-    conn = get_database_connection(conn_id)
     cursor = conn.cursor()
 
     db_config = config["database"]
@@ -29,7 +26,6 @@ def run_abt_indexes(conn_id: str, config: dict):
         tabela = db_config.get(table_ref)
         if not tabela:
             cursor.close()
-            conn.close()
             raise ValueError(
                 f"table_ref '{table_ref}' não resolve para um nome de tabela válido em config['database']."
             )
@@ -45,5 +41,4 @@ def run_abt_indexes(conn_id: str, config: dict):
         print(f"   -> Índice '{entrada['name']}' criado com sucesso!")
 
     cursor.close()
-    conn.close()
     print("[ABT INDEXES] Índices intermediários criados com sucesso!")

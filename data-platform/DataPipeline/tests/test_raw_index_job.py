@@ -12,8 +12,6 @@ import pytest
 from ingestion_index import run_create_indexes
 
 
-CONN_ID = "postgres_data_db"
-
 RAW_DB_CONFIG = {
     "input_table": "application_train",
     "input_prev_table": "previous_application",
@@ -52,10 +50,10 @@ def _create_raw_tables(test_db, db_config=RAW_DB_CONFIG, raw_indexes=RAW_INDEXES
 
 
 @pytest.mark.integration
-def test_raw_job_creates_configured_raw_indexes(test_db):
+def test_raw_job_creates_configured_raw_indexes(test_db, conexao):
     _create_raw_tables(test_db)
 
-    run_create_indexes(CONN_ID, _config())
+    run_create_indexes(conexao, _config())
 
     for entry in RAW_INDEXES:
         table = RAW_DB_CONFIG[entry["table_ref"]]
@@ -63,35 +61,51 @@ def test_raw_job_creates_configured_raw_indexes(test_db):
 
 
 @pytest.mark.integration
-def test_raw_table_ref_resolves_database_table(test_db):
+def test_raw_table_ref_resolves_database_table(test_db, conexao):
     test_db.create_table("application_train", {"sk_id_curr": "BIGINT"})  # old physical name, untouched
     renamed_db_config = {**RAW_DB_CONFIG, "input_table": "application_train_renamed"}
     _create_raw_tables(test_db, renamed_db_config)
 
-    run_create_indexes(CONN_ID, _config(db_config=renamed_db_config))
+    run_create_indexes(conexao, _config(db_config=renamed_db_config))
 
     assert RAW_INDEXES[0]["name"] in test_db.indexes("application_train_renamed")
     assert test_db.indexes("application_train") == {}
 
 
 @pytest.mark.integration
-def test_raw_index_creation_is_idempotent(test_db):
+def test_raw_index_creation_is_idempotent(test_db, conexao):
     _create_raw_tables(test_db)
 
-    run_create_indexes(CONN_ID, _config())
+    run_create_indexes(conexao, _config())
     after_first_run = test_db.all_public_indexes()
-    run_create_indexes(CONN_ID, _config())
+    run_create_indexes(conexao, _config())
     after_second_run = test_db.all_public_indexes()
 
     assert after_second_run == after_first_run
 
 
 @pytest.mark.integration
-def test_raw_job_does_not_create_clean_indexes(test_db):
+def test_raw_job_does_not_create_clean_indexes(test_db, conexao):
     _create_raw_tables(test_db)
 
-    run_create_indexes(CONN_ID, _config())
+    run_create_indexes(conexao, _config())
 
     index_names = set(test_db.all_public_indexes())
     clean_index_names = {name for name in index_names if name.startswith("idx_abt_")}
     assert clean_index_names == set()
+
+
+MARCADOR = "marcador_de_transacao"
+
+
+@pytest.mark.integration
+def test_indexacao_opera_na_conexao_recebida(test_db, conexao):
+    """A conexão recebida é a que executa: o `commit` da função encerra esta transação."""
+    _create_raw_tables(test_db)
+    test_db.create_table(MARCADOR, {"valor": "BIGINT"})
+    with conexao.cursor() as cursor:
+        cursor.execute(f'INSERT INTO "{MARCADOR}" (valor) VALUES (1)')
+
+    run_create_indexes(conexao, _config())
+
+    assert test_db.row_count(MARCADOR) == 1

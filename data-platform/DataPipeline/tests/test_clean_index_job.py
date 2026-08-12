@@ -12,8 +12,6 @@ import pytest
 from data_sanitization_index import run_abt_indexes
 
 
-CONN_ID = "postgres_data_db"
-
 CLEAN_DB_CONFIG = {
     "output_table": "application_clean",
     "output_prev_table": "previous_application_clean",
@@ -40,10 +38,10 @@ def _create_clean_tables(test_db, db_config=CLEAN_DB_CONFIG):
 
 
 @pytest.mark.integration
-def test_clean_job_creates_configured_clean_indexes(test_db):
+def test_clean_job_creates_configured_clean_indexes(test_db, conexao):
     _create_clean_tables(test_db)
 
-    run_abt_indexes(CONN_ID, _config())
+    run_abt_indexes(conexao, _config())
 
     for entry in CLEAN_INDEXES:
         table = CLEAN_DB_CONFIG[entry["table_ref"]]
@@ -51,33 +49,33 @@ def test_clean_job_creates_configured_clean_indexes(test_db):
 
 
 @pytest.mark.integration
-def test_clean_table_refs_resolve_database_tables(test_db):
+def test_clean_table_refs_resolve_database_tables(test_db, conexao):
     renamed_db_config = {**CLEAN_DB_CONFIG, "output_table": "application_clean_renamed"}
     _create_clean_tables(test_db, renamed_db_config)
 
-    run_abt_indexes(CONN_ID, _config(db_config=renamed_db_config))
+    run_abt_indexes(conexao, _config(db_config=renamed_db_config))
 
     assert CLEAN_INDEXES[0]["name"] in test_db.indexes("application_clean_renamed")
     assert test_db.indexes("application_clean") == {}
 
 
 @pytest.mark.integration
-def test_clean_index_creation_is_idempotent(test_db):
+def test_clean_index_creation_is_idempotent(test_db, conexao):
     _create_clean_tables(test_db)
 
-    run_abt_indexes(CONN_ID, _config())
+    run_abt_indexes(conexao, _config())
     after_first_run = test_db.all_public_indexes()
-    run_abt_indexes(CONN_ID, _config())
+    run_abt_indexes(conexao, _config())
     after_second_run = test_db.all_public_indexes()
 
     assert after_second_run == after_first_run
 
 
 @pytest.mark.integration
-def test_clean_job_does_not_create_raw_indexes(test_db):
+def test_clean_job_does_not_create_raw_indexes(test_db, conexao):
     _create_clean_tables(test_db)
 
-    run_abt_indexes(CONN_ID, _config())
+    run_abt_indexes(conexao, _config())
 
     index_names = set(test_db.all_public_indexes())
     raw_index_names = {name for name in index_names if not name.startswith("idx_abt_")}
@@ -85,8 +83,8 @@ def test_clean_job_does_not_create_raw_indexes(test_db):
 
 
 @pytest.mark.integration
-def test_clean_job_raises_when_table_ref_resolves_to_empty_name(test_db):
+def test_clean_job_raises_when_table_ref_resolves_to_empty_name(test_db, conexao):
     config = _config(db_config={**CLEAN_DB_CONFIG, "output_table": ""})
 
     with pytest.raises(ValueError):
-        run_abt_indexes(CONN_ID, config)
+        run_abt_indexes(conexao, config)

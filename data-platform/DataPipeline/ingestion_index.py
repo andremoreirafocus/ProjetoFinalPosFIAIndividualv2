@@ -1,9 +1,7 @@
-from db import get_database_connection
-
 # ---------------------------------------------------------------------------
 # Task: Criação de Índices Otimizados (Rodar ANTES das limpezas)
 # ---------------------------------------------------------------------------
-def run_create_indexes(conn_id: str, config: dict):
+def run_create_indexes(conn, config: dict):
     """
     Cria os índices declarados em ``config["indexes"]["raw"]`` nas tabelas raw.
 
@@ -11,7 +9,6 @@ def run_create_indexes(conn_id: str, config: dict):
     ``config["database"]``, então renomear a tabela nesse bloco redireciona o
     índice para o novo nome sem alterar esta função.
     """
-    conn = get_database_connection(conn_id)
     cursor = conn.cursor()
 
     db_config = config["database"]
@@ -33,5 +30,4 @@ def run_create_indexes(conn_id: str, config: dict):
         print(f"   -> Índice '{entrada['name']}' criado com sucesso!")
 
     cursor.close()
-    conn.close()
     print("--- Índices criados com sucesso! Banco pronto para processamento ELT. ---")
