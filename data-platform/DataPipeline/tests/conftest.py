@@ -80,7 +80,7 @@ os.environ["POSTGRES_PASSWORD"] = TEST_DB_PASSWORD
 os.environ["POSTGRES_DATA_DB"] = TEST_DB_NAME
 
 
-def _connect(dbname: str):
+def _connect(dbname: str, autocommit: bool = True):
     conn = psycopg2.connect(
         host=TEST_DB_HOST,
         port=TEST_DB_PORT,
@@ -88,7 +88,7 @@ def _connect(dbname: str):
         password=TEST_DB_PASSWORD,
         dbname=dbname,
     )
-    conn.autocommit = True
+    conn.autocommit = autocommit
     return conn
 
 
@@ -192,6 +192,24 @@ def _drop_all_public_tables(conn) -> None:
         tables = [row[0] for row in cur.fetchall()]
         for table in tables:
             cur.execute(f'DROP TABLE IF EXISTS "{table}" CASCADE;')
+
+
+@pytest.fixture
+def conexao(_verify_test_database):
+    """Conexão DBAPI com o banco de teste — o que a task da DAG entrega em produção.
+
+    Sem ``autocommit``: as funções do pipeline chamam ``commit()`` e ``rollback()``
+    explicitamente, e com autocommit ligado o rollback não teria efeito observável, de modo
+    que o teste mentiria sobre o comportamento transacional.
+
+    Deve ser declarada **depois** de ``test_db`` na assinatura do teste: assim é finalizada
+    antes dele, e a transação em aberto não bloqueia o DROP TABLE da limpeza.
+    """
+    conn = _connect(TEST_DB_NAME, autocommit=False)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 @pytest.fixture

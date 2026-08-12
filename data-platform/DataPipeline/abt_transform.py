@@ -8,13 +8,12 @@ Inclui a criação de índices intermediários e logs de volumetria.
 """
 import os
 import json
-from db import get_database_connection, log_row_count
+from db import get_db_connection_str_from_env, get_pg_database_connection, log_row_count
 
 # --- TASKS INTERMEDIÁRIAS (AGREGAÇÕES EM SQL NO BANCO) ---
-def create_agg_previous_application(conn_id: str, output_prev_table: str):
+def create_agg_previous_application(conn, output_prev_table: str):
     """Agrega o histórico de aplicações anteriores por cliente (sk_id_curr)."""
     tbl_dest = "tmp_prev_application_agg"
-    conn = get_database_connection(conn_id)
     cur = conn.cursor()
     
     print(f"[AGREGAÇÃO] Processando '{output_prev_table}' -> '{tbl_dest}'...")
@@ -38,13 +37,11 @@ def create_agg_previous_application(conn_id: str, output_prev_table: str):
     
     log_row_count(cur, tbl_dest, "Agregado por Cliente")
     cur.close()
-    conn.close()
 
 
-def create_agg_bureau(conn_id: str, output_bureau_table: str):
+def create_agg_bureau(conn, output_bureau_table: str):
     """Agrega bureau_clean por cliente trazendo todas as métricas necessárias para o modelo."""
     tbl_dest = "tmp_bureau_agg"
-    conn = get_database_connection(conn_id)
     cur = conn.cursor()
     
     print(f"[AGREGAÇÃO] Processando '{output_bureau_table}' -> '{tbl_dest}'...")
@@ -76,13 +73,11 @@ def create_agg_bureau(conn_id: str, output_bureau_table: str):
     
     log_row_count(cur, tbl_dest, "Agregado por Cliente")
     cur.close()
-    conn.close()
 
 
-def create_agg_installments(conn_id: str, output_installments_table: str):
+def create_agg_installments(conn, output_installments_table: str):
     """Agrega installments_clean por cliente no Postgres."""
     tbl_dest = "tmp_installments_agg"
-    conn = get_database_connection(conn_id)
     cur = conn.cursor()
     
     print(f"[AGREGAÇÃO] Processando '{output_installments_table}' -> '{tbl_dest}'...")
@@ -105,16 +100,14 @@ def create_agg_installments(conn_id: str, output_installments_table: str):
     
     log_row_count(cur, tbl_dest, "Agregado por Cliente")
     cur.close()
-    conn.close()
 
 
 # --- PIPELINE PRINCIPAL (ELT FINAL) ---
-def run_abt_generation(conn_id: str, config: dict):
+def run_abt_generation(conn, config: dict):
     """Monta a ABT final via SQL puro unindo a aplicação limpa com os agregados intermediários."""
     clean_table = config.get("output_table")
     abt_table = config.get("abt_table")
     
-    conn = get_database_connection(conn_id)
     cursor = conn.cursor()
 
     print(f"[ELT] Construindo a tabela final ABT '{abt_table}' a partir de '{clean_table}'...")
@@ -173,9 +166,14 @@ def run_abt_generation(conn_id: str, config: dict):
         raise RuntimeError(f"Erro na execução do processo ELT da ABT: {str(e)}")
     finally:
         cursor.close()
-        conn.close()
 
 
 if __name__ == "__main__":
-    # Teste de execução isolada (fallback) com strings explícitas do ambiente local
-    run_abt_generation("postgres_data_db", "application_clean", "application_abt")
+    # Execução isolada, fora do Airflow: quem abre a conexão aqui é quem a fecha.
+    conn = get_pg_database_connection(get_db_connection_str_from_env("localhost"))
+    try:
+        run_abt_generation(
+            conn, {"output_table": "application_clean", "abt_table": "application_abt"}
+        )
+    finally:
+        conn.close()

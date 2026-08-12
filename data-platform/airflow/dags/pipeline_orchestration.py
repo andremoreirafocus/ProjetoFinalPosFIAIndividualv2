@@ -22,6 +22,7 @@ from abt_transform import (
     create_agg_installments,
     run_abt_generation,
 )
+from db import get_pghook_database_connection
 from train import run_training_pipeline
 
 from airflow import DAG
@@ -95,21 +96,37 @@ with DAG(
     # --- TASKS INTERMEDIÁRIAS PARA AGREGACAO (PROCESSADAS VIA SQL NO BANCO) ---
     @task(task_id="agg_intermediate_prev", pool="pool_aggregation")
     def task_agg_prev(conn_id: str, out_tb: str):
-        create_agg_previous_application(conn_id, out_tb)
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            create_agg_previous_application(conn, out_tb)
+        finally:
+            conn.close()
 
     @task(task_id="agg_intermediate_bureau", pool="pool_aggregation")
     def task_agg_bureau(conn_id: str, out_tb: str):
-        create_agg_bureau(conn_id, out_tb)
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            create_agg_bureau(conn, out_tb)
+        finally:
+            conn.close()
 
     @task(task_id="agg_intermediate_installments", pool="pool_aggregation")
     def task_agg_inst(conn_id: str, out_tb: str):
-        create_agg_installments(conn_id, out_tb)
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            create_agg_installments(conn, out_tb)
+        finally:
+            conn.close()
 
     # --- TASK DA CONSTRUÇÃO DA ABT EM LOTES ---
     @task(task_id="generate_analytical_base_table")
     def task_abt_final_generation(conn_id: str, config: dict):
-        """Gera a ABT final via ELT."""
-        run_abt_generation(conn_id, config)
+        """Gera a ABT final via ELT. A conexão é aberta e fechada aqui."""
+        conn = get_pghook_database_connection(conn_id)
+        try:
+            run_abt_generation(conn, config)
+        finally:
+            conn.close()
 
     # --- TASK DE TREINAMENTO ---
     @task(task_id="train_machine_learning_model")

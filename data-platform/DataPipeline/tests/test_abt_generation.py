@@ -25,8 +25,6 @@ from abt_transform import (
 )
 
 
-CONN_ID = "postgres_data_db"
-
 DEFAULT_SOURCE = "application_clean"
 DEFAULT_ABT = "application_abt"
 
@@ -111,24 +109,24 @@ EXPECTED_INST_LATE_RATE = sum(
 ) / len(INSTALLMENTS_ROWS)
 
 
-def _generate(test_db, clean_table=DEFAULT_SOURCE, abt_table=DEFAULT_ABT):
+def _generate(test_db, conexao, clean_table=DEFAULT_SOURCE, abt_table=DEFAULT_ABT):
     """Build the four cleaned tables, run the three aggregations, then the ABT ELT."""
     test_db.create_table(clean_table, APP_CLEAN_SCHEMA)
     test_db.insert(clean_table, APP_ROWS)
 
     test_db.create_table("previous_application_clean", PREV_CLEAN_SCHEMA)
     test_db.insert("previous_application_clean", PREV_ROWS)
-    create_agg_previous_application(CONN_ID, "previous_application_clean")
+    create_agg_previous_application(conexao, "previous_application_clean")
 
     test_db.create_table("bureau_clean", BUREAU_CLEAN_SCHEMA)
     test_db.insert("bureau_clean", BUREAU_ROWS)
-    create_agg_bureau(CONN_ID, "bureau_clean")
+    create_agg_bureau(conexao, "bureau_clean")
 
     test_db.create_table("installments_clean", INSTALLMENTS_CLEAN_SCHEMA)
     test_db.insert("installments_clean", INSTALLMENTS_ROWS)
-    create_agg_installments(CONN_ID, "installments_clean")
+    create_agg_installments(conexao, "installments_clean")
 
-    run_abt_generation(CONN_ID, {"output_table": clean_table, "abt_table": abt_table})
+    run_abt_generation(conexao, {"output_table": clean_table, "abt_table": abt_table})
 
 
 def _abt_by_customer(test_db, abt_table=DEFAULT_ABT):
@@ -136,27 +134,27 @@ def _abt_by_customer(test_db, abt_table=DEFAULT_ABT):
 
 
 @pytest.mark.integration
-def test_abt_reads_source_and_target_from_config(test_db):
+def test_abt_reads_source_and_target_from_config(test_db, conexao):
     source = "custom_clean_source"
     target = "custom_abt_target"
 
-    _generate(test_db, clean_table=source, abt_table=target)
+    _generate(test_db, conexao, clean_table=source, abt_table=target)
 
     assert test_db.table_exists(target)
     assert test_db.row_count(target) == len({row["sk_id_curr"] for row in APP_ROWS})
 
 
 @pytest.mark.integration
-def test_abt_has_one_row_per_customer(test_db):
-    _generate(test_db)
+def test_abt_has_one_row_per_customer(test_db, conexao):
+    _generate(test_db, conexao)
 
     distinct_customers = {row["sk_id_curr"] for row in APP_ROWS}
     assert test_db.row_count(DEFAULT_ABT) == len(distinct_customers)
 
 
 @pytest.mark.integration
-def test_customers_without_history_get_zero_flags_and_rates(test_db):
-    _generate(test_db)
+def test_customers_without_history_get_zero_flags_and_rates(test_db, conexao):
+    _generate(test_db, conexao)
 
     without = _abt_by_customer(test_db)[CUSTOMER_WITHOUT_HISTORY]
     assert without["has_prev_app"] == 0
@@ -169,8 +167,8 @@ def test_customers_without_history_get_zero_flags_and_rates(test_db):
 
 
 @pytest.mark.integration
-def test_customers_with_history_get_flags_and_aggregates(test_db):
-    _generate(test_db)
+def test_customers_with_history_get_flags_and_aggregates(test_db, conexao):
+    _generate(test_db, conexao)
 
     with_history = _abt_by_customer(test_db)[CUSTOMER_WITH_HISTORY]
     assert with_history["has_prev_app"] == 1
@@ -182,8 +180,8 @@ def test_customers_with_history_get_flags_and_aggregates(test_db):
 
 
 @pytest.mark.integration
-def test_income_ratios_computed_when_income_positive(test_db):
-    _generate(test_db)
+def test_income_ratios_computed_when_income_positive(test_db, conexao):
+    _generate(test_db, conexao)
 
     with_history = _abt_by_customer(test_db)[CUSTOMER_WITH_HISTORY]
     app = next(r for r in APP_ROWS if r["sk_id_curr"] == CUSTOMER_WITH_HISTORY)
@@ -196,8 +194,8 @@ def test_income_ratios_computed_when_income_positive(test_db):
 
 
 @pytest.mark.integration
-def test_income_ratios_null_when_income_zero(test_db):
-    _generate(test_db)
+def test_income_ratios_null_when_income_zero(test_db, conexao):
+    _generate(test_db, conexao)
 
     without = _abt_by_customer(test_db)[CUSTOMER_WITHOUT_HISTORY]
     assert without["fe_credit_income_percent"] is None
@@ -205,8 +203,8 @@ def test_income_ratios_null_when_income_zero(test_db):
 
 
 @pytest.mark.integration
-def test_temporary_aggregation_tables_are_dropped(test_db):
-    _generate(test_db)
+def test_temporary_aggregation_tables_are_dropped(test_db, conexao):
+    _generate(test_db, conexao)
 
     for tmp_table in TMP_AGG_TABLES:
         assert not test_db.table_exists(tmp_table)
