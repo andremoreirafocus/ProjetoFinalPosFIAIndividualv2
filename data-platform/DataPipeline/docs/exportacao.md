@@ -10,7 +10,7 @@ A função `run_postgres_to_csv_export` recebe três parâmetros:
 
 | Parâmetro | Finalidade |
 |---|---|
-| `conn_id` | Identificador mantido pelo utilitário de conexão compartilhado. Na execução manual local, `db.py` utiliza o PostgreSQL em `localhost:5432/data`. |
+| `conn` | Conexão já aberta com o PostgreSQL. Quem chama abre e fecha; a função não resolve conexão. Na execução manual, o bloco `__main__` a abre em `localhost:5432/data`. |
 | `source_table` | Nome da tabela que será exportada. |
 | `output_dir_path` | Diretório de destino. O nome final é montado como `<source_table>.csv`. |
 
@@ -44,8 +44,9 @@ set +a
 .venv/bin/python export_data.py
 ```
 
-O carregamento de `../.env` exporta para o processo local as variáveis de conexão
-com o PostgreSQL usadas por `db.py`.
+O carregamento de `../.env` exporta as credenciais, a porta e o nome do banco. O host não
+vem de lá: a execução é fora da rede do compose, e o bloco `__main__` declara `localhost`
+na própria chamada.
 
 Na configuração atual do bloco `__main__`, o comando exporta:
 
@@ -72,13 +73,18 @@ A convivência no mesmo diretório atende à preparação manual da entrega. Os 
 O script expõe uma função reutilizável para chamadas manuais em outro módulo Python:
 
 ```python
+from db import get_db_connection_str_from_env, get_pg_database_connection
 from export_data import run_postgres_to_csv_export
 
-run_postgres_to_csv_export(
-    conn_id="postgres_data_db",
-    source_table="application_clean",
-    output_dir_path="../airflow/data/csv",
-)
+conn = get_pg_database_connection(get_db_connection_str_from_env("localhost"))
+try:
+    run_postgres_to_csv_export(
+        conn=conn,
+        source_table="application_clean",
+        output_dir_path="../airflow/data/csv",
+    )
+finally:
+    conn.close()
 ```
 
 Esse exemplo, executado a partir de `data-platform/DataPipeline`, gera `data-platform/airflow/data/csv/application_clean.csv`. A função exporta uma tabela por chamada e usa o nome da tabela para identificar claramente o conteúdo do arquivo.

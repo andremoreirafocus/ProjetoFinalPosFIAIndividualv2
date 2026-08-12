@@ -1,7 +1,7 @@
-from db import get_database_connection, log_row_count
+from db import get_db_connection_str_from_env, get_pg_database_connection, log_row_count
 import os
 
-def run_postgres_to_csv_export(conn_id: str, source_table: str, output_dir_path: str):
+def run_postgres_to_csv_export(conn, source_table: str, output_dir_path: str):
     """Extrai dados de uma tabela Postgres e salva em um arquivo CSV 
     usando o nome da tabela como nome do arquivo.
     """
@@ -15,7 +15,6 @@ def run_postgres_to_csv_export(conn_id: str, source_table: str, output_dir_path:
 
     print(f"Iniciando exportação: Postgres['{source_table}'] -> CSV['{output_csv_path}']...")
     
-    conn = get_database_connection(conn_id)
     cursor = conn.cursor()
 
     try:
@@ -32,7 +31,6 @@ def run_postgres_to_csv_export(conn_id: str, source_table: str, output_dir_path:
     
     finally:
         cursor.close()
-        conn.close()
 
 if __name__ == "__main__":
     tables_to_export = [
@@ -42,10 +40,15 @@ if __name__ == "__main__":
         "installments_clean",
         "application_abt"
     ]
-    for table in tables_to_export:
-        run_postgres_to_csv_export(
-            conn_id="postgres_data_db",
-            source_table=table,
-            output_dir_path="../airflow/data/csv"  # Apenas a pasta de destino
-        )
+    # Execução manual, fora do Airflow: quem abre a conexão aqui é quem a fecha.
+    conn = get_pg_database_connection(get_db_connection_str_from_env("localhost"))
+    try:
+        for table in tables_to_export:
+            run_postgres_to_csv_export(
+                conn=conn,
+                source_table=table,
+                output_dir_path="../airflow/data/csv"  # Apenas a pasta de destino
+            )
+    finally:
+        conn.close()
     
