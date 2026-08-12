@@ -18,23 +18,32 @@ ENV_CONNECTION_VARIABLES = (
 )
 
 
-def get_db_connection_str_from_env() -> str:
+def get_db_connection_str_from_env(host: str | None = None) -> str:
     """Monta a string de conexão a partir das variáveis de ambiente do PostgreSQL.
 
-    É a única fronteira que lê o ambiente. `POSTGRES_HOST` vale em qualquer ambiente:
-    o host é configurado, não inferido. Toda variável é obrigatória — a ausência falha
-    nomeando quais faltam, em vez de compor uma string com `None`.
+    É a única fronteira que lê o ambiente. O comportamento normal é usar `POSTGRES_HOST`,
+    que é o endereço correto para quem roda dentro da rede do compose. `host` é a exceção
+    explícita, para o chamador que conhece o endereço do seu contexto — o CLI, que roda
+    fora dessa rede; informado, dispensa `POSTGRES_HOST`.
+
+    As demais variáveis são sempre obrigatórias: a ausência falha nomeando quais faltam,
+    em vez de compor uma string com `None`.
     """
-    ausentes = [nome for nome in ENV_CONNECTION_VARIABLES if not os.environ.get(nome)]
+    exigidas = list(ENV_CONNECTION_VARIABLES)
+    if host is not None:
+        exigidas.remove("POSTGRES_HOST")
+
+    ausentes = [nome for nome in exigidas if not os.environ.get(nome)]
     if ausentes:
         raise ValueError(
             "Configuração de conexão incompleta: variáveis de ambiente obrigatórias "
             f"ausentes ou vazias: {', '.join(ausentes)}."
         )
 
+    endereco = host if host is not None else os.environ["POSTGRES_HOST"]
     return (
         f"postgresql://{os.environ['POSTGRES_USER']}:{os.environ['POSTGRES_PASSWORD']}"
-        f"@{os.environ['POSTGRES_HOST']}:{os.environ['POSTGRES_PORT']}"
+        f"@{endereco}:{os.environ['POSTGRES_PORT']}"
         f"/{os.environ['POSTGRES_DATA_DB']}"
     )
 

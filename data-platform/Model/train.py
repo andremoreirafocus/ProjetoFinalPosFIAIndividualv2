@@ -23,8 +23,11 @@ from lightgbm import LGBMClassifier
 
 from feature_reference import build_feature_reference
 
-# Reaproveitando a conexão inteligente do projeto
-from db import get_database_connection
+from db import (
+    get_db_connection_str_from_env,
+    get_pg_database_connection,
+    get_pghook_database_connection,
+)
 
 MODEL_DIR = Path(__file__).resolve().parent
 DATA_PLATFORM_DIR = MODEL_DIR.parent
@@ -45,20 +48,18 @@ def project_path(configured_path: str) -> Path:
     return DATA_PLATFORM_DIR / configured_path
 
 
-def load_training_data(config: dict[str, Any], conn_id: str|None = None, sample_size: int | None = None):
-    """Le a ABT do Postgres usando utils e devolve X, y com as categoricas como 'category'."""
-    # Utilizando a conexão padrão do projeto para Airflow/Localbox
-    conn = get_database_connection(conn_id=conn_id, silent=False)
-    
+def load_training_data(config: dict[str, Any], conn: Any, sample_size: int | None = None):
+    """Le a ABT do Postgres e devolve X, y com as categoricas como 'category'.
+
+    `conn` e uma conexao DBAPI ja aberta, fornecida por quem conhece o contexto de
+    execucao. Nao e fechada aqui: quem abre, fecha.
+    """
     table = config["metadata"]["abt_table"]
     query = f'SELECT * FROM "{table}"'
     if sample_size:
         query += f" LIMIT {int(sample_size)}"
-        
-    try:
-        frame = pd.read_sql_query(query, conn)
-    finally:
-        conn.close()
+
+    frame = pd.read_sql_query(query, conn)
 
     print(f"[dados] ABT carregada: {frame.shape[0]:,} linhas x {frame.shape[1]} colunas")
 
@@ -221,7 +222,11 @@ def run_training_pipeline(conn_id: str, abt_table: str):
     config = load_config(DEFAULT_CONFIG_PATH)
     # Garante que a tabela vinda da DAG sobrescreva a do config se necessário
     config["metadata"]["abt_table"] = abt_table
-    X, y = load_training_data(config, conn_id=conn_id)
+    conn = get_pghook_database_connection(conn_id)
+    try:
+        X, y = load_training_data(config, conn)
+    finally:
+        conn.close()
     print("\n" + "="*60)
     print(f"[MLOPS-TRAIN] Iniciando treinamento. Versão: {config['metadata']['version']}")
     print("="*60)
@@ -260,9 +265,12 @@ def main() -> None:
     print(f"[CLI] Iniciando pipeline de treinamento com config: {args.config}")
 
     config = load_config(args.config)
-    X, y = load_training_data(
-        config, conn_id="postgres_data_db", sample_size=args.sample_size
-    )
+    # O CLI roda na maquina do host, fora da rede do compose.
+    conn = get_pg_database_connection(get_db_connection_str_from_env("localhost"))
+    try:
+        X, y = load_training_data(config, conn, sample_size=args.sample_size)
+    finally:
+        conn.close()
     print("\n" + "="*60)
     print(f"[CLI] Iniciando treinamento. Versão: {config['metadata']['version']}")
     print("="*60)

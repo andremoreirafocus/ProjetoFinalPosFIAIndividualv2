@@ -109,9 +109,10 @@ set +a
 PYTHONPATH=DataPipeline Model/.venv/bin/python Model/train.py
 ```
 
-O carregamento de `.env` exporta para o processo local as variáveis de conexão
-com o PostgreSQL usadas por `DataPipeline/db.py`. No Airflow, a conexão é
-fornecida pelo `PostgresHook` e essa preparação manual não é necessária.
+O carregamento de `.env` exporta as credenciais, a porta e o nome do banco. O host não
+vem de lá: o CLI roda fora da rede do compose e conecta em `localhost`, declarado na
+própria chamada em `main`. No Airflow a conexão é aberta pelo `PostgresHook`, a partir do
+`conn_id`, e essa preparação manual não é necessária.
 
 Treinamento reduzido para validação rápida:
 
@@ -129,8 +130,9 @@ O parâmetro `--sample-size` limita a consulta e existe para smoke tests. Ele n�
 configuração e da conexão distintas:
 
 1. Carrega e valida as seções obrigatórias da configuração.
-2. `load_training_data` consulta a ABT no PostgreSQL, seleciona as features de entrada
-   configuradas e converte as categóricas.
+2. O entrypoint abre a conexão — `PostgresHook` na DAG, SQLAlchemy em `localhost` no CLI —
+   e a fecha ao fim da leitura. `load_training_data` a recebe pronta, consulta a ABT,
+   seleciona as features de entrada configuradas e converte as categóricas.
 3. `train` cria o holdout estratificado, treina o modelo de avaliação e calcula AUC,
    Gini, KS, Average Precision e Brier; em seguida retreina o LightGBM final com toda a
    ABT. Não acessa o banco — recebe os dados já carregados.

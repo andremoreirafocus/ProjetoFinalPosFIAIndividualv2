@@ -70,6 +70,35 @@ def test_monta_a_string_com_as_cinco_variaveis_do_ambiente(ambiente_de_conexao):
     )
 
 
+def test_host_informado_sobrepoe_a_variavel_de_ambiente(ambiente_de_conexao):
+    ambiente_de_conexao(VARIAVEIS_DE_CONEXAO)
+
+    connection_str = get_db_connection_str_from_env("localhost")
+
+    assert "@localhost:" in connection_str
+    assert VARIAVEIS_DE_CONEXAO["POSTGRES_HOST"] not in connection_str
+
+
+def test_host_informado_dispensa_a_variavel_de_ambiente(ambiente_de_conexao):
+    ambiente_de_conexao(
+        {
+            nome: valor
+            for nome, valor in VARIAVEIS_DE_CONEXAO.items()
+            if nome != "POSTGRES_HOST"
+        }
+    )
+
+    connection_str = get_db_connection_str_from_env("localhost")
+
+    assert connection_str == (
+        f"postgresql://{VARIAVEIS_DE_CONEXAO['POSTGRES_USER']}"
+        f":{VARIAVEIS_DE_CONEXAO['POSTGRES_PASSWORD']}"
+        f"@localhost"
+        f":{VARIAVEIS_DE_CONEXAO['POSTGRES_PORT']}"
+        f"/{VARIAVEIS_DE_CONEXAO['POSTGRES_DATA_DB']}"
+    )
+
+
 @pytest.mark.parametrize("ausente", sorted(VARIAVEIS_DE_CONEXAO))
 def test_variavel_obrigatoria_ausente_falha_nomeando_qual(ambiente_de_conexao, ausente):
     ambiente_de_conexao(

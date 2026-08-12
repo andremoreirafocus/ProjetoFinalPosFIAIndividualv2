@@ -106,7 +106,9 @@ contexto é declarado por quem já o conhece, não inferido do ambiente:
 | `get_database_engine(connection_str)` | notebooks, onde `pd.read_sql` espera um Engine |
 
 `get_db_connection_str_from_env()` é a única fronteira que lê o ambiente: monta a string
-a partir das variáveis `POSTGRES_*`, todas obrigatórias.
+a partir das variáveis `POSTGRES_*`, todas obrigatórias. Aceita um `host` opcional que
+sobrepõe `POSTGRES_HOST`, para quem roda fora da rede do compose — é o caso do CLI de
+treinamento, que declara `localhost`.
 
 ```python
 conn = get_pg_database_connection(get_db_connection_str_from_env())
