@@ -69,6 +69,12 @@ docker compose logs -f credit-api credit-frontend
 
 Build, execução local e testes estão documentados em [DEVELOPMENT.md](DEVELOPMENT.md).
 
+A suíte do componente fixa os contratos e os erros HTTP dos endpoints, a carga do modelo em
+segundo plano com seus caminhos de falha, a política de crédito que traduz score em decisão,
+a explicabilidade servida ao analista e a inicialização do frontend. Roda offline, sem
+PostgreSQL e sem LightGBM, com fakes injetados por composição; os casos que dependem do
+artefato treinado são pulados quando ele não está presente.
+
 ## Artefatos de execução
 
 ```text

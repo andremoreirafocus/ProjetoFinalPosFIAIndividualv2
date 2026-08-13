@@ -115,6 +115,20 @@ Detalhes e justificativas estão nos READMEs de cada componente.
 | `data-platform/MLOps/` | FastAPI, Streamlit, política, testes e propostas arquiteturais | [MLOps](./data-platform/MLOps/README.md) |
 | `data-platform/postgres/` | Inicialização e persistência relacional | [PostgreSQL](./data-platform/postgres/README.md) |
 
+## Testes automatizados
+
+Cada componente possui sua própria suíte, e elas fixam o comportamento esperado — não são
+verificação acessória. O que cada uma cobre:
+
+| Suíte | O que fixa | Como executa |
+|---|---|---|
+| [DataPipeline](./data-platform/DataPipeline/README.md#testes) | Os contratos funcionais de cada etapa do pipeline — ingestão em blocos, índices, regras de sanitização, agregações por cliente, construção da ABT e exportação — mais a fronteira de conexão com o banco. | Contra um PostgreSQL **de testes dedicado**, isolado do banco de produção por um papel de menor privilégio. Sem mocks: as funções recebem a conexão pela mesma fronteira que a tarefa do Airflow usa. |
+| [Model](./data-platform/Model/README.md#testes) | A leitura da ABT com a conversão das categóricas, a composição do treinamento, o cálculo do baseline populacional e a recusa de publicar um conjunto de artefatos que não pertença ao mesmo treino. | Sem PostgreSQL e sem artefato treinado: as conexões chegam injetadas. |
+| [MLOps](./data-platform/MLOps/DEVELOPMENT.md) | Os contratos e erros HTTP da API, a carga do modelo em segundo plano, a política de crédito, a explicabilidade e a inicialização do frontend. | Offline, com fakes injetados por composição; os casos que exigem o artefato treinado são pulados quando ele não existe. |
+
+A regra que atravessa as três: nada de mocks ou interceptação de chamadas — colaboradores
+entram por fixtures e fakes explícitos, pelas mesmas fronteiras que a produção usa.
+
 ## Execução rápida
 
 1. Baixe os quatro arquivos indicados em [Arquivos de origem](./data-platform/README.md#arquivos-de-origem) e coloque-os em `data-platform/airflow/data/csv`.
