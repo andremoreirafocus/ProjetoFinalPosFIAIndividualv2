@@ -48,6 +48,7 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 | [`train.py`](./train.py) | Treina, avalia e publica o conjunto de artefatos. |
 | [`feature_reference.py`](./feature_reference.py) | Calcula o baseline populacional e a referência TreeSHAP global. |
 | [`predict.py`](./predict.py) | Executa inferência local para um cliente da ABT. |
+| [`find_customer_by_score.py`](./find_customer_by_score.py) | Varre a ABT e localiza o primeiro cliente cujo score caia numa faixa informada. |
 | [`validacao_modelos.ipynb`](./validacao_modelos.ipynb) | Compara algoritmos e configurações, controla overfitting e seleciona o modelo. |
 | [`evaluation.ipynb`](./evaluation.ipynb) | Avalia desempenho, threshold, explicabilidade, fairness e monitoramento. |
 | [`requirements.txt`](./requirements.txt) | Dependências da modelagem. |
@@ -160,10 +161,26 @@ configuração e da conexão distintas:
 
 ```bash
 cd data-platform
-Model/.venv/bin/python Model/predict.py --sk-id 100002
+PYTHONPATH=. Model/.venv/bin/python Model/predict.py --sk-id 100002
 ```
 
 O comando consulta o cliente em `application_abt`, carrega `artifacts/lightgbm_abt.pkl` e apresenta score, threshold e decisão de classe.
+
+Não é preciso preparar o ambiente antes: o próprio entrypoint carrega o `.env` da
+plataforma e conecta em `localhost`, porque roda fora da rede do compose. Variável já
+exportada no shell continua vencendo o arquivo. O `PYTHONPATH=.` aponta a raiz
+`data-platform`, de onde vem o pacote `infra`.
+
+Para localizar um cliente cujo score caia numa faixa — útil para demonstrar as três
+decisões da política de crédito:
+
+```bash
+PYTHONPATH=. Model/.venv/bin/python Model/find_customer_by_score.py \
+  --min-score 0.5 --max-score 0.6
+```
+
+Ele varre a ABT em ordem crescente e executa o `predict.py` por cliente, parando no
+primeiro que satisfaz a faixa.
 
 ## Artefatos
 

@@ -10,34 +10,12 @@ import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
 
+from infra.db import get_db_connection_str_from_env, get_pg_database_connection
+
 MODEL_DIR = Path(__file__).resolve().parent
 DATA_PLATFORM_DIR = MODEL_DIR.parent
 ARTIFACT_PATH = MODEL_DIR / "artifacts/lightgbm_abt.pkl"
 
-load_dotenv(DATA_PLATFORM_DIR / ".env")
-
-
-def get_database_connection(conn_id: str | None = None, silent: bool = False):
-    """Retorna uma conexão ativa com o banco.
-
-    Detecta automaticamente se está rodando dentro do fluxo do Airflow (usa
-    PostgresHook) ou de forma isolada (usa SQLAlchemy).
-    """
-    from sqlalchemy import create_engine
-    import os
-
-    # Mapeando o host baseado no ambiente (se roda dentro do ecossistema docker ou na máquina local)
-    # No docker o host do banco chama-se 'postgres'. Na máquina local acessamos via 'localhost'
-    host = os.getenv("POSTGRES_HOST") if os.path.exists("/.dockerenv") else "localhost"
-    conn_str = (
-        f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}"
-        f"@{host}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DATA_DB')}"
-    )
-
-    if not silent:
-        print(f"[CONEXÃO] Execução isolada detectada (Local/Notebook). Conectando via SQLAlchemy em '{host}'.")
-    engine = create_engine(conn_str)
-    return engine.raw_connection()
 
 def load_artifact(artifact_path: Path):
     if not artifact_path.exists():
@@ -84,6 +62,10 @@ def predict_score(df_features: pd.DataFrame, artifact: dict) -> dict:
     }
 
 if __name__ == "__main__":
+    # Execucao manual, fora da rede do compose: as credenciais vem do .env e o host e
+    # declarado aqui, como no treinamento.
+    load_dotenv(DATA_PLATFORM_DIR / ".env")
+
     parser = argparse.ArgumentParser(description="Inferencia de Risco de Crédito")
     parser.add_argument("--sk-id", type=int, required=True, help="ID do cliente para busca na ABT")
     args = parser.parse_args()
@@ -93,7 +75,7 @@ if __name__ == "__main__":
     artifact = load_artifact(ARTIFACT_PATH)
     
     print(f"[PREDICT] Buscando features para sk_id_curr = {args.sk_id}...")
-    conn = get_database_connection("postgres_data_db", silent=True)
+    conn = get_pg_database_connection(get_db_connection_str_from_env("localhost"))
     try:
         df_client = load_features_from_abt(conn, args.sk_id)
     finally:

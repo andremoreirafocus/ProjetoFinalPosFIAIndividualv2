@@ -9,25 +9,26 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from dotenv import load_dotenv
 
-from predict import get_database_connection
+from infra.db import get_db_connection_str_from_env, get_pg_database_connection
 
 
 MODEL_DIR = Path(__file__).resolve().parent
+DATA_PLATFORM_DIR = MODEL_DIR.parent
 PREDICT_SCRIPT = MODEL_DIR / "predict.py"
 RISK_SCORE_PATTERN = re.compile(r"Risk Score\s*:\s*([0-9]+(?:\.[0-9]+)?)")
 
 
-def load_customer_ids() -> list[int]:
-    """Retorna todos os identificadores existentes na ABT em ordem crescente."""
-    connection = get_database_connection(silent=True)
-    try:
-        customers = pd.read_sql_query(
-            "SELECT sk_id_curr FROM application_abt ORDER BY sk_id_curr",
-            connection,
-        )
-    finally:
-        connection.close()
+def load_customer_ids(connection) -> list[int]:
+    """Retorna todos os identificadores existentes na ABT em ordem crescente.
+
+    `connection` e uma conexao DBAPI ja aberta. Nao e fechada aqui: quem abre, fecha.
+    """
+    customers = pd.read_sql_query(
+        "SELECT sk_id_curr FROM application_abt ORDER BY sk_id_curr",
+        connection,
+    )
 
     return customers["sk_id_curr"].astype(int).tolist()
 
@@ -68,11 +69,18 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    # Execucao manual, fora da rede do compose: o proprio entrypoint carrega o ambiente.
+    load_dotenv(DATA_PLATFORM_DIR / ".env")
+
     args = parse_args()
     if not 0 <= args.min_score < args.max_score <= 1:
         raise ValueError("A faixa deve respeitar 0 <= min-score < max-score <= 1.")
 
-    customer_ids = load_customer_ids()
+    connection = get_pg_database_connection(get_db_connection_str_from_env("localhost"))
+    try:
+        customer_ids = load_customer_ids(connection)
+    finally:
+        connection.close()
     print(
         f"[BUSCA] Testando {len(customer_ids):,} clientes na faixa "
         f"{args.min_score} <= score < {args.max_score}."
