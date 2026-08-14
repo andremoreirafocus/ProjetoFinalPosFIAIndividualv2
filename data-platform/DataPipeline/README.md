@@ -61,7 +61,6 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 | [`data_sanitization_index.py`](./data_sanitization_index.py) | Recria índices nas tabelas tratadas. |
 | [`abt_transform.py`](./abt_transform.py) | Agrega históricos e constrói a ABT. |
 | [`export_data.py`](./export_data.py) | Utilitário manual para exportar tabelas do PostgreSQL como arquivos CSV de entrega. |
-| [`db.py`](./db.py) | Conexão, mapeamento de tipos para DDL, gravação via `COPY` e volumetria. |
 | [`config.py`](./config.py) | Carga do `config_pipeline.json`. |
 | [`config_pipeline.json`](./config_pipeline.json) | Define fontes, tabelas, chunks, índices e parâmetros de limpeza. |
 | [`requirements.txt`](./requirements.txt) | Dependências para executar os scripts do pipeline fora do Airflow. |
@@ -96,31 +95,10 @@ O Airflow lê essa configuração no carregamento da DAG, via `load_pipeline_con
 
 ## Conexão com o banco
 
-Em [`db.py`](./db.py), o mecanismo de conexão é escolhido por qual função se chama — o
-contexto é declarado por quem já o conhece, não inferido do ambiente:
-
-| Função | Contexto |
-|---|---|
-| `get_pghook_database_connection(conn_id)` | tarefa da DAG do Airflow |
-| `get_pg_database_connection(connection_str)` | script local e suíte de testes |
-| `get_database_engine(connection_str)` | notebooks, onde `pd.read_sql` espera um Engine |
-
-As funções do pipeline — ingestão, índices, sanitização, agregações, ABT e exportação —
-**recebem a conexão já aberta** e não a resolvem: quem abre é quem fecha. Na DAG isso é
-feito por cada task; na suíte de testes, pela fixture que aponta para o banco de teste.
-
-`get_db_connection_str_from_env()` é a única fronteira que lê o ambiente: monta a string
-a partir das variáveis `POSTGRES_*`, todas obrigatórias. Aceita um `host` opcional que
-sobrepõe `POSTGRES_HOST`, para quem roda fora da rede do compose — é o caso do CLI de
-treinamento, que declara `localhost`.
-
-```python
-conn = get_pg_database_connection(get_db_connection_str_from_env())
-engine = get_database_engine(get_db_connection_str_from_env())
-```
-
-Nenhuma função lê variável de ambiente para decidir mecanismo ou host, e não há mais
-detecção de contexto por `AIRFLOW_HOME` ou `/.dockerenv`.
+As funções deste componente **recebem a conexão já aberta** e não a resolvem: na DAG, cada
+task abre pelo `PostgresHook` e fecha em `finally`; na suíte, a conexão vem do banco de
+teste. A fronteira de banco — resolução de conexão, Engine e montagem da string a partir do
+ambiente — é do [`infra`](../infra/README.md), e está documentada lá.
 
 ## Execução
 

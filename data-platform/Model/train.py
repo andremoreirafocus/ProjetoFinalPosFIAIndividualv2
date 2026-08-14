@@ -23,7 +23,7 @@ from lightgbm import LGBMClassifier
 
 from feature_reference import build_feature_reference
 
-from db import (
+from infra.db import (
     get_db_connection_str_from_env,
     get_pg_database_connection,
     get_pghook_database_connection,

@@ -93,11 +93,19 @@ python3 -m venv .venv
 .venv/bin/python -m pytest
 ```
 
-[`requirements-test.txt`](./requirements-test.txt) instala as dependências de produção
-mais o pytest; [`pytest.ini`](./pytest.ini) declara a raiz de importação no componente —
-a mesma que a DAG compõe em tempo de execução — mais `../DataPipeline`, necessária
-enquanto `train.py` importar `db`. Nenhuma variável de ambiente é exigida: os testes
-não acessam o PostgreSQL nem dependem de um artefato treinado.
+A suíte fixa a leitura da ABT com a conversão das categóricas e a seleção das features
+configuradas, a composição do treinamento, o cálculo do baseline populacional e a recusa de
+publicar um conjunto de artefatos que não pertença ao mesmo treino.
+
+Ela roda **sem PostgreSQL e sem artefato treinado**, porque as conexões chegam injetadas: os
+testes entregam uma conexão falsa pela mesma fronteira que a produção usa. A fixture de
+banco do [`infra`](../infra/README.md) está disponível por `pytest_plugins` quando algum
+teste precisar do banco real.
+
+[`requirements-test.txt`](./requirements-test.txt) instala as dependências de produção mais
+o pytest; [`pytest.ini`](./pytest.ini) declara a raiz de importação no componente — a mesma
+que a DAG compõe em tempo de execução — mais a raiz `data-platform`, de onde vem o pacote
+`infra`.
 
 ## Treinamento
 
@@ -106,18 +114,19 @@ cd data-platform
 set -a
 source .env
 set +a
-PYTHONPATH=DataPipeline Model/.venv/bin/python Model/train.py
+PYTHONPATH=. Model/.venv/bin/python Model/train.py
 ```
 
 O carregamento de `.env` exporta as credenciais, a porta e o nome do banco. O host não
 vem de lá: o CLI roda fora da rede do compose e conecta em `localhost`, declarado na
-própria chamada em `main`. No Airflow a conexão é aberta pelo `PostgresHook`, a partir do
+própria chamada em `main`. O `PYTHONPATH=.` aponta a raiz `data-platform`, de onde o pacote
+`infra` é importado. No Airflow a conexão é aberta pelo `PostgresHook`, a partir do
 `conn_id`, e essa preparação manual não é necessária.
 
 Treinamento reduzido para validação rápida:
 
 ```bash
-PYTHONPATH=DataPipeline Model/.venv/bin/python Model/train.py \
+PYTHONPATH=. Model/.venv/bin/python Model/train.py \
   --sample-size 5000 \
   --output-path /tmp/lightgbm_abt_smoke.pkl
 ```

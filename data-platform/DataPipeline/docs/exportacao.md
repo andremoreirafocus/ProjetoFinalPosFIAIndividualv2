@@ -41,8 +41,11 @@ cd data-platform/DataPipeline
 set -a
 source ../.env
 set +a
-.venv/bin/python export_data.py
+PYTHONPATH=.. .venv/bin/python export_data.py
 ```
+
+O `PYTHONPATH=..` aponta a raiz `data-platform`, de onde vem o pacote `infra`. O diretório
+de trabalho continua sendo `DataPipeline`, porque o caminho de saída é relativo a ele.
 
 O carregamento de `../.env` exporta as credenciais, a porta e o nome do banco. O host não
 vem de lá: a execução é fora da rede do compose, e o bloco `__main__` declara `localhost`

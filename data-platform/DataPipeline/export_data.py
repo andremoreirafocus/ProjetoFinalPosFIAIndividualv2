@@ -1,4 +1,4 @@
-from db import get_db_connection_str_from_env, get_pg_database_connection, log_row_count
+from infra.db import get_db_connection_str_from_env, get_pg_database_connection, log_row_count
 import os
 
 def run_postgres_to_csv_export(conn, source_table: str, output_dir_path: str):

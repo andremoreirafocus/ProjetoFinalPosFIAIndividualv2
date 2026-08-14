@@ -18,7 +18,7 @@ Separar esses momentos reduz o risco de misturar exploração com transformaçã
 ## Responsabilidade
 
 - disponibilizar um ambiente reproduzível para notebooks;
-- montar os diretórios `DataPipeline` e `Model` no workspace;
+- montar os diretórios `infra`, `DataPipeline` e `Model` no workspace;
 - instalar bibliotecas de análise, modelagem e interpretabilidade.
 
 ## Estrutura
@@ -57,6 +57,7 @@ No container, os diretórios são montados em:
 
 | Diretório do projeto | Caminho no Jupyter |
 |---|---|
+| `infra/` | `/home/jovyan/work/infra` |
 | `DataPipeline/` | `/home/jovyan/work/DataPipeline` |
 | `Model/` | `/home/jovyan/work/Model` |
 

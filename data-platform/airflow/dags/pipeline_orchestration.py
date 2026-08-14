@@ -23,7 +23,7 @@ from abt_transform import (
     create_agg_installments,
     run_abt_generation,
 )
-from db import get_pghook_database_connection
+from infra.db import get_pghook_database_connection
 from train import run_training_pipeline
 
 from airflow import DAG

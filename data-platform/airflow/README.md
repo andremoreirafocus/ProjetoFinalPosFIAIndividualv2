@@ -116,6 +116,7 @@ O mesmo diretório também pode conter as bases tratadas e a ABT geradas manualm
 | Origem no projeto | Caminho no Airflow | Uso |
 |---|---|---|
 | `airflow/dags` | `/opt/airflow/dags` | Descoberta da DAG. |
+| `infra` | `/opt/airflow/infra` | Fronteira de acesso ao banco, importada como `infra.db`. |
 | `DataPipeline` | `/opt/airflow/DataPipeline` | Módulos de ingestão e transformação. |
 | `Model` | `/opt/airflow/Model` | Treinamento, configuração e artefatos. |
 | `airflow/data` | `/opt/airflow/data` | Arquivos CSV de entrada. |

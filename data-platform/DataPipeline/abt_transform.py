@@ -8,7 +8,7 @@ Inclui a criação de índices intermediários e logs de volumetria.
 """
 import os
 import json
-from db import get_db_connection_str_from_env, get_pg_database_connection, log_row_count
+from infra.db import get_db_connection_str_from_env, get_pg_database_connection, log_row_count
 
 # --- TASKS INTERMEDIÁRIAS (AGREGAÇÕES EM SQL NO BANCO) ---
 def create_agg_previous_application(conn, output_prev_table: str):

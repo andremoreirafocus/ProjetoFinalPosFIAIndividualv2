@@ -4,7 +4,7 @@ data_sanitization.py — Limpeza e padronização (Home Credit) via ELT (SQL Pur
 Processamento transferido 100% para dentro do PostgreSQL.
 Funções puras: todas as configurações são recebidas por parâmetro via DAG (Airflow).
 """
-from db import log_row_count
+from infra.db import log_row_count
 
 def get_table_columns(cursor, table_name: str) -> list:
     """Busca dinamicamente a lista de colunas de uma tabela no PostgreSQL."""
