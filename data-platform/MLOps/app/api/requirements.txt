@@ -1,9 +1,9 @@
+# Runtime da API. As versoes que precisam coincidir com outros componentes vem
+# dos donos: o runtime de inferencia do Model (o artefato e um pickle do estimador)
+# e a fronteira de banco do infra (driver e SQLAlchemy).
+-r ../../../Model/requirements-inference.txt
+-r ../../../infra/requirements.txt
+
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 pydantic>=2.10,<3
-numpy>=1.26,<3
-pandas>=2.2,<3
-scikit-learn==1.5.0
-lightgbm==4.3.0
-sqlalchemy==2.0.51
-psycopg2-binary==2.9.9

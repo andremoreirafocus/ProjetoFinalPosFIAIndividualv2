@@ -4,8 +4,12 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
-COPY MLOps/app/api/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+# A estrutura de diretorios e preservada porque requirements.txt da API inclui os
+# arquivos do Model e do infra por caminho relativo.
+COPY infra/requirements.txt /tmp/infra/requirements.txt
+COPY Model/requirements-inference.txt /tmp/Model/requirements-inference.txt
+COPY MLOps/app/api/requirements.txt /tmp/MLOps/app/api/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/MLOps/app/api/requirements.txt
 COPY MLOps /app/MLOps
 
 ENV MODEL_PATH=/app/Model/artifacts/lightgbm_abt.pkl

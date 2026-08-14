@@ -1,0 +1,10 @@
+# Runtime de inferencia: as bibliotecas que entram no artefato treinado.
+#
+# Fonte unica das versoes para produtor e consumidor. O artefato e um pickle do
+# estimador: treinar e desserializar em versoes diferentes destas bibliotecas nao
+# tem compatibilidade garantida. Quem treina (Model) e quem serve (MLOps) instalam
+# este mesmo arquivo, em vez de repetir os pins.
+numpy==1.26.4
+pandas>=2.2,<3
+scikit-learn==1.5
+lightgbm==4.6.0
