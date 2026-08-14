@@ -79,6 +79,7 @@ services:
     command: webserver
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - ./infra:/opt/airflow/infra
       - ./DataPipeline:/opt/airflow/DataPipeline
       - ./Model:/opt/airflow/Model
       - ./airflow/data:/opt/airflow/data
@@ -104,6 +105,7 @@ services:
     command: scheduler
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - ./infra:/opt/airflow/infra
       - ./DataPipeline:/opt/airflow/DataPipeline
       - ./Model:/opt/airflow/Model
       - ./airflow/data:/opt/airflow/data
@@ -118,6 +120,7 @@ services:
     ports:
       - "8888:8888"
     volumes:
+      - ./infra:/home/jovyan/work/infra
       - ./DataPipeline:/home/jovyan/work/DataPipeline
       - ./Model:/home/jovyan/work/Model
     environment:

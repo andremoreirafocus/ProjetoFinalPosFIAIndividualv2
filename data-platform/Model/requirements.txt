@@ -1,3 +1,5 @@
+-r ../infra/requirements.txt
+
 numpy==1.26.4
 pandas>=2.2
 scikit-learn==1.5
@@ -5,7 +7,5 @@ scikit-learn==1.5
 #jupyterlab>=4,<5
 #ipykernel>=6,<7
 shap==0.46.0
-sqlalchemy==2.0.51
 lightgbm==4.6.0
-psycopg2-binary==2.9.9
 python-dotenv==1.0.1

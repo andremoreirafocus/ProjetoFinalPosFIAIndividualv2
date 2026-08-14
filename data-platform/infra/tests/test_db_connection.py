@@ -14,8 +14,8 @@ import os
 
 import pytest
 
-from conftest import TEST_DB_NAME
-from db import get_db_connection_str_from_env, get_pg_database_connection
+from infra.db import get_db_connection_str_from_env, get_pg_database_connection
+from infra.testing import configuracao_do_banco_de_teste
 
 
 VARIAVEIS_DE_CONEXAO = {
@@ -126,5 +126,5 @@ def test_conexao_abre_no_banco_nomeado_pela_string_recebida(test_db, ambiente_do
     finally:
         conn.close()
 
-    assert banco == TEST_DB_NAME
+    assert banco == configuracao_do_banco_de_teste()["dbname"]
     assert total == len(CLIENTES)

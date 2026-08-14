@@ -3,6 +3,7 @@ import sys
 import os
 
 # Mapeamento dos caminhos do projeto
+sys.path.append("/opt/airflow")            # infra, importado como pacote
 sys.path.append("/opt/airflow/DataPipeline")
 sys.path.append("/opt/airflow/Model")
 

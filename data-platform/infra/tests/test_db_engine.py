@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import text
 
-from db import get_database_engine, get_db_connection_str_from_env
+from infra.db import get_database_engine, get_db_connection_str_from_env
 
 
 CLIENTES = [
