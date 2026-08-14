@@ -1,0 +1,14 @@
+# Test environment = production runtime deps (app/api) + test tooling.
+# app/api/requirements.txt e a fonte unica das dependencias de producao da API.
+# agent-manual-review roda como script batch fora do container da API, mas sua
+# suite de teste faz parte da suite unica do componente, entao entra aqui. O
+# frontend fica fora de proposito: so test_frontend.py precisa dele, sob guarda
+# que pula o caso quando falta, e suas dependencias estao em
+# app/frontend/requirements.txt.
+-r app/api/requirements.txt
+-r agent-manual-review/agent-requirements.txt
+
+httpx2>=2.7,<3
+pytest==8.3.4
+pytest-cov==7.1.0
+pytest-asyncio==1.4.0
