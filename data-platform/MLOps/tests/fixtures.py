@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy import Engine, create_engine, text
 
+from MLOps.app.api.model_bundle import ModelBundle
 from MLOps.tests.fakes import FakeModel
 
 
@@ -37,6 +38,43 @@ def build_artifact(
         "trained_at_utc": "2026-07-14T00:00:00+00:00",
     }
     return artifact
+
+
+def build_model_bundle(
+    estimator: Any | None = None,
+    feature_order: list[str] | None = None,
+    categorical_features: list[str] | None = None,
+    categories: dict[str, list[str]] | None = None,
+    decision_threshold: float = 0.5,
+) -> ModelBundle:
+    """Monta um ``ModelBundle`` coerente com o contrato da etapa 1 do plano de bundle."""
+    return ModelBundle(
+        bundle_id="bundle-test-v1",
+        schema_version="1",
+        model_version="test-v1",
+        trained_at_utc="2026-07-14T00:00:00+00:00",
+        model_path=Path("/bundles/bundle-test-v1/lightgbm_abt.pkl"),
+        estimator=estimator if estimator is not None else FakeModel(),
+        feature_order=(
+            feature_order if feature_order is not None
+            else ["ext_source_1", "occupation_type"]
+        ),
+        categorical_features=(
+            categorical_features
+            if categorical_features is not None
+            else ["occupation_type"]
+        ),
+        categories=(
+            categories
+            if categories is not None
+            else {"occupation_type": ["Laborers", "Managers"]}
+        ),
+        decision_threshold=decision_threshold,
+        target_rate=0.08,
+        numeric_references={},
+        categorical_references={},
+        global_shap={"feature_importance": []},
+    )
 
 
 def build_feature_reference() -> dict[str, Any]:
