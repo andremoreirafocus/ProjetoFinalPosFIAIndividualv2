@@ -46,7 +46,7 @@ def load_artifact(artifact_path: Path):
         return pickle.load(f)
 
 def load_features_from_abt(sk_id: int, conn_id: str, features_esperadas: list) -> pd.DataFrame:
-    """Busca os dados fresquinhos do cliente direto na ABT usando o utils."""
+    """Busca os dados do cliente direto na ABT."""
     conn = get_database_connection(conn_id, silent=True)
     
     # Puxa o cliente, excluindo colunas não preditivas

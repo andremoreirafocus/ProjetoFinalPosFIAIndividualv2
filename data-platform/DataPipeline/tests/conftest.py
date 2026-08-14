@@ -23,7 +23,7 @@ import psycopg2
 import pytest
 
 
-# --- make the production modules importable (utils, ingestion, ...) -----------
+# --- make the production modules importable (db, config, ingestion, ...) ------
 DATAPIPELINE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(DATAPIPELINE_DIR))
 

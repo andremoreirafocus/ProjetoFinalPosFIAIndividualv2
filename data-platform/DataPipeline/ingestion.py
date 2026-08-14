@@ -60,7 +60,7 @@ def run_csv_ingestion(pasta_origem: str, table_name: str, conn, config: dict):
                 print(f"Reiniciando estrutura da tabela '{table_name}' no banco de dados...")
                 cursor.execute(f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
                 
-                # Mapeia dinamicamente as colunas usando função do utils.py
+                # Mapeia dinamicamente as colunas usando função do db.py
                 colunas_sql = map_pandas_to_postgres_types(chunk_df)
                 cursor.execute(f'CREATE TABLE "{table_name}" ({", ".join(colunas_sql)});')
                 conn.commit()
