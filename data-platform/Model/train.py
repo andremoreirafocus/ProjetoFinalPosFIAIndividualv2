@@ -261,6 +261,13 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    # Execucao manual, fora da rede do compose: o proprio entrypoint carrega o ambiente.
+    # Import local porque a imagem do Airflow nao tem python-dotenv e nao precisa dele:
+    # a DAG importa run_training_pipeline, nunca main.
+    from dotenv import load_dotenv
+
+    load_dotenv(DATA_PLATFORM_DIR / ".env")
+
     args = parse_args()
     print(f"[CLI] Iniciando pipeline de treinamento com config: {args.config}")
 

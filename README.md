@@ -169,9 +169,6 @@ Com PostgreSQL e ABT disponíveis:
 cd data-platform
 python3 -m venv Model/.venv
 Model/.venv/bin/python -m pip install -r Model/requirements.txt
-set -a
-source .env
-set +a
 PYTHONPATH=. Model/.venv/bin/python Model/train.py
 ```
 

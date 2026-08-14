@@ -169,7 +169,15 @@ def run_abt_generation(conn, config: dict):
 
 
 if __name__ == "__main__":
-    # Execução isolada, fora do Airflow: quem abre a conexão aqui é quem a fecha.
+    # Execução isolada, fora do Airflow: quem abre a conexão aqui é quem a fecha, e o
+    # entrypoint carrega o ambiente. Import local porque a imagem do Airflow nao tem
+    # python-dotenv — as tasks recebem ambiente do compose.
+    from pathlib import Path
+
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
     conn = get_pg_database_connection(get_db_connection_str_from_env("localhost"))
     try:
         run_abt_generation(

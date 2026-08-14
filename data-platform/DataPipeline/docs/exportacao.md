@@ -38,18 +38,16 @@ Entre na pasta `DataPipeline` para que o caminho relativo de saída seja resolvi
 
 ```bash
 cd data-platform/DataPipeline
-set -a
-source ../.env
-set +a
 PYTHONPATH=.. .venv/bin/python export_data.py
 ```
 
-O `PYTHONPATH=..` aponta a raiz `data-platform`, de onde vem o pacote `infra`. O diretório
-de trabalho continua sendo `DataPipeline`, porque o caminho de saída é relativo a ele.
+O entrypoint carrega o `../.env` por conta própria; variável já exportada no shell vence o
+arquivo. O `PYTHONPATH=..` aponta a raiz `data-platform`, de onde vem o pacote `infra`. O
+diretório de trabalho continua sendo `DataPipeline`, porque o caminho de saída é relativo a
+ele.
 
-O carregamento de `../.env` exporta as credenciais, a porta e o nome do banco. O host não
-vem de lá: a execução é fora da rede do compose, e o bloco `__main__` declara `localhost`
-na própria chamada.
+O host não vem do `.env`: a execução é fora da rede do compose, e o bloco `__main__`
+declara `localhost` na própria chamada.
 
 Na configuração atual do bloco `__main__`, o comando exporta:
 

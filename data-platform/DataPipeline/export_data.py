@@ -33,6 +33,14 @@ def run_postgres_to_csv_export(conn, source_table: str, output_dir_path: str):
         cursor.close()
 
 if __name__ == "__main__":
+    # Execucao manual: o entrypoint carrega o ambiente da plataforma. Import local porque
+    # a imagem do Airflow nao tem python-dotenv — as tasks recebem ambiente do compose.
+    from pathlib import Path
+
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
     tables_to_export = [
         "application_clean",
         "previous_application_clean",

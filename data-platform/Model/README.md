@@ -112,20 +112,17 @@ que a DAG compõe em tempo de execução — mais a raiz `data-platform`, de ond
 
 ```bash
 cd data-platform
-set -a
-source .env
-set +a
-Q
+PYTHONPATH=. Model/.venv/bin/python Model/train.py
 ```
 
-O carregamento de `.env` exporta as credenciais, a porta e o nome do banco. O host não
-vem de lá: o CLI roda fora da rede do compose e conecta em `localhost`, declarado na
-própria chamada em `main`. O `PYTHONPATH=.` aponta a raiz `data-platform`, de onde o pacote
-`infra` é importado. No Airflow a conexão é aberta pelo `PostgresHook`, a partir do
-`conn_id`, e essa preparação manual não é necessária.
+O entrypoint carrega o `.env` da plataforma por conta própria — credenciais, porta e nome
+do banco. O host não vem de lá: o CLI roda fora da rede do compose e conecta em
+`localhost`, declarado na própria chamada em `main`. Variável já exportada no shell vence o
+arquivo, então apontar para outro banco continua possível sem editá-lo. O `PYTHONPATH=.`
+aponta a raiz `data-platform`, de onde vem o pacote `infra`. No Airflow a conexão é aberta
+pelo `PostgresHook` a partir do `conn_id`, e nada disso é necessário.
 
-Treinamento reduzido para validação rápida, no mesmo diretório e com o mesmo ambiente
-carregado acima — sem as variáveis do `.env` o comando falha nomeando quais faltam:
+Treinamento reduzido para validação rápida, a partir do mesmo diretório:
 
 ```bash
 PYTHONPATH=. Model/.venv/bin/python Model/train.py \
