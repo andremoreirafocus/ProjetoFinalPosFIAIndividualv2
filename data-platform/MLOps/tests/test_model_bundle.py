@@ -5,7 +5,9 @@ voltam exatamente como passados. É a etapa 1 do plano de bundle, subetapas 1.1-
 """
 from pathlib import Path
 
-from MLOps.app.api.model_bundle import ModelBundle
+import pandas as pd
+
+from MLOps.app.api.model_bundle import ModelBundle, PreparedModelInput
 
 
 def test_model_bundle_exposes_all_its_fields() -> None:
@@ -43,3 +45,11 @@ def test_model_bundle_exposes_all_its_fields() -> None:
         "occupation_type": {"count": {"Laborers": 60}}
     }
     assert bundle.global_shap == {"feature_importance": []}
+
+
+def test_prepared_model_input_exposes_its_frame() -> None:
+    frame = pd.DataFrame([{"ext_source_1": 0.5, "occupation_type": "Managers"}])
+
+    prepared_input = PreparedModelInput(frame=frame)
+
+    assert prepared_input.frame is frame

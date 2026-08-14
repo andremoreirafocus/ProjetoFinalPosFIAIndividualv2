@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 
 @dataclass(frozen=True)
 class ModelBundle:
@@ -29,3 +31,10 @@ class ModelBundle:
     numeric_references: dict[str, dict[str, Any]]
     categorical_references: dict[str, dict[str, Any]]
     global_shap: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class PreparedModelInput:
+    """Entrada já tratada para o estimador: uma linha, colunas na ordem do bundle."""
+
+    frame: pd.DataFrame
