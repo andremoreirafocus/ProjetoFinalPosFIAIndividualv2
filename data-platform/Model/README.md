@@ -114,7 +114,7 @@ cd data-platform
 set -a
 source .env
 set +a
-PYTHONPATH=. Model/.venv/bin/python Model/train.py
+Q
 ```
 
 O carregamento de `.env` exporta as credenciais, a porta e o nome do banco. O host não
@@ -123,7 +123,8 @@ própria chamada em `main`. O `PYTHONPATH=.` aponta a raiz `data-platform`, de o
 `infra` é importado. No Airflow a conexão é aberta pelo `PostgresHook`, a partir do
 `conn_id`, e essa preparação manual não é necessária.
 
-Treinamento reduzido para validação rápida:
+Treinamento reduzido para validação rápida, no mesmo diretório e com o mesmo ambiente
+carregado acima — sem as variáveis do `.env` o comando falha nomeando quais faltam:
 
 ```bash
 PYTHONPATH=. Model/.venv/bin/python Model/train.py \
@@ -132,6 +133,10 @@ PYTHONPATH=. Model/.venv/bin/python Model/train.py \
 ```
 
 O parâmetro `--sample-size` limita a consulta e existe para smoke tests. Ele não deve ser usado para gerar o artefato oficial.
+
+`--output-path` nomeia apenas o arquivo do modelo; `eval_model_metrics.json` e
+`feature_reference.json` são gravados **na mesma pasta**, porque os três pertencem ao mesmo
+treinamento e são publicados juntos.
 
 ### O que `train.py` executa
 

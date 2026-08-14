@@ -172,7 +172,7 @@ Model/.venv/bin/python -m pip install -r Model/requirements.txt
 set -a
 source .env
 set +a
-PYTHONPATH=DataPipeline Model/.venv/bin/python Model/train.py
+PYTHONPATH=. Model/.venv/bin/python Model/train.py
 ```
 
 Para instruções detalhadas, consulte [Model/README.md](./data-platform/Model/README.md).
