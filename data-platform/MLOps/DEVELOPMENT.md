@@ -121,6 +121,9 @@ python3 -m venv .venv
 | `test_credit_policy.py` | Faixas de aprovação, revisão e rejeição; limites inválidos e score fora de `[0, 1]`. |
 | `test_config.py` | Limiares da política e intervalo de retry. |
 | `test_model_service.py` | Carga do artefato, predição, categóricas e features ausentes. |
+| `test_model_bundle.py` | Os três objetos de dados do bundle de predição (`ModelBundle`, `PreparedModelInput`, `PredictionResult`) expõem exatamente os campos com que foram construídos. |
+| `test_feature_input_processor.py` | `FeatureInputProcessor.prepare` ordena pelas features do bundle, ignora campos extras, recusa feature obrigatória ausente, reconstrói categóricas com as categorias persistidas e converte numéricas. |
+| `test_prediction_service.py` | `PredictionService.predict` (novo, sem carregamento) aplica o threshold do bundle recebido — não um valor fixo — e passa a mesma entrada preparada ao estimador, sem cópia. |
 | `test_feature_service.py` | Recuperação da ABT, cliente inexistente e normalização de tipos. |
 | `test_explanation_service.py` | SHAP local, referências e validação de versão. |
 | `test_api_endpoints.py` | Contratos e erros HTTP via `TestClient`. |
@@ -131,6 +134,13 @@ python3 -m venv .venv
 | `test_agent_manual_review_scripts.py` | O pipeline de revisão manual assistida em `agent-manual-review`: enriquecimento dos fatores autorizados e registro dos restritos, recusa de fator fora do catálogo, duplicado ou omitido, bloqueio quando a versão do prompt falta ou diverge, montagem e invocação do LLM estruturado por fake, validação da resposta contra o que foi enviado, renderização do PDF pelo template configurado, encadeamento em que a saída de um estágio é a entrada do seguinte, e a recusa de todos os estágios em sobrescrever saída existente. |
 
 Os testes da API utilizam fakes e fixtures injetados por composição. A suíte principal roda offline, sem PostgreSQL, LightGBM ou artefato treinado.
+
+`ModelBundle`, `PreparedModelInput`, `PredictionResult`, `FeatureInputProcessor` e o novo
+`PredictionService` (`model_bundle.py`, `feature_input_processor.py`,
+`prediction_service.py`) são a etapa 1 do plano de refatoração do carregamento, predição e
+explicação (`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`). Coexistem
+com o fluxo atual — `model_service.py` e seu `PredictionService` — sem substituí-lo ainda:
+nenhum entrypoint os usa até a etapa 8 do plano.
 
 Os testes de integração `test_predict.py` e `test_configuration.py` são pulados automaticamente quando o artefato ou LightGBM não estão disponíveis. `test_frontend.py` é pulado quando o Streamlit não está instalado.
 
