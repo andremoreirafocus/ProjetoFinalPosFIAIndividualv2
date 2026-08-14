@@ -121,8 +121,9 @@ acessória. O que cada uma cobre:
 | [MLOps](./MLOps/DEVELOPMENT.md) | Os contratos e erros HTTP da API, a carga do modelo em segundo plano, a política de crédito, a explicabilidade e a inicialização do frontend. | Offline, com fakes injetados por composição. |
 
 Regra comum às quatro: nada de mocks ou interceptação de chamadas — colaboradores entram
-por fixtures e fakes explícitos, pelas mesmas fronteiras que a produção usa. As suítes
-compartilham o banco de teste, então rodam em sequência, não em paralelo.
+por fixtures e fakes explícitos, pelas mesmas fronteiras que a produção usa. As suítes de
+`infra` e `DataPipeline` dividem o mesmo banco de teste, então rodam em sequência, não em
+paralelo; `Model` e `MLOps` não tocam o banco.
 
 ## Fluxo de dados e modelo
 

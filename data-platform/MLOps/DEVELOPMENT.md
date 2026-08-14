@@ -125,6 +125,7 @@ MLOps/.venv/bin/python -m unittest discover -s MLOps/tests -v
 | `test_frontend.py` | Inicialização da aplicação Streamlit. |
 | `test_predict.py` | Inferência pelo script local e contrato do resultado. |
 | `test_configuration.py` | Coerência entre configuração e artefato. |
+| `test_agent_manual_review_scripts.py` | O pipeline de revisão manual assistida em `agent-manual-review`: enriquecimento dos fatores autorizados e registro dos restritos, recusa de fator fora do catálogo, duplicado ou omitido, bloqueio quando a versão do prompt falta ou diverge, montagem e invocação do LLM estruturado por fake, validação da resposta contra o que foi enviado, renderização do PDF pelo template configurado, encadeamento em que a saída de um estágio é a entrada do seguinte, e a recusa de todos os estágios em sobrescrever saída existente. |
 
 Os testes da API utilizam fakes e fixtures injetados por composição. A suíte principal roda offline, sem PostgreSQL, LightGBM ou artefato treinado.
 

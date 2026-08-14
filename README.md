@@ -122,12 +122,15 @@ verificação acessória. O que cada uma cobre:
 
 | Suíte | O que fixa | Como executa |
 |---|---|---|
+| [infra](./data-platform/infra/README.md) | A fronteira de banco compartilhada: montagem da string de conexão a partir do ambiente e a exceção do host declarado, a falha nomeada quando falta variável obrigatória, a abertura da conexão e do Engine, e a garantia de que o papel de teste não alcança o banco de produção. | Contra o mesmo PostgreSQL de testes dedicado, com o papel de menor privilégio. |
 | [DataPipeline](./data-platform/DataPipeline/README.md#testes) | Os contratos funcionais de cada etapa do pipeline — ingestão em blocos, índices, regras de sanitização, agregações por cliente, construção da ABT e exportação — mais a fronteira de conexão com o banco. | Contra um PostgreSQL **de testes dedicado**, isolado do banco de produção por um papel de menor privilégio. Sem mocks: as funções recebem a conexão pela mesma fronteira que a tarefa do Airflow usa. |
 | [Model](./data-platform/Model/README.md#testes) | A leitura da ABT com a conversão das categóricas, a composição do treinamento, o cálculo do baseline populacional e a recusa de publicar um conjunto de artefatos que não pertença ao mesmo treino. | Sem PostgreSQL e sem artefato treinado: as conexões chegam injetadas. |
 | [MLOps](./data-platform/MLOps/DEVELOPMENT.md) | Os contratos e erros HTTP da API, a carga do modelo em segundo plano, a política de crédito, a explicabilidade e a inicialização do frontend. | Offline, com fakes injetados por composição; os casos que exigem o artefato treinado são pulados quando ele não existe. |
 
-A regra que atravessa as três: nada de mocks ou interceptação de chamadas — colaboradores
-entram por fixtures e fakes explícitos, pelas mesmas fronteiras que a produção usa.
+A regra que atravessa as quatro: nada de mocks ou interceptação de chamadas — colaboradores
+entram por fixtures e fakes explícitos, pelas mesmas fronteiras que a produção usa. As
+suítes de `infra` e `DataPipeline` dividem o mesmo banco de teste, então rodam em sequência,
+não em paralelo.
 
 ## Execução rápida
 
