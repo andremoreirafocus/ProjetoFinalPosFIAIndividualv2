@@ -457,9 +457,8 @@ scripts não os usam como fallback e não escrevem no diretório `archive`.
 Execute:
 
 ```bash
-cd data-platform
-MLOps/.venv/bin/python \
-  -m unittest MLOps.tests.test_agent_manual_review_scripts -v
+cd data-platform/MLOps
+.venv/bin/python -m pytest tests/test_agent_manual_review_scripts.py -v
 ```
 
 Os testes usam fixtures de domínio e um fake explícito para o colaborador LLM. Não

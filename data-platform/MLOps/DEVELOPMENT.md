@@ -30,7 +30,8 @@ MLOps/
 ├── MONITORING_ARCHITECTURE.md
 ├── Dockerfile.api
 ├── Dockerfile.frontend
-├── test-requirements.txt
+├── pytest.ini
+├── requirements-test.txt
 └── README.md
 ```
 
@@ -101,15 +102,17 @@ CREDIT_API_URL=http://localhost:8000 \
 
 ## Testes
 
+A suíte de testes do componente roda com pytest, a partir da própria pasta `MLOps`:
+
 ```bash
-cd data-platform
-python3 -m venv MLOps/.venv
-MLOps/.venv/bin/python -m pip install -r MLOps/test-requirements.txt
-MLOps/.venv/bin/python -m pip install -r MLOps/app/frontend/requirements.txt
-MLOps/.venv/bin/python -m unittest discover -s MLOps/tests -v
+cd data-platform/MLOps
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-test.txt
+.venv/bin/python -m pip install -r app/frontend/requirements.txt
+.venv/bin/python -m pytest
 ```
 
-`test-requirements.txt` inclui as dependências da API. A instalação dos requisitos do frontend permite executar `test_frontend.py`.
+`requirements-test.txt` inclui as dependências da API e do script de revisão manual assistida (`agent-manual-review`). A instalação dos requisitos do frontend, à parte, permite executar `test_frontend.py`.
 
 ## Cobertura existente
 
