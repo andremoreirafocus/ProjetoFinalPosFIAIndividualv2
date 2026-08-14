@@ -131,6 +131,7 @@ ORDER BY target;
 ## Componentes relacionados
 
 - [Airflow](../airflow/README.md)
+- [infra](../infra/README.md) — consome este provisionamento no harness de teste
 - [Pipeline de dados](../DataPipeline/README.md)
 - [Modelo](../Model/README.md)
 - [MLOps](../MLOps/README.md)

@@ -65,6 +65,61 @@ Nos contêineres, o componente chega por montagem: `/opt/airflow/infra` no Airfl
 `SQLAlchemy` e `psycopg2-binary`. Os componentes que o consomem referenciam esse arquivo em
 vez de repetir as versões.
 
+## Harness de teste
+
+[`testing.py`](./testing.py) é o harness de banco compartilhado pelas suítes da plataforma.
+Cada componente o declara no seu `conftest.py`:
+
+```python
+pytest_plugins = ["infra.testing"]
+```
+
+O que ele oferece:
+
+| Fixture | Entrega |
+|---|---|
+| `test_db` | Auxiliar ligado ao banco de teste, com o schema público limpo na entrada e na saída, para arranjar tabelas e observar estado nas asserções. |
+| `conexao` | Conexão DBAPI com o banco de teste — o mesmo tipo de objeto que a task da DAG entrega em produção. Sem `autocommit`, para que `commit` e `rollback` tenham efeito observável. |
+| `ambiente_do_banco_de_teste` | Declara as variáveis `POSTGRES_*` apontando para o banco de teste, e as restaura ao fim. Só os testes da função que lê o ambiente precisam dela. |
+
+Dois contratos de uso:
+
+- **`conexao` deve ser declarada depois de `test_db`** na assinatura do teste. A ordem
+  determina a finalização — `conexao` é fechada antes —, e sem isso a transação em aberto
+  trava o `DROP TABLE` da limpeza.
+- A configuração é **lida sob demanda**, dentro da fixture de sessão, não no import: uma
+  suíte que não toca o banco roda sem exigir o arquivo nem o PostgreSQL.
+
+A conexão vem de [`test_database.ini`](./test_database.ini), com todas as chaves
+obrigatórias e sem fallback de ambiente. Um guard recusa executar se o alvo não for um
+banco `*_test` distinto do banco do pipeline, de modo que a suíte não pode criar, recriar
+ou remover tabelas no banco de produção. O provisionamento do banco e do papel de menor
+privilégio está no [README do PostgreSQL](../postgres/README.md).
+
+## Testes
+
+A suíte deste componente fixa o contrato da fronteira que ele implementa:
+
+- a montagem da string de conexão a partir das variáveis de ambiente, e a exceção do host
+  informado, que sobrepõe e dispensa `POSTGRES_HOST`;
+- a falha nomeando qual variável obrigatória falta, em vez de compor uma string com `None`;
+- a abertura de conexão no banco indicado pela string recebida, e não pelo ambiente;
+- o Engine do SQLAlchemy apontando para o destino declarado e alimentando `pandas.read_sql`,
+  que é o uso real nos notebooks;
+- a garantia de isolamento: o papel de teste conecta ao banco de teste e é recusado pelo
+  banco do pipeline.
+
+Os contratos funcionais dos componentes que consomem esta fronteira são cobertos pelas
+suítes deles, sem reexercitar o que já está fixado aqui.
+
+Executa a partir desta pasta, reusando o ambiente do pipeline — o componente não tem
+`.venv` próprio porque suas dependências são as mesmas, mais o pytest:
+
+```bash
+cd data-platform/infra
+../DataPipeline/.venv/bin/python -m pytest
+```
+
 ## Componentes relacionados
 
 - [Pipeline de dados](../DataPipeline/README.md)

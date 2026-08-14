@@ -101,11 +101,28 @@ airflow/data/csv
 | Componente | Responsabilidade | Documentação |
 |---|---|---|
 | PostgreSQL | Persistência das fontes, tabelas tratadas e ABT | [postgres/README.md](./postgres/README.md) |
+| infra | Fronteira de acesso ao banco e harness de teste, comuns aos componentes | [infra/README.md](./infra/README.md) |
 | Airflow | Orquestração ponta a ponta do pipeline | [airflow/README.md](./airflow/README.md) |
 | DataPipeline | Ingestão, limpeza, agregações e ABT | [DataPipeline/README.md](./DataPipeline/README.md) |
 | Jupyter | Ambiente dos notebooks de análise e modelagem | [jupyter/README.md](./jupyter/README.md) |
 | Model | Seleção, treinamento, avaliação e inferência local | [Model/README.md](./Model/README.md) |
 | MLOps | API, política de crédito, frontend, testes e propostas arquiteturais | [MLOps/README.md](./MLOps/README.md) |
+
+## Testes automatizados
+
+Cada componente tem sua suíte, e elas fixam o comportamento esperado — não são verificação
+acessória. O que cada uma cobre:
+
+| Suíte | O que fixa | Como executa |
+|---|---|---|
+| [infra](./infra/README.md) | A fronteira de banco: montagem da string de conexão a partir do ambiente e a exceção do host declarado, a falha nomeada quando falta variável obrigatória, a abertura de conexão e do Engine, e a garantia de que o papel de teste não alcança o banco de produção. | Contra o banco de testes dedicado, com o papel de menor privilégio. |
+| [DataPipeline](./DataPipeline/README.md#testes) | Os contratos funcionais de cada etapa do pipeline — ingestão em blocos, índices, regras de sanitização, agregações por cliente, construção da ABT e exportação. | Contra o mesmo banco dedicado, recebendo a conexão pela fronteira que o `infra` oferece e a task da DAG usa. |
+| [Model](./Model/README.md#testes) | A leitura da ABT com conversão das categóricas, a composição do treinamento, o cálculo do baseline populacional e a recusa de publicar artefatos que não pertençam ao mesmo treino. | Sem PostgreSQL e sem artefato: as conexões chegam injetadas. |
+| [MLOps](./MLOps/DEVELOPMENT.md) | Os contratos e erros HTTP da API, a carga do modelo em segundo plano, a política de crédito, a explicabilidade e a inicialização do frontend. | Offline, com fakes injetados por composição. |
+
+Regra comum às quatro: nada de mocks ou interceptação de chamadas — colaboradores entram
+por fixtures e fakes explícitos, pelas mesmas fronteiras que a produção usa. As suítes
+compartilham o banco de teste, então rodam em sequência, não em paralelo.
 
 ## Fluxo de dados e modelo
 
@@ -168,6 +185,7 @@ Alterações nas features exigem atualização coordenada da ABT, configuração
 ```text
 data-platform/
 ├── airflow/             # ambiente e DAG de orquestração
+├── infra/               # fronteira de banco e harness de teste, compartilhados
 ├── DataPipeline/        # ingestão, transformações, ABT e EDA
 ├── jupyter/             # imagem do ambiente de notebooks
 ├── MLOps/               # aplicações, testes e propostas arquiteturais

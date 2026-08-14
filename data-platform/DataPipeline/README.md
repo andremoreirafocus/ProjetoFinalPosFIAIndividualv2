@@ -137,7 +137,9 @@ Depois, acesse http://localhost:8080, localize `pipeline_orchestration` e inicie
 
 A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks.
 
-As funções são exercitadas pela mesma fronteira que a produção usa: onde a task da DAG entrega a conexão aberta pelo `PostgresHook`, o teste entrega a do `data_test`. A suíte não escreve em variáveis de ambiente — só os testes da própria função que lê o ambiente declaram essas variáveis, por fixture explícita.
+As funções são exercitadas pela mesma fronteira que a produção usa: onde a task da DAG entrega a conexão aberta pelo `PostgresHook`, o teste entrega a do `data_test`. A suíte não escreve em variáveis de ambiente.
+
+A **fronteira de banco em si** — resolução de conexão, Engine e isolamento do banco de teste — é coberta pela suíte do [`infra`](../infra/README.md), que a implementa. Aqui os contratos do pipeline dependem desse comportamento sem reexercitá-lo.
 
 ### Pré-requisitos
 
@@ -157,7 +159,7 @@ As funções são exercitadas pela mesma fronteira que a produção usa: onde a 
      -r data-platform/DataPipeline/requirements-test.txt
    ```
 
-A conexão da suíte é lida de [`tests/test_database.ini`](./tests/test_database.ini) — versionado com credenciais locais de demonstração, sem leitura de variáveis de ambiente com fallback. Um guard aborta a execução se o alvo não for um banco `*_test` distinto do banco de produção.
+A conexão da suíte vem do harness compartilhado em [`infra/testing.py`](../infra/testing.py), que lê [`infra/test_database.ini`](../infra/test_database.ini) — versionado com credenciais locais de demonstração, sem leitura de variáveis de ambiente com fallback. Um guard aborta a execução se o alvo não for um banco `*_test` distinto do banco de produção.
 
 ### Execução
 
