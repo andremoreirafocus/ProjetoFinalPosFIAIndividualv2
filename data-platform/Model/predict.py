@@ -45,14 +45,16 @@ def load_artifact(artifact_path: Path):
     with open(artifact_path, "rb") as f:
         return pickle.load(f)
 
-def load_features_from_abt(sk_id: int, conn_id: str, features_esperadas: list) -> pd.DataFrame:
-    """Busca os dados do cliente direto na ABT."""
-    conn = get_database_connection(conn_id, silent=True)
+def load_features_from_abt(conn, sk_id: int) -> pd.DataFrame:
+    """Busca os dados do cliente direto na ABT.
+
+    `conn` e uma conexao DBAPI ja aberta, fornecida por quem conhece o contexto de
+    execucao. Nao e fechada aqui: quem abre, fecha.
+    """
     
     # Puxa o cliente, excluindo colunas não preditivas
     query = f'SELECT * FROM application_abt WHERE sk_id_curr = {sk_id} LIMIT 1;'
     df = pd.read_sql(query, conn)
-    conn.close()
     
     if df.empty:
         raise ValueError(f"Cliente sk_id_curr={sk_id} não encontrado na base de dados (ABT).")
@@ -91,7 +93,11 @@ if __name__ == "__main__":
     artifact = load_artifact(ARTIFACT_PATH)
     
     print(f"[PREDICT] Buscando features para sk_id_curr = {args.sk_id}...")
-    df_client = load_features_from_abt(args.sk_id, "postgres_data_db", artifact["features"])
+    conn = get_database_connection("postgres_data_db", silent=True)
+    try:
+        df_client = load_features_from_abt(conn, args.sk_id)
+    finally:
+        conn.close()
     
     print("[PREDICT] Rodando modelo...")
     resultado = predict_score(df_client, artifact)
