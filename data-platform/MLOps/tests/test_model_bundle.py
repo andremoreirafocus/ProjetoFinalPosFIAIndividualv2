@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from MLOps.app.api.model_bundle import ModelBundle, PreparedModelInput
+from MLOps.app.api.model_bundle import ModelBundle, PredictionResult, PreparedModelInput
 
 
 def test_model_bundle_exposes_all_its_fields() -> None:
@@ -53,3 +53,10 @@ def test_prepared_model_input_exposes_its_frame() -> None:
     prepared_input = PreparedModelInput(frame=frame)
 
     assert prepared_input.frame is frame
+
+
+def test_prediction_result_exposes_score_and_class() -> None:
+    result = PredictionResult(risk_score=0.55, predicted_class=1)
+
+    assert result.risk_score == 0.55
+    assert result.predicted_class == 1

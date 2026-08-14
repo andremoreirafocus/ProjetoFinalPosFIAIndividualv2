@@ -38,3 +38,11 @@ class PreparedModelInput:
     """Entrada já tratada para o estimador: uma linha, colunas na ordem do bundle."""
 
     frame: pd.DataFrame
+
+
+@dataclass(frozen=True)
+class PredictionResult:
+    """Score e classe devolvidos pela predição, com o threshold já aplicado."""
+
+    risk_score: float
+    predicted_class: int
