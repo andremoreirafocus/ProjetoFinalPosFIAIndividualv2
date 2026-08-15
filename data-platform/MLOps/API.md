@@ -7,7 +7,10 @@ Este documento descreve a arquitetura interna, a configuração e os contratos d
 | Componente | Responsabilidade | Não é responsabilidade |
 |---|---|---|
 | `feature_service` | Recuperar uma linha da ABT e preparar suas features. | Reexecutar a engenharia de atributos sobre as fontes brutas. |
-| `model_service` | Validar o artefato, alinhar tipos e calcular score e classe. | Definir aprovação ou rejeição de negócio. |
+| `artifact_bundle_loader` | Ler, conferir e validar o conjunto de artefatos declarado pelo manifesto. | Decidir quando recarregar ou expor predição. |
+| `model_bundle_manager` | Decidir se e quando trocar o bundle ativo, preservando o anterior em qualquer falha do candidato. | Validar o conteúdo do candidato — isso é do loader. |
+| `feature_input_processor` | Alinhar a entrada ao contrato do bundle ativo: ordem, tipos, categorias. | Calcular score ou carregar artefato. |
+| `prediction_service` | Calcular score e classe a partir do bundle e da entrada já preparada. | Preparar a entrada ou definir aprovação/rejeição. |
 | `explanation_service` | Calcular contribuições TreeSHAP locais para revisão manual. | Calcular score ou definir a política de crédito. |
 | `credit_policy` | Traduzir faixas de score em recomendação demonstrativa. | Retreinar ou calibrar o modelo. |
 | FastAPI | Gerenciar ciclo de vida, contratos e erros HTTP. | Armazenar o histórico definitivo das decisões. |
@@ -22,10 +25,11 @@ Consumidor
    ▼
 FastAPI — contrato e transporte
    │
-   ├── FeatureService ──────→ recupera as features do cliente na ABT
-   ├── PredictionService ───→ alinha o contrato e calcula o score
-   ├── CreditPolicy ────────→ converte o score em recomendação
-   └── ExplanationService ──→ explica casos em revisão manual
+   ├── FeatureService ──────────→ recupera as features do cliente na ABT
+   ├── FeatureInputProcessor ───→ alinha a entrada ao contrato do bundle ativo
+   ├── PredictionService ───────→ calcula score e classe
+   ├── CreditPolicy ────────────→ converte o score em recomendação
+   └── ExplanationService ──────→ explica casos em revisão manual
 ```
 
 - acesso a dados e inferência não conhecem a regra de negócio;
@@ -45,8 +49,9 @@ FastAPI — contrato e transporte
 
 ```text
 train.py
-   → artefato com features, categorias e threshold
-   → PredictionService valida e alinha a entrada
+   → publica o bundle (manifesto, modelo e referência versionados)
+   → ArtifactBundleLoader valida e monta o bundle ativo
+   → FeatureInputProcessor alinha a entrada ao contrato do bundle
    → /model/features expõe o contrato
    → Streamlit renderiza os mesmos campos
 ```
@@ -55,8 +60,8 @@ train.py
 
 | Variável | Finalidade | Padrão no Compose |
 |---|---|---|
-| `MODEL_PATH` | Caminho do artefato LightGBM | `/app/Model/artifacts/lightgbm_abt.pkl` |
-| `MODEL_LOAD_RETRY_SECONDS` | Intervalo entre tentativas da carga inicial | `5` segundos |
+| `MODEL_ARTIFACTS_DIR` | Diretório onde o conjunto de artefatos publicado está visível | Sem padrão |
+| `MODEL_BUNDLE_REFRESH_SECONDS` | Intervalo entre ciclos de verificação do manifesto | Sem padrão |
 | `DATABASE_URL` | Conexão com o banco `data` | PostgreSQL do Compose |
 | `CREDIT_APPROVE_MAX_SCORE` | Limite superior para aprovação | `0.50` |
 | `CREDIT_MANUAL_REVIEW_MAX_SCORE` | Limite superior para revisão manual | `0.60` |
@@ -72,36 +77,43 @@ Os limites são demonstrativos, precisam ser validados com custos e regras reais
 
 No startup, o `lifespan`:
 
-1. valida os limites da política;
-2. cria o `PredictionService` com `MODEL_PATH`;
-3. inicia em segundo plano a carga conjunta do modelo e de suas referências;
-4. cria o engine SQLAlchemy com `pool_pre_ping=True`;
-5. instancia os serviços de features, explicação e política;
-6. registra os serviços em `app.state`;
-7. libera o pool de conexões no shutdown.
+1. valida a configuração (`settings.validate()`);
+2. monta o `ArtifactBundleLoader` e o `ModelBundleManager`, apontado para o manifesto
+   composto de `MODEL_ARTIFACTS_DIR`;
+3. cria o engine SQLAlchemy por `infra.db.get_database_engine(..., pool_pre_ping=True)`;
+4. instancia os serviços de preparo de entrada, predição, explicação, features e
+   política, e registra tudo em `app.state`;
+5. inicia em segundo plano um laço único que verifica o manifesto a cada
+   `MODEL_BUNDLE_REFRESH_SECONDS`;
+6. no shutdown, cancela o laço e libera o pool de conexões.
 
-Se o modelo ou suas referências estiverem ausentes, corrompidos ou incompatíveis, a API registra o erro e tenta carregar novamente o bundle após `MODEL_LOAD_RETRY_SECONDS`. Enquanto nenhum bundle válido estiver disponível, `/health` e os endpoints dependentes do modelo respondem `503`.
+O manager lê o manifesto ativo e decide se há candidato novo. Quando há, delega ao loader
+a leitura e a validação completas — schema do manifesto, checksums, chaves obrigatórias do
+artefato e da referência, identidade cruzada entre manifesto/artefato/referência, e
+cobertura estatística e SHAP de cada feature do modelo (referências extras geram um
+warning no log, sem impedir a ativação). Um candidato inválido não substitui o bundle
+ativo, e a próxima verificação tenta de novo. Enquanto nenhum bundle válido estiver ativo,
+`/health` e os endpoints dependentes do modelo respondem `503`, com o último erro
+registrado.
 
-Quando a carga termina, o modelo e suas referências permanecem em memória. A API verifica a assinatura dos dois arquivos a cada requisição e recarrega o conjunto quando ambos pertencem ao mesmo treinamento. Se apenas um deles tiver sido atualizado, a última versão válida continua em uso até que o novo par esteja completo.
-
-Antes de ativar o bundle, a API também verifica se cada feature do modelo possui
-exatamente uma referência estatística, numérica ou categórica, e uma referência
-SHAP global. A ausência ou a ambiguidade dessas referências impede a ativação.
-Referências extras não impedem a carga, mas geram um warning no log.
-
-O artefato precisa conter modelo, threshold e a lista de features na chave obrigatória `features`, que é a única aceita pela API.
+O artefato precisa conter modelo, threshold, features, categóricas, categorias e
+identidade de treino — as sete chaves obrigatórias do contrato, declaradas em
+`Model/artifact_bundle_contract.py`.
 
 ## Preparação para inferência
 
-Antes de `predict_proba`, o `PredictionService`:
+Antes de calcular o score, o `FeatureInputProcessor`:
 
-- rejeita entradas sem todas as features obrigatórias;
+- rejeita entradas sem todas as features obrigatórias do bundle;
 - reorganiza as colunas na ordem do treinamento;
 - ignora campos extras durante o reindex;
-- restaura `pandas.Categorical` com as categorias do artefato;
-- converte as demais features para tipo numérico;
-- calcula `risk_score` para a classe positiva;
-- compara o score com o threshold persistido para produzir `predicted_class`.
+- restaura `pandas.Categorical` com as categorias persistidas no bundle;
+- converte as demais features para tipo numérico.
+
+A mesma entrada preparada é compartilhada entre `PredictionService` (que calcula
+`risk_score` para a classe positiva e compara com o `decision_threshold` do bundle para
+produzir `predicted_class`) e `ExplanationService`, quando a política pede revisão manual —
+os dois nunca recebem entradas preparadas separadamente para o mesmo pedido.
 
 Restaurar as categorias é indispensável para o LightGBM com categóricas nativas: o mesmo texto precisa representar a mesma categoria lógica usada no ajuste.
 
@@ -138,24 +150,25 @@ O Swagger gerado pelos contratos de `schemas.py` está disponível em http://loc
 
 ## Health check
 
-Enquanto nenhum bundle válido está disponível:
+Enquanto nenhum bundle válido está ativo:
 
 ```json
 {
   "detail": {
     "message": "Modelo e referências ainda não estão disponíveis.",
-    "last_error": "[Errno 2] No such file or directory: '/app/Model/artifacts/lightgbm_abt.pkl'"
+    "last_error": "Manifesto não encontrado: /app/Model/artifacts/current_bundle.json"
   }
 }
 ```
 
-Depois da carga:
+Depois da carga, `model_path` reflete o pickle do bundle ativo, dentro do diretório
+versionado:
 
 ```json
 {
   "status": "ok",
   "model_loaded": true,
-  "model_path": "/app/Model/artifacts/lightgbm_abt.pkl"
+  "model_path": "/app/Model/artifacts/bundles/model-1.0.0-20260815T164748Z/lightgbm_abt.pkl"
 }
 ```
 
@@ -245,8 +258,8 @@ A resposta explicativa constitui o insumo quantitativo do futuro agente acelerad
 | Cliente inexistente na ABT | HTTP `404`. |
 | Falha ao consultar PostgreSQL | HTTP `503`. |
 | Features obrigatórias ausentes | HTTP `422` com a lista. |
-| Modelo ou referências ausentes ou inválidos, sem bundle anterior | API ativa, retry da carga inicial e HTTP `503` nos endpoints dependentes. |
-| Atualização incompleta com bundle anterior válido | A API mantém em memória a última versão válida até que o novo par esteja completo. |
+| Manifesto ausente, inválido ou candidato incompatível, sem bundle ativo anterior | API ativa, HTTP `503` nos endpoints dependentes, nova verificação a cada `MODEL_BUNDLE_REFRESH_SECONDS`. |
+| Candidato novo inválido com bundle ativo anterior válido | O manager preserva o bundle ativo; a próxima verificação tenta o candidato de novo. |
 
 As predições são registradas em JSON no stdout para demonstração e diagnóstico. Esse registro não substitui uma trilha de auditoria persistente.
 

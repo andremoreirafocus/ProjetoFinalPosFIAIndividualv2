@@ -243,8 +243,8 @@ POOL_AGGREGATION_SIZE=2
 JUPYTER_TOKEN=analytics
 
 # Credit API
-MODEL_PATH=/app/Model/artifacts/lightgbm_abt.pkl
-MODEL_LOAD_RETRY_SECONDS=5
+MODEL_ARTIFACTS_DIR=/app/Model/artifacts
+MODEL_BUNDLE_REFRESH_SECONDS=5
 CREDIT_POLICY_VERSION=demo-v1
 CREDIT_APPROVE_MAX_SCORE=0.50
 CREDIT_MANUAL_REVIEW_MAX_SCORE=0.60
@@ -263,11 +263,11 @@ CREDIT_MANUAL_REVIEW_MAX_SCORE=0.60
 | `AIRFLOW_ADMIN_*` | Obrigatórias | Dados do usuário admin criado na inicialização (`USERNAME`, `PASSWORD`, `FIRSTNAME`, `LASTNAME`, `ROLE`, `EMAIL`). | Sem padrão |
 | `POOL_INGESTAO_SIZE` / `POOL_SANITIZATION_SIZE` / `POOL_AGGREGATION_SIZE` | Obrigatórias | Tamanho dos pools do Airflow que limitam o paralelismo por etapa da DAG. | Sem padrão |
 | `JUPYTER_TOKEN` | Obrigatória | Token usado para autenticar o acesso ao JupyterLab. | Sem padrão |
-| `MODEL_PATH` | Obrigatória | Caminho do artefato do modelo dentro do container da API. | Sem padrão |
+| `MODEL_ARTIFACTS_DIR` | Obrigatória | Diretório dentro do container da API onde o conjunto de artefatos publicado está visível — o manifesto (`current_bundle.json`) e o diretório `bundles/`. | Sem padrão |
+| `MODEL_BUNDLE_REFRESH_SECONDS` | Obrigatória | Intervalo entre ciclos de verificação do manifesto. Enquanto nenhum bundle válido estiver ativo, a API permanece ativa e `/health` responde `503`. | Sem padrão |
 | `CREDIT_POLICY_VERSION` | Obrigatória | Versão declarada da política de crédito, retornada nas respostas da API. | Sem padrão |
 | `CREDIT_APPROVE_MAX_SCORE` | Obrigatória | Limite superior da aprovação automática. Scores abaixo desse valor recebem recomendação de aprovação. | Sem padrão |
 | `CREDIT_MANUAL_REVIEW_MAX_SCORE` | Obrigatória | Limite superior da análise manual. Scores a partir desse valor recebem recomendação de rejeição. | Sem padrão |
-| `MODEL_LOAD_RETRY_SECONDS` | Opcional | Intervalo entre tentativas de carregamento do modelo e de suas referências. Enquanto nenhum bundle válido estiver disponível, a API permanece ativa e `/health` responde `503`. | `5` segundos |
 | `CREDIT_API_PORT` | Opcional | Porta do host pela qual a API de crédito será acessada. | `8000` |
 | `CREDIT_FRONTEND_PORT` | Opcional | Porta do host pela qual o frontend Streamlit será acessado. | `8501` |
 
@@ -362,10 +362,11 @@ docker compose up -d --build postgres credit-api credit-frontend
 
 ### Prontidão da API e carregamento do modelo
 
-O processo do `credit-api` pode iniciar mesmo que o modelo ou suas referências
-ainda não estejam disponíveis no volume. A API tenta carregar os dois arquivos
-como um único bundle e, em caso de falha, registra o erro no log e repete a
-operação após o intervalo configurado em `MODEL_LOAD_RETRY_SECONDS`.
+O processo do `credit-api` pode iniciar mesmo que nenhum conjunto de artefatos
+tenha sido publicado ainda em `MODEL_ARTIFACTS_DIR`. A API verifica o manifesto
+(`current_bundle.json`) a cada `MODEL_BUNDLE_REFRESH_SECONDS` e, em caso de
+falha, registra o erro e mantém o último bundle válido — ou nenhum, se ainda
+não houver um.
 
 Enquanto nenhum bundle válido estiver disponível, `GET /health` responde HTTP
 `503` com uma mensagem de indisponibilidade e o último erro de carregamento. Os

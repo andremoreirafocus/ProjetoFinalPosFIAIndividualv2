@@ -81,15 +81,16 @@ set -a
 source .env
 set +a
 export DATABASE_URL="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DATA_DB}"
-export MODEL_PATH="$(pwd)/Model/artifacts/lightgbm_abt.pkl"
+export MODEL_ARTIFACTS_DIR="$(pwd)/Model/artifacts"
 MLOps/.venv/bin/python -m uvicorn MLOps.app.api.main:app --reload
 ```
 
-O arquivo `.env` fornece as credenciais, os nomes dos bancos e a configuração
-da política. Na execução local, `DATABASE_URL` usa `localhost` porque a API roda
-fora da rede do Docker, enquanto `MODEL_PATH` aponta para o artefato no sistema de
-arquivos local. Esses dois valores substituem os caminhos internos usados pelos
-containers.
+O arquivo `.env` fornece as credenciais, os nomes dos bancos, a configuração da
+política e `MODEL_BUNDLE_REFRESH_SECONDS`. Na execução local, `DATABASE_URL` usa
+`localhost` porque a API roda fora da rede do Docker, enquanto
+`MODEL_ARTIFACTS_DIR` aponta para o diretório de artefatos no sistema de arquivos
+local, não para o caminho dentro do container. Esses dois valores substituem os
+usados pelos containers.
 
 Em outro terminal, inicie o frontend:
 
