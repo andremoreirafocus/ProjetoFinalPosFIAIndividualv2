@@ -1,8 +1,5 @@
-"""Testes de publish_bundle — etapa 3.2 do plano de bundle.
-
-Comportamento novo, não migrado de train.py: publicação atômica do modelo e das
-referências, com o manifesto escrito por último (seção 5.2 do plano). train.py não
-muda nesta etapa — continua gravando os arquivos fixos até a etapa 6.
+"""Testes de publish_bundle: publicação atômica do modelo e das referências, com o
+manifesto escrito por último.
 """
 import hashlib
 import json

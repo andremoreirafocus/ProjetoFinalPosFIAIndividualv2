@@ -71,13 +71,18 @@ Quando apenas operações concedidas produzem desfecho observável, essas métri
 
 ## Baselines disponíveis e artefato proposto
 
-O treinamento já produz os artefatos necessários para iniciar as comparações:
+O treinamento já publica, dentro de um bundle versionado (`bundles/<bundle_id>/`, nunca
+sobrescrito, com o manifesto `current_bundle.json` apontando para o ativo), os artefatos
+necessários para iniciar as comparações:
 
 - `eval_model_metrics.json`, com as métricas do holdout;
 - `feature_reference.json`, com distribuições das features e do score;
 - artefato do modelo, com features, categorias, threshold e versão da configuração.
 
-Esses artefatos ainda não constituem monitoramento contínuo. Embora contenham metadados de versão, atualmente são gravados sempre nos mesmos caminhos e sobrescritos a cada treinamento, sem preservação do histórico físico.
+Esses artefatos ainda não constituem monitoramento contínuo. O histórico físico já é
+preservado, mas falta o vínculo entre a versão que gerou cada lote de predição e o
+baseline correspondente, e a organização desses bundles como superfície consultável para
+o monitoramento — é isso que o *model registry* proposto adiante endereça.
 
 Parte das informações necessárias ao monitoramento já existe em `feature_reference.json`, incluindo percentis das features numéricas, frequências das categorias e distribuição do score. Entretanto, esse artefato foi estruturado para apoiar a explicação individual produzida pela API.
 
@@ -112,7 +117,11 @@ Para gerar `monitoring_reference.json`, a etapa de treinamento executada pela DA
 
 ## Model registry e versionamento
 
-O *model registry* proposto substituirá a sobrescrita como mecanismo de disponibilização dos modelos. Cada treinamento registrará uma nova versão imutável como candidata, associando:
+O treinamento já publica cada versão em um diretório próprio, sem sobrescrita física. O
+*model registry* proposto vai além: introduz o fluxo de candidata para aprovada, associa a
+versão em produção a cada predição registrada e organiza esse histórico como superfície
+consultável para o monitoramento. Cada treinamento registrará uma nova versão candidata,
+associando:
 
 - modelo treinado e configuração utilizada;
 - `eval_model_metrics.json`;
@@ -229,7 +238,8 @@ Já estão implementados:
 - métricas de avaliação persistidas pelo treinamento;
 - distribuições de referência das features e do score;
 - validação do contrato de entrada pela API;
-- endpoint de prontidão e retry de carregamento do modelo;
+- endpoint de prontidão e atualização periódica do bundle em segundo plano, preservando o
+  último bundle válido quando um candidato falha;
 - avaliação offline de performance, calibração e fairness.
 
 Permanecem como proposta:

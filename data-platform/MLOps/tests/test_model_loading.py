@@ -1,10 +1,6 @@
-"""Teste de _refresh_loop — etapa 8.2 do plano de bundle.
-
-O manager e o loader já têm suíte própria (etapas 4 e 5, test_model_bundle_manager.py e
-test_artifact_bundle_loader.py); este arquivo testa só o que é novo em main.py: o laço que
-chama refresh_if_changed repetidamente até ser cancelado. _load_model_with_retry e
-_refresh_model_bundle deixam de existir — o fluxo de recarga por assinatura de arquivo, a
-cada requisição, não migra.
+"""Teste de _refresh_loop: o laço que chama refresh_if_changed repetidamente até ser
+cancelado. O manager e o loader têm suíte própria em test_model_bundle_manager.py e
+test_artifact_bundle_loader.py.
 """
 import asyncio
 from contextlib import suppress

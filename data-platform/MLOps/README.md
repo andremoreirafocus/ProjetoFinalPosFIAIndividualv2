@@ -120,7 +120,7 @@ de score. Execução documentada em [DEVELOPMENT.md](DEVELOPMENT.md).
 - ausência de autenticação e autorização;
 - ausência de auditoria persistente das predições;
 - dependência da ABT no PostgreSQL;
-- artefatos sobrescritos no diretório compartilhado;
+- sem limpeza automática de bundles antigos nem política de rollback entre versões;
 - ausência de monitoramento contínuo pós-deploy.
 
 ## Documentação

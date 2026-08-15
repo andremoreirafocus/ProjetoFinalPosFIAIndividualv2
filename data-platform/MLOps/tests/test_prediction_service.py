@@ -1,10 +1,4 @@
-"""Testes de PredictionService.predict — etapa 1.5 do plano de bundle.
-
-Corpo migrado de model_service.py:74-79 (PredictionService.predict), agora recebendo
-bundle e entrada preparada por parâmetro em vez de carregar de arquivo. Coexiste com o
-PredictionService antigo de model_service.py até a etapa 8 apagar esse arquivo — nomes
-iguais, módulos diferentes, sem ambiguidade de import.
-"""
+"""Testes de PredictionService.predict."""
 import pandas as pd
 import pytest
 

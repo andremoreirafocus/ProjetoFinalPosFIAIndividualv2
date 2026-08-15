@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import pickle
 from pathlib import Path
 from typing import Any
 
@@ -129,14 +128,6 @@ def build_feature_reference() -> dict[str, Any]:
             ]
         },
     }
-
-
-def write_artifact_pickle(directory: Path, artifact: dict[str, Any]) -> Path:
-    """Persiste um artefato-fixture em ``.pkl`` real para exercitar ``load()``."""
-    path = directory / "artifact.pkl"
-    with path.open("wb") as file:
-        pickle.dump(artifact, file)
-    return path
 
 
 @dataclass(frozen=True)

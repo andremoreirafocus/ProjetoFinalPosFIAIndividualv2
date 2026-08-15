@@ -25,7 +25,7 @@ A plataforma cobre dois ciclos complementares:
 1. **Ciclo de desenvolvimento e treinamento:** ingestão das fontes, preparação da ABT, análise, comparação de modelos, treinamento e persistência do artefato.
 2. **Ciclo de inferência:** recuperação ou fornecimento das features, cálculo do score, aplicação da política demonstrativa e apresentação do resultado.
 
-Monitoramento contínuo e agente acelerador de revisão de crédito estão detalhados como propostas futuras e não fazem parte da implementação atual. As propostas de [monitoramento do modelo em produção](./MLOps/MONITORING_ARCHITECTURE.md) e do [agente acelerador de revisão de crédito](./MLOps/AGENT_ARCHITECTURE.md) distinguem os pré-requisitos já disponíveis dos componentes ainda não implementados. Atualmente, os artefatos ficam em um único diretório persistente, compartilhado entre os containers por volumes do tipo *bind mount*, e são sobrescritos a cada treinamento. A proposta de monitoramento introduz um *model registry*, com MLflow como implementação inicial sugerida, para preservar versões, associar seus baselines e controlar promoção e rollback. Autenticação e implantação produtiva são apenas citadas como possíveis evoluções adicionais, sem definição arquitetural neste projeto.
+Monitoramento contínuo e agente acelerador de revisão de crédito estão detalhados como propostas futuras e não fazem parte da implementação atual. As propostas de [monitoramento do modelo em produção](./MLOps/MONITORING_ARCHITECTURE.md) e do [agente acelerador de revisão de crédito](./MLOps/AGENT_ARCHITECTURE.md) distinguem os pré-requisitos já disponíveis dos componentes ainda não implementados. Atualmente, cada treinamento publica um bundle versionado — modelo, baseline populacional e métricas do holdout — em um diretório persistente, compartilhado entre os containers por volumes do tipo *bind mount*; um manifesto aponta para o conjunto ativo, e bundles anteriores permanecem em disco. A proposta de monitoramento introduz um *model registry*, com MLflow como implementação inicial sugerida, para o fluxo de candidata para aprovada, o vínculo entre a versão em produção e cada predição, e a organização desse histórico como baseline do monitoramento. Autenticação e implantação produtiva são apenas citadas como possíveis evoluções adicionais, sem definição arquitetural neste projeto.
 
 ## Arquitetura
 
@@ -131,8 +131,11 @@ paralelo; `Model` e `MLOps` não tocam o banco.
 2. A DAG carrega as quatro fontes no banco `data`.
 3. O pipeline cria tabelas tratadas e agregações por `sk_id_curr`.
 4. A tabela `application_abt` consolida as features preditoras em uma linha por cliente.
-5. O treinamento selecionado gera `Model/artifacts/lightgbm_abt.pkl`, `eval_model_metrics.json` e `feature_reference.json`.
-6. A API carrega o artefato e consulta a ABT quando recebe um identificador de cliente.
+5. O treinamento selecionado publica um bundle versionado em `Model/artifacts/` — modelo,
+   baseline populacional e métricas do holdout —, com o manifesto `current_bundle.json`
+   apontando para o conjunto ativo.
+6. A API acompanha o manifesto, carrega o bundle ativo e consulta a ABT quando recebe um
+   identificador de cliente.
 7. A política transforma o score em aprovação, revisão manual ou rejeição demonstrativa.
 8. O Streamlit disponibiliza formulário, recuperação editável e consulta direta.
 

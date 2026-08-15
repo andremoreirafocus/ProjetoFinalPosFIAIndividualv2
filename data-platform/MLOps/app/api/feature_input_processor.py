@@ -1,11 +1,4 @@
-"""Transforma o dicionário de features do cliente na entrada aceita pelo estimador.
-
-Corpo migrado de model_service.py:81-100 (PredictionService.prepare_customer), com o
-bundle recebido por parâmetro em vez de lido de estado interno — etapa 1.4 do plano de
-bundle. ``ModelInputError`` é uma classe nova, não importada de ``model_service.py``:
-esse arquivo é apagado por inteiro na etapa 8, e nada deve depender dele além do fluxo
-antigo que ele já serve.
-"""
+"""Transforma o dicionário de features do cliente na entrada aceita pelo estimador."""
 from __future__ import annotations
 
 from typing import Any

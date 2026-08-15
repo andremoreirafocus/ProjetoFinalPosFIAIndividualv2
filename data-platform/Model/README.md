@@ -194,14 +194,13 @@ Nenhum dos quatro primeiros é versionado no git — reproduzíveis por `train.p
 permissão do usuário local, que o usuário do contêiner do Airflow não consegue
 sobrescrever. Em uma cópia nova do repositório eles só aparecem após um treinamento.
 
-**A API de inferência ainda não lê o bundle versionado.** Ela continua servindo o pickle
-de caminho fixo (`artifacts/lightgbm_abt.pkl`, fora de `bundles/`) que já estava em disco
-antes desta publicação existir — janela declarada no plano de refatoração do
-carregamento, predição e explicação, até a etapa que troca o consumidor.
-`Model/evaluation.ipynb`, que lê o caminho fixo pela chave `metadata.artifact` do
-`config_model.json`, está **quebrado** desde que essa chave foi renomeada para
-`metadata.artifacts_dir` — decisão explícita, registrada no plano, corrigida quando o
-consumidor migrar para o manifesto.
+A API de inferência lê o bundle versionado por `current_bundle.json`: o
+`ModelBundleManager` acompanha o manifesto em segundo plano e só troca de bundle ativo
+quando um candidato passa por todas as validações do `ArtifactBundleLoader`. Nenhum
+consumidor lê mais um caminho fixo — os arquivos `artifacts/lightgbm_abt.pkl`,
+`artifacts/feature_reference.json` e `artifacts/eval_model_metrics.json` de caminho fixo,
+sobrescritos a cada treinamento, não existem mais. `Model/evaluation.ipynb` lê o mesmo
+manifesto, pela chave `metadata.artifacts_dir` do `config_model.json`.
 
 A publicação valida a identidade do conjunto antes de gravar qualquer arquivo:
 `save_artifacts` recusa um artefato e uma referência que não pertençam ao mesmo

@@ -1,10 +1,6 @@
-"""Lê, confere e recusa o conjunto de artefatos publicado — etapa 4 do plano de bundle.
+"""Lê, confere e recusa o conjunto de artefatos publicado.
 
-Migra validações hoje espalhadas entre ``PredictionService.read_artifact``
-(model_service.py:27-40), ``ExplanationService.read_reference`` /
-``validate_feature_coverage`` / ``_validate_reference_version``
-(explanation_service.py:37-101,156-162) e a leitura do manifesto, ainda inexistente. Sem
-estado mutável: cada chamada de ``load`` é independente das anteriores.
+Sem estado mutável: cada chamada de ``load`` é independente das anteriores.
 """
 from __future__ import annotations
 

@@ -1,8 +1,4 @@
-"""Testes de FeatureInputProcessor.prepare — etapa 1.4 do plano de bundle.
-
-Corpo migrado de model_service.py:81-100 (prepare_customer), agora recebendo o
-bundle por parâmetro em vez de ler de self.artifact.
-"""
+"""Testes de FeatureInputProcessor.prepare."""
 import pandas as pd
 import pytest
 
