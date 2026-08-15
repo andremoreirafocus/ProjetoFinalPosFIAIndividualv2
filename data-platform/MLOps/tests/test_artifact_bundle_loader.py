@@ -1,11 +1,9 @@
-"""Testes de ArtifactBundleLoader.load — etapa 4 do plano de bundle.
+"""Testes de ArtifactBundleLoader.load.
 
-Migra validações hoje espalhadas entre PredictionService.read_artifact,
-ExplanationService.read_reference/validate_feature_coverage/_validate_reference_version
-e a leitura (ainda inexistente) do manifesto. O caminho feliz e o de arquivo ausente usam
-o publicador real da etapa 3 (`Model.artifact_bundle_publisher.publish_bundle`); os demais
-escrevem manifesto e arquivos diretamente, porque exigem estado inconsistente que o
-publicador real nunca produz.
+O caminho feliz e o de arquivo ausente usam o publicador real
+(`Model.artifact_bundle_publisher.publish_bundle`); os demais escrevem manifesto e
+arquivos diretamente, porque exigem estado inconsistente que o publicador real nunca
+produz.
 """
 import hashlib
 import json

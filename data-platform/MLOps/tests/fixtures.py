@@ -50,7 +50,7 @@ def build_model_bundle(
     categorical_references: dict[str, dict[str, Any]] | None = None,
     global_shap: dict[str, Any] | None = None,
 ) -> ModelBundle:
-    """Monta um ``ModelBundle`` coerente com o contrato da etapa 1 do plano de bundle."""
+    """Monta um ``ModelBundle`` coerente com o contrato do bundle."""
     return ModelBundle(
         bundle_id="bundle-test-v1",
         schema_version="1",

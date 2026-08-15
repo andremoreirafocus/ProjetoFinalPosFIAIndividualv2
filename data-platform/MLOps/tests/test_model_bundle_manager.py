@@ -1,8 +1,8 @@
-"""Testes de ModelBundleManager — etapa 5 do plano de bundle.
+"""Testes de ModelBundleManager.
 
 Sem dependência de FastAPI: o manager decide se e quando trocar o bundle ativo; quem
-valida o conteúdo é o loader (etapa 4), aqui substituído por um FakeBundleLoader local —
-só este arquivo o usa, então não vai para fakes.py (regra do segundo consumidor).
+valida o conteúdo é o loader, aqui substituído por um FakeBundleLoader local — só este
+arquivo o usa, então não vai para fakes.py (regra do segundo consumidor).
 """
 import json
 import threading

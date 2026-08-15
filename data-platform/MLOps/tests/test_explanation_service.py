@@ -1,9 +1,7 @@
 """Teste de ExplanationService.explain(bundle, prepared_input).
 
 A classe recebe bundle e entrada preparada em vez de PredictionService e caminho de
-referência lido de arquivo (etapa 2 do plano de bundle). Renomeado de
-test_bundle_explanation_service.py na etapa 8, quando explanation_service_v2.py virou
-explanation_service.py e a classe antiga foi removida.
+referência lido de arquivo.
 """
 from MLOps.app.api.explanation_service import ExplanationService
 from MLOps.app.api.feature_input_processor import FeatureInputProcessor

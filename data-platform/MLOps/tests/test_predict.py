@@ -1,4 +1,4 @@
-"""Teste de predict_for_customer — etapa 9 do plano de bundle.
+"""Teste de predict_for_customer.
 
 A inferência em si já está coberta por test_feature_input_processor.py e
 test_prediction_service.py; este arquivo fixa que o CLI produz o mesmo contrato, sem

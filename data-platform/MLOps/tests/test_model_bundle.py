@@ -1,7 +1,7 @@
 """Testes dos objetos de dados que atravessam predição e explicação.
 
 Sem comportamento próprio: cada teste constrói a instância e confirma que os campos
-voltam exatamente como passados. É a etapa 1 do plano de bundle, subetapas 1.1-1.3.
+voltam exatamente como passados.
 """
 from pathlib import Path
 

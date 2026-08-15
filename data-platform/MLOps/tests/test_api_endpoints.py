@@ -28,8 +28,8 @@ def client_factory(request):
 
     O ``TestClient`` é usado sem ``with`` de propósito: assim o ``lifespan`` não roda e
     nenhum serviço real (engine de banco, laço de atualização) é criado. O manager e o
-    loader são reais, operando sobre um bundle publicado por ``publish_bundle`` (etapa 3.2)
-    num diretório temporário — só o estimador e o acesso às features usam implementações
+    loader são reais, operando sobre um bundle publicado por ``publish_bundle`` num
+    diretório temporário — só o estimador e o acesso às features usam implementações
     determinísticas de teste.
     """
 
