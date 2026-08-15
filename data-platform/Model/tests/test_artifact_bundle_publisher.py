@@ -6,6 +6,7 @@ muda nesta etapa — continua gravando os arquivos fixos até a etapa 6.
 """
 import hashlib
 import json
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -87,6 +88,22 @@ def test_publish_bundle_creates_versioned_directory(tmp_path: Path) -> None:
         "feature_reference.json",
         "lightgbm_abt.pkl",
     ]
+
+
+def test_publish_bundle_creates_a_directory_readable_by_other_processes(
+    tmp_path: Path,
+) -> None:
+    """O diretório publicado precisa ser lido por processos de outro usuário do SO —
+    a API roda como root, mas o Jupyter roda como um usuário sem relação nenhuma com
+    quem publica (a DAG do Airflow). `tempfile.mkdtemp` cria o diretório temporário em
+    modo 0700 por padrão; sem relaxar isso após a publicação, o conteúdo fica
+    inacessível para qualquer processo que não seja o que o escreveu.
+    """
+    manifest = publish_bundle(_model_artifact(), _feature_reference(), tmp_path)
+
+    bundle_directory = tmp_path / "bundles" / manifest.bundle_id
+    mode = stat.S_IMODE(bundle_directory.stat().st_mode)
+    assert mode & stat.S_IROTH and mode & stat.S_IXOTH
 
 
 @pytest.mark.parametrize(

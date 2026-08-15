@@ -22,6 +22,12 @@ diretório versionado é publicado por renomeação atômica, e o manifesto é e
 último — uma falha em qualquer ponto anterior não altera a publicação ativa. Detalhes em
 `Model/artifact_bundle_contract.py` e `Model/artifact_bundle_publisher.py`.
 
+O diretório publicado é aberto para leitura por qualquer processo (`chmod 0o755`, aplicado
+logo após a renomeação atômica) — `tempfile.mkdtemp` cria em modo `0700` por padrão, e sem
+esse ajuste o conteúdo ficaria ilegível para quem não seja o usuário do SO que publicou (a
+API roda como root no contêiner e não seria afetada, mas o Jupyter roda como um usuário sem
+relação nenhuma com quem publica).
+
 Isso substitui a publicação anterior — três arquivos de caminho fixo, sobrescritos a cada
 execução — descrita no plano de refatoração do carregamento, predição e explicação
 (`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`). A proposta de

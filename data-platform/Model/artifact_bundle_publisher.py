@@ -76,6 +76,10 @@ def publish_bundle(
 
     versioned_directory = bundles_dir / bundle_id
     temporary_directory.replace(versioned_directory)
+    # tempfile.mkdtemp cria em modo 0700; o conjunto é publicado para outros processos
+    # lerem (a API roda como root, mas o Jupyter roda como um usuário sem relação
+    # nenhuma com quem publica), então o diretório precisa ficar legível e percorrível.
+    versioned_directory.chmod(0o755)
 
     manifest = BundleManifest(
         schema_version=MANIFEST_SCHEMA_VERSION,
