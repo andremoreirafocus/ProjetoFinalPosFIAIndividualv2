@@ -47,6 +47,8 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 | [`config_model.json`](./config_model.json) | Fonte de configuração das features, hiperparâmetros, split, threshold e resultados de referência. |
 | [`train.py`](./train.py) | Treina, avalia e publica o conjunto de artefatos. |
 | [`feature_reference.py`](./feature_reference.py) | Calcula o baseline populacional e a referência TreeSHAP global. |
+| [`artifact_bundle_contract.py`](./artifact_bundle_contract.py) | Declaração do contrato do manifesto — schema, nome constante e chaves obrigatórias do artefato. Sem I/O nem validação. |
+| [`artifact_bundle_publisher.py`](./artifact_bundle_publisher.py) | Publica modelo e referência atomicamente, com o manifesto escrito por último. |
 | [`predict.py`](./predict.py) | Executa inferência local para um cliente da ABT. |
 | [`find_customer_by_score.py`](./find_customer_by_score.py) | Varre a ABT e localiza o primeiro cliente cujo score caia numa faixa informada. |
 | [`validacao_modelos.ipynb`](./validacao_modelos.ipynb) | Compara algoritmos e configurações, controla overfitting e seleciona o modelo. |
@@ -97,6 +99,13 @@ python3 -m venv .venv
 A suíte fixa a leitura da ABT com a conversão das categóricas e a seleção das features
 configuradas, a composição do treinamento, o cálculo do baseline populacional e a recusa de
 publicar um conjunto de artefatos que não pertença ao mesmo treino.
+
+`test_artifact_bundle_contract.py` e `test_artifact_bundle_publisher.py` fixam o contrato e
+a publicação atômica do conjunto versionado (manifesto, checksums, diretório `bundles/`) —
+etapa 3 do plano de refatoração do carregamento, predição e explicação
+(`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`). `train.py` ainda não
+usa esse publicador: continua gravando os três arquivos fixos em `artifacts/` até a etapa 6
+do plano trocar o produtor.
 
 Ela roda **sem PostgreSQL e sem artefato treinado**, porque as conexões chegam injetadas: os
 testes entregam uma conexão falsa pela mesma fronteira que a produção usa. A fixture de
