@@ -126,6 +126,7 @@ python3 -m venv .venv
 | `test_prediction_service.py` | `PredictionService.predict` (novo, sem carregamento) aplica o threshold do bundle recebido — não um valor fixo — e passa a mesma entrada preparada ao estimador, sem cópia. |
 | `test_feature_service.py` | Recuperação da ABT, cliente inexistente e normalização de tipos. |
 | `test_explanation_service.py` | SHAP local, referências e validação de versão. |
+| `test_bundle_explanation_service.py` | `ExplanationService.explain` (novo, sem `PredictionService` nem leitura de referência) reproduz o mesmo cálculo TreeSHAP e a mesma comparação com as referências, recebendo bundle e entrada preparada. |
 | `test_api_endpoints.py` | Contratos e erros HTTP via `TestClient`. |
 | `test_model_loading.py` | Carga do modelo em segundo plano com ramos de falha e sucesso. |
 | `test_frontend.py` | Inicialização da aplicação Streamlit. |
@@ -138,9 +139,12 @@ Os testes da API utilizam fakes e fixtures injetados por composição. A suíte 
 `ModelBundle`, `PreparedModelInput`, `PredictionResult`, `FeatureInputProcessor` e o novo
 `PredictionService` (`model_bundle.py`, `feature_input_processor.py`,
 `prediction_service.py`) são a etapa 1 do plano de refatoração do carregamento, predição e
-explicação (`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`). Coexistem
-com o fluxo atual — `model_service.py` e seu `PredictionService` — sem substituí-lo ainda:
-nenhum entrypoint os usa até a etapa 8 do plano.
+explicação (`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`); o novo
+`ExplanationService` (`explanation_service_v2.py`, etapa 2) recebe bundle e entrada
+preparada em vez de `PredictionService` e caminho de referência. Todos coexistem com o
+fluxo atual — `model_service.py` e o `explanation_service.py` de hoje — sem substituí-lo
+ainda: nenhum entrypoint os usa até a etapa 8 do plano, que remove os antigos e renomeia
+`explanation_service_v2.py` para `explanation_service.py`.
 
 Os testes de integração `test_predict.py` e `test_configuration.py` são pulados automaticamente quando o artefato ou LightGBM não estão disponíveis. `test_frontend.py` é pulado quando o Streamlit não está instalado.
 

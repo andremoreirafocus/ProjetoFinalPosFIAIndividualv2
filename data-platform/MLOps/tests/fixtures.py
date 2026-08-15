@@ -46,6 +46,10 @@ def build_model_bundle(
     categorical_features: list[str] | None = None,
     categories: dict[str, list[str]] | None = None,
     decision_threshold: float = 0.5,
+    target_rate: float = 0.08,
+    numeric_references: dict[str, dict[str, Any]] | None = None,
+    categorical_references: dict[str, dict[str, Any]] | None = None,
+    global_shap: dict[str, Any] | None = None,
 ) -> ModelBundle:
     """Monta um ``ModelBundle`` coerente com o contrato da etapa 1 do plano de bundle."""
     return ModelBundle(
@@ -70,10 +74,12 @@ def build_model_bundle(
             else {"occupation_type": ["Laborers", "Managers"]}
         ),
         decision_threshold=decision_threshold,
-        target_rate=0.08,
-        numeric_references={},
-        categorical_references={},
-        global_shap={"feature_importance": []},
+        target_rate=target_rate,
+        numeric_references=numeric_references if numeric_references is not None else {},
+        categorical_references=(
+            categorical_references if categorical_references is not None else {}
+        ),
+        global_shap=global_shap if global_shap is not None else {"feature_importance": []},
     )
 
 
