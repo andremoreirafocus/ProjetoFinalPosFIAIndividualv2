@@ -69,38 +69,49 @@ docker compose logs -f credit-api credit-frontend
 
 Build, execução local e testes estão documentados em [DEVELOPMENT.md](DEVELOPMENT.md).
 
-A suíte do componente fixa os contratos e os erros HTTP dos endpoints, a carga do modelo em
-segundo plano com seus caminhos de falha, a política de crédito que traduz score em decisão,
-a explicabilidade servida ao analista e a inicialização do frontend. Roda offline, sem
-PostgreSQL e sem LightGBM, com fakes injetados por composição; os casos que dependem do
-artefato treinado são pulados quando ele não está presente.
+A suíte do componente fixa os contratos e os erros HTTP dos endpoints, o carregamento e a
+troca do bundle ativo com seus caminhos de falha, a política de crédito que traduz score em
+decisão, a explicabilidade servida ao analista, o transporte de CLI e a inicialização do
+frontend. Roda offline, sem PostgreSQL e sem LightGBM, com fakes injetados por composição;
+os casos que dependem do artefato treinado são pulados quando ele não está presente.
 
 ## Artefatos de execução
 
 ```text
 Model/artifacts/
-├── lightgbm_abt.pkl          # gerado pelo treinamento, não versionado
-├── eval_model_metrics.json   # gerado pelo treinamento, não versionado
-├── feature_reference.json    # gerado pelo treinamento, não versionado
-└── model_comparison.csv      # resultado histórico, versionado
+├── current_bundle.json           # manifesto do bundle ativo, não versionado
+├── bundles/<bundle_id>/
+│   ├── lightgbm_abt.pkl          # declarado no manifesto, com checksum
+│   ├── feature_reference.json    # declarado no manifesto, com checksum
+│   └── eval_model_metrics.json   # ao lado, fora do manifesto
+└── model_comparison.csv          # resultado histórico, versionado
 ```
 
-Os três primeiros são gerados por `Model/train.py` na mesma execução. Na execução
-oficial, o treinamento é a última tarefa da DAG `pipeline_orchestration` do Airflow.
-Como são reproduzíveis e sobrescritos a cada treino, não são versionados: podem não
-estar presentes em uma nova cópia do repositório.
+O manifesto e o diretório versionado são gerados por `Model/train.py`, publicados
+atomicamente — modelo e referência escritos, checksados, o diretório publicado por
+renomeação atômica e o manifesto escrito por último. Na execução oficial, o treinamento é a
+última tarefa da DAG `pipeline_orchestration` do Airflow. Como cada treino publica um
+`bundle_id` novo, nada é versionado no git: podem não estar presentes em uma nova cópia do
+repositório. Contrato completo em [`Model/docs/artefatos.md`](../Model/docs/artefatos.md).
 
-Versioná-los seria ativamente prejudicial. O clone os criaria com o dono e a permissão
-do usuário local, e o processo do Airflow — que roda com outro usuário — não
-conseguiria sobrescrevê-los. A gravação falharia no meio da sequência de três arquivos
-e o conjunto publicado ficaria incoerente: modelo de um treino, referências de outro.
+Se `current_bundle.json` não existir em `Model/artifacts`, execute a DAG até a tarefa
+`train_machine_learning_model`. Se continuar ausente, verifique o estado e os logs dessa
+tarefa no Airflow e os logs do `airflow-scheduler` para identificar falhas de dados,
+conexão ou treinamento.
 
-Se esses arquivos não estiverem em `Model/artifacts`, execute a DAG até a tarefa
-`train_machine_learning_model`. Se continuarem ausentes, verifique o estado e os logs
-dessa tarefa no Airflow e os logs do `airflow-scheduler` para identificar falhas de
-dados, conexão ou treinamento.
+O diretório é compartilhado entre os containers por *bind mounts*. A API verifica o
+manifesto a cada `MODEL_BUNDLE_REFRESH_SECONDS` e ativa um bundle novo só quando ele é
+íntegro; um candidato inválido não substitui o bundle ativo, e a próxima verificação tenta
+de novo.
 
-O diretório é compartilhado entre os containers por *bind mounts*. Cada treinamento sobrescreve os arquivos, sem histórico físico de versões ou *model registry*. A API verifica os arquivos a cada requisição e recarrega automaticamente o modelo e suas referências quando os dois pertencem ao mesmo treinamento; durante uma atualização parcial, mantém em memória a última versão válida.
+## CLI
+
+`MLOps/app/cli/predict.py` é transporte do mesmo serving que a API expõe por HTTP — a
+mesma cadeia (carrega o bundle, resolve as features do cliente, prepara a entrada, calcula
+score e classe), sem ciclo de vida: carrega uma vez e termina. Não aplica a política de
+crédito nem produz explicação — vai até o score; a recomendação é da API.
+`find_customer_by_score.py` o acompanha, varrendo a ABT em busca de um cliente numa faixa
+de score. Execução documentada em [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Limitações atuais
 

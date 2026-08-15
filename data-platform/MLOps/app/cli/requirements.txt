@@ -1,0 +1,5 @@
+# Runtime do transporte de CLI: herda o da API (o do artefato, pelo Model, e o do banco,
+# pelo infra) e acrescenta só o que a API não precisa — carregar o .env local.
+-r ../api/requirements.txt
+
+python-dotenv==1.0.1

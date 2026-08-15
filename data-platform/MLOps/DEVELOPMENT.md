@@ -11,10 +11,18 @@ MLOps/
 │   │   ├── main.py
 │   │   ├── config.py
 │   │   ├── schemas.py
-│   │   ├── feature_service.py
-│   │   ├── model_service.py
+│   │   ├── artifact_bundle_loader.py
+│   │   ├── model_bundle.py
+│   │   ├── model_bundle_manager.py
+│   │   ├── feature_input_processor.py
+│   │   ├── prediction_service.py
 │   │   ├── explanation_service.py
+│   │   ├── feature_service.py
 │   │   ├── credit_policy.py
+│   │   └── requirements.txt
+│   ├── cli/
+│   │   ├── predict.py
+│   │   ├── find_customer_by_score.py
 │   │   └── requirements.txt
 │   └── frontend/
 │       ├── app.py
@@ -101,6 +109,27 @@ CREDIT_API_URL=http://localhost:8000 \
   MLOps/.venv/bin/python -m streamlit run MLOps/app/frontend/app.py
 ```
 
+O CLI (`MLOps/app/cli/predict.py`) é ferramenta de host — roda fora da rede do compose, com
+a mesma configuração e o mesmo bundle que a API usa:
+
+```bash
+cd data-platform
+MLOps/.venv/bin/python -m pip install -r MLOps/app/cli/requirements.txt
+PYTHONPATH=. MLOps/.venv/bin/python MLOps/app/cli/predict.py --sk-id 100002
+```
+
+Não é preciso declarar `MODEL_ARTIFACTS_DIR`: o próprio `main` do CLI declara o diretório
+de artefatos do repositório, como `train.py` declara `localhost` para o banco em vez do
+`POSTGRES_HOST` do compose. `PYTHONPATH=.` aponta a raiz `data-platform`, de onde vêm os
+pacotes `MLOps`, `Model` e `infra`.
+
+Para localizar um cliente cujo score caia numa faixa:
+
+```bash
+PYTHONPATH=. MLOps/.venv/bin/python MLOps/app/cli/find_customer_by_score.py \
+  --min-score 0.5 --max-score 0.6
+```
+
 ## Testes
 
 A suíte de testes do componente roda com pytest, a partir da própria pasta `MLOps`:
@@ -120,40 +149,36 @@ python3 -m venv .venv
 | Arquivo | Responsabilidade validada |
 |---|---|
 | `test_credit_policy.py` | Faixas de aprovação, revisão e rejeição; limites inválidos e score fora de `[0, 1]`. |
-| `test_config.py` | Limiares da política e intervalo de retry. |
-| `test_model_service.py` | Carga do artefato, predição, categóricas e features ausentes. |
+| `test_config.py` | `MODEL_ARTIFACTS_DIR`/`MODEL_BUNDLE_REFRESH_SECONDS` obrigatórias, limiares da política e o caminho do manifesto composto do diretório configurado mais o nome do contrato. |
 | `test_model_bundle.py` | Os três objetos de dados do bundle de predição (`ModelBundle`, `PreparedModelInput`, `PredictionResult`) expõem exatamente os campos com que foram construídos. |
 | `test_feature_input_processor.py` | `FeatureInputProcessor.prepare` ordena pelas features do bundle, ignora campos extras, recusa feature obrigatória ausente, reconstrói categóricas com as categorias persistidas e converte numéricas. |
-| `test_prediction_service.py` | `PredictionService.predict` (novo, sem carregamento) aplica o threshold do bundle recebido — não um valor fixo — e passa a mesma entrada preparada ao estimador, sem cópia. |
+| `test_prediction_service.py` | `PredictionService.predict` aplica o threshold do bundle recebido — não um valor fixo — e passa a mesma entrada preparada ao estimador, sem cópia. |
 | `test_feature_service.py` | Recuperação da ABT, cliente inexistente e normalização de tipos. |
-| `test_explanation_service.py` | SHAP local, referências e validação de versão. |
-| `test_bundle_explanation_service.py` | `ExplanationService.explain` (novo, sem `PredictionService` nem leitura de referência) reproduz o mesmo cálculo TreeSHAP e a mesma comparação com as referências, recebendo bundle e entrada preparada. |
+| `test_explanation_service.py` | `ExplanationService.explain` reproduz o cálculo TreeSHAP local e a comparação com as referências, recebendo bundle e entrada preparada — sem `PredictionService` nem leitura de referência de arquivo. |
 | `test_artifact_bundle_loader.py` | `ArtifactBundleLoader.load` recusa manifesto ausente, schema inválido, arquivo declarado ausente, checksum divergente, artefato ou referência sem as chaves exigidas e identidade incompatível entre manifesto/artefato/referência; aceita referência que sobra com aviso; devolve `ModelBundle` completo só quando tudo passa. |
 | `test_model_bundle_manager.py` | `ModelBundleManager` ativa o primeiro candidato válido, ignora manifesto inalterado sem chamar o loader, ativa candidato novo, preserva o bundle anterior e tenta de novo em candidato inválido, recusa conteúdo trocado sob o mesmo `bundle_id` sem chamar o loader, ativa um `bundle_id` anterior sem distinção, recusa `require_active()` antes da primeira ativação, e não expõe bundle corrompido a leituras concorrentes durante a troca. |
-| `test_api_endpoints.py` | Contratos e erros HTTP via `TestClient`. |
-| `test_model_loading.py` | Carga do modelo em segundo plano com ramos de falha e sucesso. |
+| `test_api_endpoints.py` | Contratos e erros HTTP via `TestClient`, contra um bundle publicado de verdade num diretório temporário. |
+| `test_model_loading.py` | O laço de atualização do `main.py` chama `refresh_if_changed` repetidamente até ser cancelado. |
 | `test_frontend.py` | Inicialização da aplicação Streamlit. |
-| `test_predict.py` | Inferência pelo script local e contrato do resultado. |
-| `test_configuration.py` | Coerência entre configuração e artefato. |
+| `test_predict.py` | `predict_for_customer` (transporte de CLI) devolve score sem arredondamento e falha em feature ausente — a inferência em si já está coberta por `test_feature_input_processor.py`/`test_prediction_service.py`. |
+| `test_find_customer_by_score.py` | Leitura dos identificadores da ABT: devolve inteiros, respeita a ordenação da consulta e não fecha a conexão recebida. |
+| `test_configuration.py` | Coerência entre configuração e o artefato do bundle ativo. |
 | `test_agent_manual_review_scripts.py` | O pipeline de revisão manual assistida em `agent-manual-review`: enriquecimento dos fatores autorizados e registro dos restritos, recusa de fator fora do catálogo, duplicado ou omitido, bloqueio quando a versão do prompt falta ou diverge, montagem e invocação do LLM estruturado por fake, validação da resposta contra o que foi enviado, renderização do PDF pelo template configurado, encadeamento em que a saída de um estágio é a entrada do seguinte, e a recusa de todos os estágios em sobrescrever saída existente. |
 
-Os testes da API utilizam fakes e fixtures injetados por composição. A suíte principal roda offline, sem PostgreSQL, LightGBM ou artefato treinado.
+Os testes da API e do CLI utilizam fakes e fixtures injetados por composição. A suíte
+principal roda offline, sem PostgreSQL, LightGBM ou artefato treinado.
 
-`ModelBundle`, `PreparedModelInput`, `PredictionResult`, `FeatureInputProcessor` e o novo
-`PredictionService` (`model_bundle.py`, `feature_input_processor.py`,
-`prediction_service.py`) são a etapa 1 do plano de refatoração do carregamento, predição e
-explicação (`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`); o novo
-`ExplanationService` (`explanation_service_v2.py`, etapa 2) recebe bundle e entrada
-preparada em vez de `PredictionService` e caminho de referência; o novo
-`ArtifactBundleLoader` (`artifact_bundle_loader.py`, etapa 4) lê e confere o manifesto
-publicado pelo `Model` (etapa 3) e monta o `ModelBundle`; o novo `ModelBundleManager`
-(`model_bundle_manager.py`, etapa 5) decide se e quando trocar o bundle ativo, sem
-depender de FastAPI. Todos coexistem com o fluxo atual — `model_service.py` e o
-`explanation_service.py` de hoje — sem substituí-lo ainda:
-nenhum entrypoint os usa até a etapa 8 do plano, que remove os antigos e renomeia
-`explanation_service_v2.py` para `explanation_service.py`.
+`ModelBundle`, `PreparedModelInput`, `PredictionResult`, `FeatureInputProcessor`,
+`PredictionService`, `ExplanationService`, `ArtifactBundleLoader` e `ModelBundleManager` são
+os componentes do plano de refatoração do carregamento, predição e explicação
+(`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`) que a API usa hoje —
+`model_service.py` e a implementação antiga de `explanation_service.py` não existem mais. O
+CLI (`MLOps/app/cli/predict.py`) é o segundo transporte da mesma cadeia, sem estado de
+ciclo de vida.
 
-Os testes de integração `test_predict.py` e `test_configuration.py` são pulados automaticamente quando o artefato ou LightGBM não estão disponíveis. `test_frontend.py` é pulado quando o Streamlit não está instalado.
+O teste de integração `test_configuration.py` é pulado automaticamente quando não há bundle
+publicado ou o LightGBM não está disponível. `test_frontend.py` é pulado quando o Streamlit
+não está instalado.
 
 ## Documentos relacionados
 

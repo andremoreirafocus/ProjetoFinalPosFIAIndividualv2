@@ -1,35 +1,33 @@
-import importlib.util
-from pathlib import Path
+"""Teste de predict_for_customer — etapa 9 do plano de bundle.
 
-import pandas as pd
+A inferência em si já está coberta por test_feature_input_processor.py e
+test_prediction_service.py; este arquivo fixa que o CLI produz o mesmo contrato, sem
+arredondar o score (o script antigo arredondava para 4 casas) e sem rótulo de decisão — a
+política é da API, não do CLI.
+"""
 import pytest
 
-from Model.predict import load_artifact, predict_score
-from MLOps.tests.sample_features import build_features_from_artifact
+from MLOps.app.api.feature_input_processor import ModelInputError
+from MLOps.app.cli.predict import predict_for_customer
+from MLOps.tests.fakes import FakeFeatureService, FakeModel
+from MLOps.tests.fixtures import build_model_bundle
 
 
-DATA_PLATFORM_DIR = Path(__file__).resolve().parents[2]
-ARTIFACT_PATH = DATA_PLATFORM_DIR / "Model" / "artifacts" / "lightgbm_abt.pkl"
-ARTIFACT_READY = (
-    ARTIFACT_PATH.is_file() and importlib.util.find_spec("lightgbm") is not None
-)
+def test_predict_for_customer_returns_unrounded_score_and_class() -> None:
+    bundle = build_model_bundle(estimator=FakeModel(positive_proba=0.123456789))
+    feature_service = FakeFeatureService(
+        features={"ext_source_1": 0.5, "occupation_type": "Laborers"}
+    )
+
+    result = predict_for_customer(100002, bundle, feature_service)
+
+    assert result.risk_score == 0.123456789
+    assert result.predicted_class == 0
 
 
-@pytest.fixture(scope="module")
-def artifact() -> dict:
-    return load_artifact(ARTIFACT_PATH)
+def test_predict_for_customer_raises_on_missing_feature() -> None:
+    bundle = build_model_bundle()
+    feature_service = FakeFeatureService(features={"ext_source_1": 0.5})
 
-
-@pytest.mark.skipif(
-    not ARTIFACT_READY,
-    reason="Teste de integração: requer o artefato lightgbm_abt.pkl e o LightGBM instalado.",
-)
-def test_predicts_single_row(artifact: dict) -> None:
-    features = build_features_from_artifact(artifact)
-    row = pd.DataFrame([features])
-    result = predict_score(row, artifact)
-
-    assert result["risk_score"] >= 0
-    assert result["risk_score"] <= 1
-    assert result["predicted_class"] in {0, 1}
-    assert result["decision_threshold"] == 0.5
+    with pytest.raises(ModelInputError):
+        predict_for_customer(100002, bundle, feature_service)

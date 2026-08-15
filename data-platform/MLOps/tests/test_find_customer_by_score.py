@@ -10,7 +10,7 @@ e banco disponível — é utilitário manual, não contrato exercitável sem am
 
 import pytest
 
-from find_customer_by_score import load_customer_ids
+from MLOps.app.cli.find_customer_by_score import load_customer_ids
 
 
 # O banco devolve já ordenado, porque a consulta carrega `ORDER BY`; o fake reproduz isso.

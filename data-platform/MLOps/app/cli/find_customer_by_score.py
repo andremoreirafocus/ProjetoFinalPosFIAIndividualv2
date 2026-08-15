@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -14,9 +15,9 @@ from dotenv import load_dotenv
 from infra.db import get_db_connection_str_from_env, get_pg_database_connection
 
 
-MODEL_DIR = Path(__file__).resolve().parent
-DATA_PLATFORM_DIR = MODEL_DIR.parent
-PREDICT_SCRIPT = MODEL_DIR / "predict.py"
+CLI_DIR = Path(__file__).resolve().parent
+DATA_PLATFORM_DIR = CLI_DIR.parents[2]
+PREDICT_SCRIPT = CLI_DIR / "predict.py"
 RISK_SCORE_PATTERN = re.compile(r"Risk Score\s*:\s*([0-9]+(?:\.[0-9]+)?)")
 
 
@@ -34,10 +35,17 @@ def load_customer_ids(connection) -> list[int]:
 
 
 def run_prediction(customer_id: int) -> tuple[float, str]:
-    """Executa predict.py para um cliente e extrai o score de sua saída."""
+    """Executa predict.py para um cliente e extrai o score de sua saída.
+
+    ``PYTHONPATH`` precisa ser passado explicitamente: predict.py roda como
+    ``__main__`` neste subprocesso, e seus imports absolutos (``MLOps.app.api...``,
+    ``Model...``, ``infra...``) só resolvem com data-platform no caminho — o mesmo
+    que a execução manual pelo host declara (Model/README.md, seção de treinamento).
+    """
     result = subprocess.run(
         [sys.executable, str(PREDICT_SCRIPT), "--sk-id", str(customer_id)],
-        cwd=MODEL_DIR.parent,
+        cwd=DATA_PLATFORM_DIR,
+        env={**os.environ, "PYTHONPATH": str(DATA_PLATFORM_DIR)},
         capture_output=True,
         text=True,
         check=False,
