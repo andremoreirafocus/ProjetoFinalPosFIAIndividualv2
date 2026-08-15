@@ -2,15 +2,13 @@
 
 Substitui Model/predict.py: aquele arquivo tinha carregamento, preparação e pontuação
 próprios, uma segunda implementação da mesma cadeia de inferência que a API já executa.
-Este orquestrador não guarda regra nenhuma — compõe os componentes do serving (etapas 1, 4)
-e executa a cadeia da seção 6 do plano de bundle: carrega o bundle uma vez, resolve as
-features do cliente, prepara a entrada pelo contrato do bundle, calcula score e classe. Sem
-manager, sem snapshot ativo, sem polling — o manager existe porque o servidor é um processo
-longo; o CLI carrega uma vez e termina.
+Este orquestrador não guarda regra nenhuma — compõe os componentes do serving: carrega o
+bundle uma vez, resolve as features do cliente, prepara a entrada pelo contrato do bundle,
+calcula score e classe. Sem manager, sem snapshot ativo, sem polling — o manager existe
+porque o servidor é um processo longo; o CLI carrega uma vez e termina.
 
-Não imprime rótulo de decisão: vai até o score, e a política é da API (decisão registrada
-no plano de bundle) — hoje um score de 0,55 seria "NEGAR_CREDITO" aqui e "manual_review" na
-API.
+Não imprime rótulo de decisão: vai até o score, e a política é da API — hoje um score de
+0,55 seria "NEGAR_CREDITO" aqui e "manual_review" na API.
 """
 from __future__ import annotations
 

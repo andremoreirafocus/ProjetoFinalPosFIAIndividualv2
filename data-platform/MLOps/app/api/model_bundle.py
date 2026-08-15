@@ -1,8 +1,7 @@
 """Objetos de dados que atravessam predição e explicação, sem comportamento próprio.
 
-Nenhum serviço aqui: são as instâncias que ``FeatureInputProcessor`` e
-``PredictionService`` recebem e devolvem, e que ``ExplanationService`` passa a consumir
-a partir da etapa 2.
+Nenhum serviço aqui: são as instâncias que ``FeatureInputProcessor``, ``PredictionService``
+e ``ExplanationService`` recebem e devolvem.
 """
 from __future__ import annotations
 

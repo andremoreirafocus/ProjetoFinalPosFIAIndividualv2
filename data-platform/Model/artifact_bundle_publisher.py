@@ -1,9 +1,8 @@
-"""Publica atomicamente o conjunto de artefatos de um treino — etapa 3.2 do plano de bundle.
+"""Publica atomicamente o conjunto de artefatos de um treino.
 
 Comportamento do produtor: grava modelo e referência num diretório temporário no mesmo
 filesystem, calcula os checksums, publica o diretório versionado e só então o manifesto,
-por último. Nada aqui é migrado de ``train.py`` — ele continua gravando os arquivos fixos
-até a etapa 6, que troca o produtor para usar este publicador.
+por último. `train.py` publica por este caminho.
 """
 from __future__ import annotations
 

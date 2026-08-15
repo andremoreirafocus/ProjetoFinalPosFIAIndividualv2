@@ -1,8 +1,7 @@
-"""Ciclo de vida do conjunto de artefatos ativo — etapa 5 do plano de bundle.
+"""Ciclo de vida do conjunto de artefatos ativo.
 
-Não conhece FastAPI, política de crédito, preparação de features, predição ou explicação
-(seção 4.4). O manager decide se e quando trocar o bundle ativo; quem valida o conteúdo é
-o loader (etapa 4).
+Não conhece FastAPI, política de crédito, preparação de features, predição ou explicação.
+O manager decide se e quando trocar o bundle ativo; quem valida o conteúdo é o loader.
 """
 from __future__ import annotations
 

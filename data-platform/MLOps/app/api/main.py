@@ -66,8 +66,8 @@ async def lifespan(app: FastAPI):
 async def _refresh_loop(manager: ModelBundleManager, refresh_seconds: float) -> None:
     """Um único laço contínuo por processo: atualiza, espera, repete até o shutdown.
 
-    O manager (etapa 5) nunca propaga exceção de candidato inválido — preserva o bundle
-    anterior e registra o erro em seu próprio estado, consultável por ``status()``.
+    O manager nunca propaga exceção de candidato inválido — preserva o bundle anterior e
+    registra o erro em seu próprio estado, consultável por ``status()``.
     """
     while True:
         await asyncio.to_thread(manager.refresh_if_changed)

@@ -2,8 +2,8 @@
 
 É o contrato que se compartilha entre produtor (`Model`) e consumidor (loader do
 serving) — não a inferência. Este módulo não lê, não escreve, não calcula checksum e
-não valida: publicar é do produtor (``artifact_bundle_publisher.py``, etapa 3.2); ler,
-conferir e recusar é do loader (etapa 4).
+não valida: publicar é do produtor (``artifact_bundle_publisher.py``); ler, conferir e
+recusar é do loader.
 """
 from __future__ import annotations
 

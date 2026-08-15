@@ -1,12 +1,8 @@
 """Calcula explicações locais TreeSHAP a partir de um bundle e uma entrada preparada.
 
-Corpo migrado da classe antiga de mesmo nome (etapa 2 do plano de bundle), trocando
-self.prediction_service e self.reference por bundle.estimator/bundle.feature_order e
-bundle.numeric_references/categorical_references/global_shap/target_rate. Sem leitura de
-arquivo, sem validação de versão cruzada (bundle unifica modelo e referência num objeto
-só, não há mais o que divergir) e sem validate_feature_coverage (responsabilidade do
-loader, etapa 4). Renomeado de ``explanation_service_v2.py`` na etapa 8, quando a classe
-antiga foi removida.
+Sem leitura de arquivo e sem validação de versão cruzada — o bundle unifica modelo e
+referência num objeto só, não há mais o que divergir. A cobertura estatística das
+features é responsabilidade do loader, não deste serviço.
 """
 from __future__ import annotations
 

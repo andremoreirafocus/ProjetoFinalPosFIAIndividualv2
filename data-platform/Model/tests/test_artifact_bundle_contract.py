@@ -1,8 +1,8 @@
-"""Teste da declaração de contrato do bundle — etapa 3.1 do plano de bundle.
+"""Teste da declaração de contrato do bundle.
 
 Sem comportamento próprio: confirma que ``BundleManifest`` expõe exatamente os campos
 com que foi construído. É o contrato compartilhado entre o produtor (`Model`) e o
-consumidor (loader do serving, etapa 4) — não a inferência.
+consumidor (loader do serving) — não a inferência.
 """
 from artifact_bundle_contract import ArtifactDeclaration, BundleManifest
 
