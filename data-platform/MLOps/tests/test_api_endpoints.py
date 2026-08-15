@@ -1,22 +1,21 @@
-import json
 import tempfile
 from pathlib import Path
-from threading import RLock
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
 
+from Model.artifact_bundle_contract import MANIFEST_FILE_NAME
+from Model.artifact_bundle_publisher import publish_bundle
+from MLOps.app.api.artifact_bundle_loader import ArtifactBundleLoader
 from MLOps.app.api.credit_policy import CreditPolicy
 from MLOps.app.api.explanation_service import ExplanationService
+from MLOps.app.api.feature_input_processor import FeatureInputProcessor
 from MLOps.app.api.main import app
-from MLOps.app.api.model_service import PredictionService
+from MLOps.app.api.model_bundle_manager import ModelBundleManager
+from MLOps.app.api.prediction_service import PredictionService
 from MLOps.tests.fakes import FakeFeatureService, FakeModel
-from MLOps.tests.fixtures import (
-    build_artifact,
-    build_feature_reference,
-    write_artifact_pickle,
-)
+from MLOps.tests.fixtures import build_artifact, build_feature_reference
 
 
 def _db_error() -> OperationalError:
@@ -25,12 +24,13 @@ def _db_error() -> OperationalError:
 
 @pytest.fixture
 def client_factory(request):
-    """Exercita a camada HTTP com um bundle temporário carregado pelo fluxo real.
+    """Exercita a camada HTTP com um bundle publicado de verdade pelo fluxo real.
 
-    O ``TestClient`` é usado sem ``with`` de propósito: assim o ``lifespan`` não
-    roda e nenhum serviço real (engine de banco, tarefa de carga) é criado. Os
-    serviços de modelo e explicação são reais; somente o estimador e o acesso às
-    features usam implementações determinísticas de teste.
+    O ``TestClient`` é usado sem ``with`` de propósito: assim o ``lifespan`` não roda e
+    nenhum serviço real (engine de banco, laço de atualização) é criado. O manager e o
+    loader são reais, operando sobre um bundle publicado por ``publish_bundle`` (etapa 3.2)
+    num diretório temporário — só o estimador e o acesso às features usam implementações
+    determinísticas de teste.
     """
 
     def build(
@@ -42,37 +42,30 @@ def client_factory(request):
     ) -> TestClient:
         temporary_directory = tempfile.TemporaryDirectory()
         request.addfinalizer(temporary_directory.cleanup)
-        directory = Path(temporary_directory.name)
-        model_path = directory / "artifact.pkl"
-        reference_path = directory / "feature_reference.json"
+        artifacts_dir = Path(temporary_directory.name)
+        manifest_path = artifacts_dir / MANIFEST_FILE_NAME
 
         if bundle_available:
-            write_artifact_pickle(
-                directory,
+            publish_bundle(
                 build_artifact(
                     model=FakeModel(positive_proba=score),
                     threshold=threshold,
                 ),
-            )
-            reference_path.write_text(
-                json.dumps(build_feature_reference()),
-                encoding="utf-8",
+                build_feature_reference(),
+                artifacts_dir,
             )
 
-        prediction_service = PredictionService(model_path)
-        explanation_service = ExplanationService(
-            prediction_service,
-            reference_path,
-        )
-        app.state.prediction_service = prediction_service
-        app.state.explanation_service = explanation_service
+        manager = ModelBundleManager(manifest_path, ArtifactBundleLoader())
+        manager.refresh_if_changed()
+
+        app.state.bundle_manager = manager
+        app.state.feature_input_processor = FeatureInputProcessor()
+        app.state.prediction_service = PredictionService()
+        app.state.explanation_service = ExplanationService()
         app.state.feature_service = feature_service or FakeFeatureService(
             features={"ext_source_1": 0.5, "occupation_type": "Laborers"}
         )
         app.state.credit_policy = CreditPolicy(0.50, 0.60, "test-v1")
-        app.state.model_load_error = None
-        app.state.model_bundle_lock = RLock()
-        app.state.model_bundle_signature = None
 
         client = TestClient(app)
         request.addfinalizer(client.close)
@@ -95,7 +88,7 @@ def test_health_unavailable_when_bundle_refresh_fails(client_factory) -> None:
     assert response.status_code == 503
     detail = response.json()["detail"]
     assert detail["message"] == "Modelo e referências ainda não estão disponíveis."
-    assert "artifact.pkl" in detail["last_error"]
+    assert MANIFEST_FILE_NAME in detail["last_error"]
 
 
 # --- /model/features -------------------------------------------------
@@ -173,7 +166,7 @@ def test_predict_from_features_bundle_unavailable_returns_503(client_factory) ->
     assert response.status_code == 503
     detail = response.json()["detail"]
     assert detail["message"] == "Modelo e referências ainda não estão disponíveis."
-    assert "artifact.pkl" in detail["last_error"]
+    assert MANIFEST_FILE_NAME in detail["last_error"]
 
 
 # --- /predict/customer/{id} -----------------------------------------

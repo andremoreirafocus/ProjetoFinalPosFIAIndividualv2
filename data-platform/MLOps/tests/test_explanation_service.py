@@ -1,30 +1,33 @@
-import json
-import tempfile
-from pathlib import Path
+"""Teste de ExplanationService.explain(bundle, prepared_input).
 
-import pytest
-
+A classe recebe bundle e entrada preparada em vez de PredictionService e caminho de
+referência lido de arquivo (etapa 2 do plano de bundle). Renomeado de
+test_bundle_explanation_service.py na etapa 8, quando explanation_service_v2.py virou
+explanation_service.py e a classe antiga foi removida.
+"""
 from MLOps.app.api.explanation_service import ExplanationService
-from MLOps.app.api.model_service import PredictionService
+from MLOps.app.api.feature_input_processor import FeatureInputProcessor
 from MLOps.tests.fakes import FakeModel
-from MLOps.tests.fixtures import build_artifact, build_feature_reference
+from MLOps.tests.fixtures import build_feature_reference, build_model_bundle
 
 
-def _service(directory: Path) -> ExplanationService:
-    prediction_service = PredictionService(Path("/loaded/in/memory.pkl"))
-    prediction_service.artifact = build_artifact(model=FakeModel())
-    reference_path = directory / "feature_reference.json"
-    reference_path.write_text(
-        json.dumps(build_feature_reference()), encoding="utf-8"
+def test_explain_returns_ranked_local_shap_contributions() -> None:
+    reference = build_feature_reference()
+    bundle = build_model_bundle(
+        estimator=FakeModel(),
+        feature_order=["ext_source_1", "occupation_type"],
+        categorical_features=["occupation_type"],
+        categories={"occupation_type": ["Laborers", "Managers"]},
+        target_rate=reference["target_rate"],
+        numeric_references=reference["numeric_features"],
+        categorical_references=reference["categorical_features"],
+        global_shap=reference["global_shap"],
     )
-    return ExplanationService(prediction_service, reference_path)
+    prepared_input = FeatureInputProcessor().prepare(
+        bundle, {"ext_source_1": 0.5, "occupation_type": "Managers"}
+    )
 
-
-def test_returns_ranked_local_shap_contributions() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        explanation = _service(Path(tmp)).explain(
-            {"ext_source_1": 0.5, "occupation_type": "Managers"}
-        )
+    explanation = ExplanationService().explain(bundle, prepared_input)
 
     assert explanation["base_value"] == -0.4
     assert explanation["output_scale"] == "raw_score"
@@ -43,12 +46,3 @@ def test_returns_ranked_local_shap_contributions() -> None:
     categorical = explanation["top_factors"][1]["comparison"]["categorical"]
     assert categorical["category_count"] == 40
     assert categorical["category_default_rate"] == 0.05
-
-
-def test_rejects_reference_from_another_model_version() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        service = _service(Path(tmp))
-        service.load_reference()
-        service.reference["model_version"] = "another-version"
-        with pytest.raises(ValueError):
-            service.explain({"ext_source_1": 0.5, "occupation_type": "Managers"})

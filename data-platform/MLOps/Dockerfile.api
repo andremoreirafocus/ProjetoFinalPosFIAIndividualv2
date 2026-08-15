@@ -11,6 +11,7 @@ COPY Model/requirements-inference.txt /tmp/Model/requirements-inference.txt
 COPY MLOps/app/api/requirements.txt /tmp/MLOps/app/api/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/MLOps/app/api/requirements.txt
 COPY MLOps /app/MLOps
+COPY infra /app/infra
+COPY Model/artifact_bundle_contract.py /app/Model/artifact_bundle_contract.py
 
-ENV MODEL_PATH=/app/Model/artifacts/lightgbm_abt.pkl
 CMD ["uvicorn", "MLOps.app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

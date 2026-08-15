@@ -146,15 +146,15 @@ services:
       - "${CREDIT_API_PORT:-8000}:8000"
     environment:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATA_DB}
-      MODEL_PATH: ${MODEL_PATH}
-      MODEL_LOAD_RETRY_SECONDS: ${MODEL_LOAD_RETRY_SECONDS:-5}
+      MODEL_ARTIFACTS_DIR: ${MODEL_ARTIFACTS_DIR}
+      MODEL_BUNDLE_REFRESH_SECONDS: ${MODEL_BUNDLE_REFRESH_SECONDS}
       CREDIT_APPROVE_MAX_SCORE: ${CREDIT_APPROVE_MAX_SCORE}
       CREDIT_MANUAL_REVIEW_MAX_SCORE: ${CREDIT_MANUAL_REVIEW_MAX_SCORE}
       CREDIT_POLICY_VERSION: ${CREDIT_POLICY_VERSION}
     depends_on:
       - postgres
     volumes:
-      - ./Model/artifacts:/app/Model/artifacts:ro
+      - ./Model/artifacts:${MODEL_ARTIFACTS_DIR}:ro
 
   # ---------------------------------------------------------------------------
   # MLOPS - INTERFACE DE DEMONSTRAÇÃO
