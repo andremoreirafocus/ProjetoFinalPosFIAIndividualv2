@@ -82,16 +82,21 @@ def get_pghook_database_connection(conn_id: str, silent: bool = False):
     return PostgresHook(postgres_conn_id=conn_id).get_conn()
 
 
-def get_database_engine(connection_str: str, silent: bool = False):
+def get_database_engine(connection_str: str, silent: bool = False, pool_pre_ping: bool = False):
     """Retorna um Engine do SQLAlchemy a partir da string recebida.
 
     Para os notebooks, onde o Engine — e não a conexão crua — é o que `pd.read_sql`
     espera. Não lê ambiente: o destino é inteiramente determinado pelo argumento.
+
+    `pool_pre_ping`: testa a conexão emprestada do pool antes de cada uso, descartando e
+    reabrindo quando ela morreu enquanto ociosa. Quem chama decide — processo longo com
+    conexões que envelhecem no pool ativa; processo curto que abre uma conexão e termina
+    usa o padrão do SQLAlchemy.
     """
     from sqlalchemy import create_engine
     from sqlalchemy.engine import make_url
 
-    engine = create_engine(connection_str)
+    engine = create_engine(connection_str, pool_pre_ping=pool_pre_ping)
     if not silent:
         url = make_url(connection_str)
         print(f"[CONEXÃO] Engine SQLAlchemy em '{url.host}', banco '{url.database}'.")

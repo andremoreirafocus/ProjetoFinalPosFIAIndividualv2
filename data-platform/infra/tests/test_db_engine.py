@@ -13,6 +13,7 @@ real nos três notebooks.
 import pandas as pd
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from infra.db import get_database_engine, get_db_connection_str_from_env
 
@@ -71,3 +72,44 @@ def test_engine_alimenta_read_sql_como_nos_notebooks(test_db, ambiente_do_banco_
     frame = pd.read_sql(f'SELECT * FROM "{TABELA}" ORDER BY sk_id_curr', engine)
 
     assert frame.to_dict("records") == CLIENTES
+
+
+def _kill_the_dbapi_connection_underneath(engine) -> None:
+    """Devolve uma conexão saudável ao pool e só então a mata por baixo.
+
+    Simula uma conexão que morreu enquanto estava ociosa no pool (timeout do lado do
+    servidor, rede caindo) — sem privilégio administrativo, no próprio processo. A
+    conexão precisa voltar ao pool intacta primeiro: se fosse fechada ainda emprestada,
+    o próprio checkin (que faz rollback) já a descartaria, e o teste deixaria de
+    distinguir o comportamento com e sem pré-ping.
+    """
+    with engine.connect() as connection:
+        dbapi_connection = connection.connection.dbapi_connection
+    dbapi_connection.close()
+
+
+@pytest.mark.integration
+def test_engine_with_pool_pre_ping_recovers_a_connection_that_died_in_the_pool(
+    _verify_test_database, ambiente_do_banco_de_teste
+):
+    engine = get_database_engine(
+        get_db_connection_str_from_env(), silent=True, pool_pre_ping=True
+    )
+    _kill_the_dbapi_connection_underneath(engine)
+
+    with engine.connect() as connection:
+        result = connection.execute(text("SELECT 1")).scalar()
+
+    assert result == 1
+
+
+@pytest.mark.integration
+def test_engine_without_pool_pre_ping_fails_on_a_connection_that_died_in_the_pool(
+    _verify_test_database, ambiente_do_banco_de_teste
+):
+    engine = get_database_engine(get_db_connection_str_from_env(), silent=True)
+    _kill_the_dbapi_connection_underneath(engine)
+
+    with pytest.raises(DBAPIError):
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))

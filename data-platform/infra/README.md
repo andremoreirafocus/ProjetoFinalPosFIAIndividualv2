@@ -25,6 +25,12 @@ conhece, não inferido do ambiente:
 | `get_pg_database_connection(connection_str)` | script local e suíte de testes |
 | `get_database_engine(connection_str)` | notebooks, onde `pd.read_sql` espera um Engine |
 
+`get_database_engine` aceita `pool_pre_ping: bool = False`. Ligado, testa a conexão
+emprestada do pool antes de cada uso e descarta a que morreu enquanto ociosa (timeout do
+lado do servidor, rede caindo), abrindo outra no lugar — sem isso, a operação seguinte
+falha com o erro da conexão morta. Quem chama decide: processo longo com conexões que
+envelhecem no pool liga; processo curto que abre uma conexão e termina usa o padrão.
+
 `get_db_connection_str_from_env()` é a única fronteira que lê o ambiente: monta a string a
 partir das variáveis `POSTGRES_*`, todas obrigatórias. Aceita um `host` opcional que
 sobrepõe `POSTGRES_HOST`, para quem roda fora da rede do compose — é o caso do CLI de
@@ -106,6 +112,9 @@ A suíte deste componente fixa o contrato da fronteira que ele implementa:
 - a abertura de conexão no banco indicado pela string recebida, e não pelo ambiente;
 - o Engine do SQLAlchemy apontando para o destino declarado e alimentando `pandas.read_sql`,
   que é o uso real nos notebooks;
+- com `pool_pre_ping=True`, uma conexão que morreu enquanto ociosa no pool não quebra a
+  operação seguinte; sem ele, a mesma conexão morta quebra — os dois lados fixados, cada
+  um pelo seu próprio caso;
 - a garantia de isolamento: o papel de teste conecta ao banco de teste e é recusado pelo
   banco do pipeline.
 
