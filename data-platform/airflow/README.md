@@ -197,9 +197,12 @@ Uma execução completa deve produzir:
 
 - tabelas brutas e tratadas no banco `data`;
 - tabela `application_abt`;
-- artefato `Model/artifacts/lightgbm_abt.pkl`;
-- arquivo `Model/artifacts/eval_model_metrics.json` atualizado;
-- arquivo `Model/artifacts/feature_reference.json` atualizado.
+- manifesto `Model/artifacts/current_bundle.json` apontando para o conjunto recém-publicado;
+- diretório `Model/artifacts/bundles/<bundle_id>/` com `lightgbm_abt.pkl` e
+  `feature_reference.json` (checksums conferidos pelo manifesto) e
+  `eval_model_metrics.json` ao lado, fora do manifesto.
+
+Contrato completo em [`Model/docs/artefatos.md`](../Model/docs/artefatos.md).
 
 Como evolução proposta, essa etapa deverá também gerar `monitoring_reference.json` e registrar no *model registry* uma nova versão candidata com o modelo, a configuração, as métricas e os baselines associados. O fluxo está descrito na [arquitetura de monitoramento do modelo em produção](../MLOps/MONITORING_ARCHITECTURE.md) e ainda não faz parte da implementação atual.
 

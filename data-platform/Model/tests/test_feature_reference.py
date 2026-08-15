@@ -132,7 +132,7 @@ def test_adds_rates_only_to_binary_numeric_features(
     }
 
 
-def test_save_artifacts_persists_model_artifact_as_received_and_writes_reference(
+def test_save_artifacts_publishes_versioned_bundle_with_metrics_outside_manifest(
     model: LGBMClassifier, X: pd.DataFrame, y: pd.Series, tmp_path: Path
 ) -> None:
     feature_reference = build_feature_reference(
@@ -154,24 +154,31 @@ def test_save_artifacts_persists_model_artifact_as_received_and_writes_reference
         "config_version": MODEL_VERSION,
     }
     eval_model_metrics = {"roc_auc": 0.75}
-    output_path = tmp_path / "model.pkl"
 
-    save_artifacts(model_artifact, eval_model_metrics, feature_reference, output_path)
+    manifest = save_artifacts(
+        model_artifact, eval_model_metrics, feature_reference, tmp_path
+    )
 
+    saved_manifest = json.loads(
+        (tmp_path / "current_bundle.json").read_text(encoding="utf-8")
+    )
+    assert saved_manifest["bundle_id"] == manifest.bundle_id
+
+    bundle_directory = tmp_path / "bundles" / manifest.bundle_id
+    with (bundle_directory / "lightgbm_abt.pkl").open("rb") as file:
+        saved_model_artifact = pickle.load(file)
     saved_reference = json.loads(
-        (tmp_path / "feature_reference.json").read_text(encoding="utf-8")
+        (bundle_directory / "feature_reference.json").read_text(encoding="utf-8")
     )
     saved_eval_model_metrics = json.loads(
-        (tmp_path / "eval_model_metrics.json").read_text(encoding="utf-8")
+        (bundle_directory / "eval_model_metrics.json").read_text(encoding="utf-8")
     )
-    with output_path.open("rb") as file:
-        saved_model_artifact = pickle.load(file)
 
-    assert saved_model_artifact["config_version"] == saved_reference["model_version"]
-    assert saved_model_artifact["trained_at_utc"] == saved_reference["trained_at_utc"]
-    assert saved_eval_model_metrics["test_metrics"] == eval_model_metrics
     assert sorted(saved_model_artifact) == sorted(model_artifact)
-    assert output_path.is_file()
+    assert saved_reference["model_version"] == MODEL_VERSION
+    assert saved_eval_model_metrics["test_metrics"] == eval_model_metrics
+    # eval_model_metrics.json não entra no manifesto: nem checksum, nem contrato.
+    assert "eval_model_metrics" not in saved_manifest
 
 
 @pytest.mark.parametrize(
@@ -208,11 +215,9 @@ def test_save_artifacts_rejects_diverging_identity_and_writes_nothing(
         "config_version": MODEL_VERSION,
         **model_artifact_overrides,
     }
-    output_path = tmp_path / "model.pkl"
 
     with pytest.raises(ValueError):
-        save_artifacts(model_artifact, {"roc_auc": 0.75}, feature_reference, output_path)
+        save_artifacts(model_artifact, {"roc_auc": 0.75}, feature_reference, tmp_path)
 
-    assert not output_path.exists()
-    assert not (tmp_path / "eval_model_metrics.json").exists()
-    assert not (tmp_path / "feature_reference.json").exists()
+    assert not (tmp_path / "current_bundle.json").exists()
+    assert not (tmp_path / "bundles").exists()

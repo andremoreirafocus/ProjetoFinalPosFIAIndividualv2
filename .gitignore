@@ -17,6 +17,8 @@ abt.csv
 /data-platform/Model/artifacts/*.joblib
 /data-platform/Model/artifacts/eval_model_metrics.json
 /data-platform/Model/artifacts/feature_reference.json
+/data-platform/Model/artifacts/current_bundle.json
+/data-platform/Model/artifacts/bundles/
 # Medicao de cobertura: banco binario regravado a cada execucao da suite, especifico
 # da maquina e do caminho onde rodou. Nao descreve contrato nenhum.
 .coverage

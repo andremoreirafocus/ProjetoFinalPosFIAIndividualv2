@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import pickle
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -21,6 +20,8 @@ from sklearn.metrics import (average_precision_score, brier_score_loss,
                              classification_report, roc_auc_score, roc_curve)
 from lightgbm import LGBMClassifier
 
+from artifact_bundle_contract import BundleManifest
+from artifact_bundle_publisher import publish_bundle
 from feature_reference import build_feature_reference
 
 from infra.db import (
@@ -175,25 +176,19 @@ def save_artifacts(
     model_artifact: dict[str, Any],
     eval_model_metrics: dict[str, float],
     feature_reference: dict[str, Any],
-    output_path: Path,
-) -> None:
-    """Salva modelo, métricas e referências estatísticas versionadas.
+    artifacts_dir: Path,
+) -> BundleManifest:
+    """Publica o conjunto versionado e grava as métricas do modelo de avaliação ao lado.
 
-    Recusa publicar um conjunto cujo artefato e baseline não pertençam ao mesmo
-    treinamento; nesse caso, nenhum arquivo é gravado.
+    Delega a publicação atômica (modelo, referência e manifesto) a ``publish_bundle``, que
+    recusa um par cujo artefato e baseline não pertençam ao mesmo treinamento — nesse caso,
+    nenhum arquivo é gravado, nem as métricas. ``eval_model_metrics.json`` não faz parte do
+    manifesto: é informativo, sem checksum, publicado depois que o bundle já é o ativo.
     """
-    if model_artifact["config_version"] != feature_reference["model_version"]:
-        raise ValueError("A versão do baseline diverge da versão do artefato.")
-    if model_artifact["trained_at_utc"] != feature_reference["trained_at_utc"]:
-        raise ValueError(
-            "O instante de treinamento do baseline diverge do artefato."
-        )
+    manifest = publish_bundle(model_artifact, feature_reference, artifacts_dir)
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("wb") as file:
-        pickle.dump(model_artifact, file)
-
-    metrics_path = output_path.parent / "eval_model_metrics.json"
+    bundle_directory = artifacts_dir / "bundles" / manifest.bundle_id
+    metrics_path = bundle_directory / "eval_model_metrics.json"
     resumo = {
         "algorithm": model_artifact["algorithm"],
         "hyperparameters": model_artifact["hyperparameters"],
@@ -203,16 +198,14 @@ def save_artifacts(
     }
     metrics_path.write_text(json.dumps(resumo, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    reference_path = output_path.parent / "feature_reference.json"
-    reference_path.write_text(
-        json.dumps(
-            feature_reference, indent=2, ensure_ascii=False, allow_nan=False
-        ),
-        encoding="utf-8",
-    )
-    print(f"[artefato] Modelo salvo em: {output_path}")
+    print(f"[artefato] Bundle publicado: {manifest.bundle_id}")
+    print(f"[artefato] Modelo salvo em: {bundle_directory / manifest.model.path.split('/')[-1]}")
     print(f"[artefato] Metricas do modelo de avaliacao salvas em: {metrics_path}")
-    print(f"[artefato] Referencias salvas em: {reference_path}")
+    print(
+        "[artefato] Referencias salvas em: "
+        f"{bundle_directory / manifest.feature_reference.path.split('/')[-1]}"
+    )
+    return manifest
 
 
 # Esta é a função chamada pelo Airflow através do script de orquestração
@@ -246,9 +239,9 @@ def run_training_pipeline(conn_id: str, abt_table: str):
         config["parameters"]["random_state"],
     )
     print("[referencias] Baseline calculado com sucesso.")
-    output_path = project_path(config["metadata"]["artifact"])
-    print(f"Salvando artefatos em: {output_path}")
-    save_artifacts(model_artifact, eval_model_metrics, feature_reference, output_path)
+    artifacts_dir = project_path(config["metadata"]["artifacts_dir"])
+    print(f"Publicando bundle em: {artifacts_dir}")
+    save_artifacts(model_artifact, eval_model_metrics, feature_reference, artifacts_dir)
     print("Artefatos salvos com sucesso.")
     print("[AIRFLOW TASK] Pipeline de treinamento finalizado com sucesso.")
 
@@ -256,7 +249,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Treino local do modelo")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH, help="Caminho do config_model.json")
     parser.add_argument("--sample-size", type=int, default=None, help="Le apenas N linhas da ABT (smoke test rapido)")
-    parser.add_argument("--output-path", type=Path, default=None, help="Sobrescreve o caminho do artefato")
+    parser.add_argument("--artifacts-dir", type=Path, default=None, help="Sobrescreve o diretorio de artefatos")
     return parser.parse_args()
 
 
@@ -299,9 +292,9 @@ def main() -> None:
     )
     print("Baseline calculado com sucesso.")
 
-    output_path = args.output_path or project_path(config["metadata"]["artifact"])
-    print(f"Salvando artefatos em: {output_path}")
-    save_artifacts(model_artifact, eval_model_metrics, feature_reference, output_path)
+    artifacts_dir = args.artifacts_dir or project_path(config["metadata"]["artifacts_dir"])
+    print(f"Publicando bundle em: {artifacts_dir}")
+    save_artifacts(model_artifact, eval_model_metrics, feature_reference, artifacts_dir)
     print("Artefatos salvos com sucesso.")
     print("[CLI] Pipeline de treinamento finalizado com sucesso.")
 

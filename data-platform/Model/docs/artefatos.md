@@ -6,19 +6,29 @@ mantém o resumo e a regra de versionamento.
 
 ## Conjunto publicado
 
-Cada execução de `train.py` produz três arquivos em `Model/artifacts/`, com a mesma
-identidade — `config_version` e `trained_at_utc` — porque saem do mesmo treinamento:
+Cada execução de `train.py` publica um conjunto versionado em `Model/artifacts/`, com a
+mesma identidade — `config_version` e `trained_at_utc` — porque saem do mesmo treinamento:
 
-| Artefato | Conteúdo |
-|---|---|
-| `lightgbm_abt.pkl` | Modelo LightGBM oficial e os metadados necessários à inferência. |
-| `eval_model_metrics.json` | Métricas do modelo de avaliação no holdout, com algoritmo, hiperparâmetros e threshold. |
-| `feature_reference.json` | Baseline populacional: distribuições das features e do score, referências por target e importância TreeSHAP global. |
+| Artefato | Conteúdo | No manifesto |
+|---|---|---|
+| `bundles/<bundle_id>/lightgbm_abt.pkl` | Modelo LightGBM oficial e os metadados necessários à inferência. | sim, com checksum |
+| `bundles/<bundle_id>/feature_reference.json` | Baseline populacional: distribuições das features e do score, referências por target e importância TreeSHAP global. | sim, com checksum |
+| `bundles/<bundle_id>/eval_model_metrics.json` | Métricas do modelo de avaliação no holdout, com algoritmo, hiperparâmetros e threshold. | não — informativo, sem checksum (decisão 1 do plano de bundle) |
+| `current_bundle.json` | Manifesto ativo: schema, `bundle_id`, identidade e os dois artefatos declarados com caminho relativo e SHA-256. | — |
 
-Os três são gravados nos mesmos caminhos e substituem os arquivos anteriores. A proposta
-de [monitoramento do modelo em produção](../../MLOps/MONITORING_ARCHITECTURE.md) introduz
-um *model registry* para preservar cada versão junto com sua configuração, métricas e
-baselines, além de controlar promoção e rollback.
+`bundle_id` é `model-<config_version>-<trained_at_utc compactado>`. A publicação é
+atômica: os arquivos são gravados num diretório temporário no mesmo filesystem, o
+diretório versionado é publicado por renomeação atômica, e o manifesto é escrito por
+último — uma falha em qualquer ponto anterior não altera a publicação ativa. Detalhes em
+`Model/artifact_bundle_contract.py` e `Model/artifact_bundle_publisher.py`.
+
+Isso substitui a publicação anterior — três arquivos de caminho fixo, sobrescritos a cada
+execução — descrita no plano de refatoração do carregamento, predição e explicação
+(`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`). A proposta de
+[monitoramento do modelo em produção](../../MLOps/MONITORING_ARCHITECTURE.md) introduz,
+adicionalmente, um *model registry* para controlar promoção e rollback — o versionamento
+por `bundle_id` não decide isso: qualquer manifesto válido é ativado, sem distinguir
+publicação de retrocesso.
 
 `model_comparison.csv` também vive em `artifacts/`, mas não é saída do treinamento: é o
 resultado histórico da comparação de modelos, produzido na etapa de seleção.

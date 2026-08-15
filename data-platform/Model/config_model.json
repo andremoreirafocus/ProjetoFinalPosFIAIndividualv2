@@ -11,7 +11,7 @@
     "positive_class_description": "cliente inadimplente (default)",
     "source": "postgres",
     "abt_table": "application_abt",
-    "artifact": "Model/artifacts/lightgbm_abt.pkl"
+    "artifacts_dir": "Model/artifacts"
   },
   "variables": {
     "identifier": "sk_id_curr",

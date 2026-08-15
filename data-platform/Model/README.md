@@ -65,7 +65,7 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 
 | Seção | Conteúdo |
 |---|---|
-| `metadata` | Projeto, versão, algoritmo, origem, tabela e caminho do artefato. |
+| `metadata` | Projeto, versão, algoritmo, origem, tabela e diretório de artefatos (`artifacts_dir`). |
 | `variables` | Identificador, target, features de entrada e categóricas. |
 | `parameters.split` | Holdout, estratificação e semente. |
 | `parameters.classifier` | Algoritmo e hiperparâmetros do LightGBM. |
@@ -101,11 +101,11 @@ configuradas, a composição do treinamento, o cálculo do baseline populacional
 publicar um conjunto de artefatos que não pertença ao mesmo treino.
 
 `test_artifact_bundle_contract.py` e `test_artifact_bundle_publisher.py` fixam o contrato e
-a publicação atômica do conjunto versionado (manifesto, checksums, diretório `bundles/`) —
-etapa 3 do plano de refatoração do carregamento, predição e explicação
-(`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`). `train.py` ainda não
-usa esse publicador: continua gravando os três arquivos fixos em `artifacts/` até a etapa 6
-do plano trocar o produtor.
+a publicação atômica do conjunto versionado (manifesto, checksums, diretório `bundles/`);
+`test_feature_reference.py::test_save_artifacts_*` fixa que `save_artifacts` publica por
+esse caminho, com `eval_model_metrics.json` gravado ao lado, fora do manifesto — plano de
+refatoração do carregamento, predição e explicação
+(`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`).
 
 Ela roda **sem PostgreSQL e sem artefato treinado**, porque as conexões chegam injetadas: os
 testes entregam uma conexão falsa pela mesma fronteira que a produção usa. A fixture de
@@ -136,14 +136,21 @@ Treinamento reduzido para validação rápida, a partir do mesmo diretório:
 ```bash
 PYTHONPATH=. Model/.venv/bin/python Model/train.py \
   --sample-size 5000 \
-  --output-path /tmp/lightgbm_abt_smoke.pkl
+  --artifacts-dir /tmp/smoke
 ```
+
+Cada execução publica um conjunto versionado, atomicamente: `current_bundle.json` (o
+manifesto ativo) e `bundles/<bundle_id>/` com o modelo, a referência e seus checksums.
+`eval_model_metrics.json` é gravado ao lado, no mesmo diretório, mas não entra no
+manifesto — é informativo, sem checksum (decisão 1, seção 11 do plano). Um par cujo
+artefato e referência não pertençam ao mesmo treinamento é recusado antes de qualquer
+escrita.
 
 O parâmetro `--sample-size` limita a consulta e existe para smoke tests. Ele não deve ser usado para gerar o artefato oficial.
 
-`--output-path` nomeia apenas o arquivo do modelo; `eval_model_metrics.json` e
-`feature_reference.json` são gravados **na mesma pasta**, porque os três pertencem ao mesmo
-treinamento e são publicados juntos.
+`--artifacts-dir` sobrescreve o diretório onde o conjunto é publicado — o mesmo que
+`metadata.artifacts_dir` aponta por padrão. O manifesto e o diretório `bundles/<bundle_id>/`
+nascem dentro dele.
 
 ### O que `train.py` executa
 
@@ -190,25 +197,38 @@ primeiro que satisfaz a faixa.
 
 ## Artefatos
 
+Cada treinamento publica um conjunto versionado em `artifacts/bundles/<bundle_id>/`, com
+`artifacts/current_bundle.json` como manifesto ativo — modelo e referência declarados com
+checksum, `eval_model_metrics.json` ao lado, fora do manifesto. O contrato completo, o
+formato do manifesto e a publicação atômica estão em
+[`docs/artefatos.md`](./docs/artefatos.md).
+
 | Artefato | Finalidade | Versionado |
 |---|---|---|
-| `artifacts/lightgbm_abt.pkl` | Modelo LightGBM oficial e metadados necessários à inferência. | não |
-| `artifacts/eval_model_metrics.json` | Fonte única das métricas do holdout, com o algoritmo, os hiperparâmetros e o threshold da execução persistida. | não |
-| `artifacts/feature_reference.json` | Distribuições das features e do score, referências por target e importância TreeSHAP global. | não |
+| `artifacts/current_bundle.json` | Manifesto do conjunto ativo. | — |
+| `artifacts/bundles/<bundle_id>/lightgbm_abt.pkl` | Modelo LightGBM oficial e metadados necessários à inferência. | sim |
+| `artifacts/bundles/<bundle_id>/feature_reference.json` | Distribuições das features e do score, referências por target e importância TreeSHAP global. | sim |
+| `artifacts/bundles/<bundle_id>/eval_model_metrics.json` | Métricas do holdout, algoritmo, hiperparâmetros e threshold da execução. Fora do manifesto. | sim |
 | [`artifacts/model_comparison.csv`](./artifacts/model_comparison.csv) | Resultado histórico de comparação de modelos. | sim |
 
-As três saídas do treinamento não são versionadas: são reproduzíveis por `train.py` e
-sobrescritas a cada execução. Versioná-las faria o clone criá-las com o dono e a
+Nenhum dos quatro primeiros é versionado no git — reproduzíveis por `train.py`, sob
+`bundle_id` diferente a cada execução. Versioná-los faria o clone criá-los com o dono e a
 permissão do usuário local, que o usuário do contêiner do Airflow não consegue
-sobrescrever — a gravação falharia no meio da sequência e o conjunto publicado ficaria
-incoerente. Em uma cópia nova do repositório elas só aparecem após um treinamento; até
-lá, a API não carrega e os notebooks de avaliação não rodam.
+sobrescrever. Em uma cópia nova do repositório eles só aparecem após um treinamento.
+
+**A API de inferência ainda não lê o bundle versionado.** Ela continua servindo o pickle
+de caminho fixo (`artifacts/lightgbm_abt.pkl`, fora de `bundles/`) que já estava em disco
+antes desta publicação existir — janela declarada no plano de refatoração do
+carregamento, predição e explicação, até a etapa que troca o consumidor.
+`Model/evaluation.ipynb`, que lê o caminho fixo pela chave `metadata.artifact` do
+`config_model.json`, está **quebrado** desde que essa chave foi renomeada para
+`metadata.artifacts_dir` — decisão explícita, registrada no plano, corrigida quando o
+consumidor migrar para o manifesto.
 
 A publicação valida a identidade do conjunto antes de gravar qualquer arquivo:
-`save_artifacts` recusa um artefato e um baseline que não pertençam ao mesmo
-treinamento — `config_version`/`model_version` e `trained_at_utc` precisam coincidir.
-
-O contrato de cada artefato está em [`docs/artefatos.md`](./docs/artefatos.md).
+`save_artifacts` recusa um artefato e uma referência que não pertençam ao mesmo
+treinamento — `config_version`/`model_version` e `trained_at_utc` precisam coincidir —, e
+nada é escrito, nem o manifesto nem o diretório versionado.
 
 ## Componentes relacionados
 
