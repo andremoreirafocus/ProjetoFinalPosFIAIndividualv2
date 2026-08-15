@@ -15,12 +15,23 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from artifact_bundle_contract import (
-    MANIFEST_FILE_NAME,
-    MANIFEST_SCHEMA_VERSION,
-    ArtifactDeclaration,
-    BundleManifest,
-)
+try:
+    # Execução "nua": Model/ diretamente no sys.path (Airflow, suíte do próprio Model).
+    from artifact_bundle_contract import (
+        MANIFEST_FILE_NAME,
+        MANIFEST_SCHEMA_VERSION,
+        ArtifactDeclaration,
+        BundleManifest,
+    )
+except ImportError:
+    # Execução como pacote: data-platform/ no sys.path, Model importado como
+    # Model.artifact_bundle_publisher (suíte do MLOps, que exercita o publicador real).
+    from Model.artifact_bundle_contract import (
+        MANIFEST_FILE_NAME,
+        MANIFEST_SCHEMA_VERSION,
+        ArtifactDeclaration,
+        BundleManifest,
+    )
 
 
 def publish_bundle(
