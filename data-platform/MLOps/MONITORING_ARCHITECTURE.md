@@ -86,15 +86,19 @@ o monitoramento — é isso que o *model registry* proposto adiante endereça.
 
 Parte das informações necessárias ao monitoramento já existe em `feature_reference.json`, incluindo percentis das features numéricas, frequências das categorias e distribuição do score. Entretanto, esse artefato foi estruturado para apoiar a explicação individual produzida pela API.
 
-O artefato proposto `monitoring_reference.json`, ainda não implementado, terá outra finalidade: registrar faixas fixas e proporções esperadas para o cálculo de PSI, referências de calibração e inadimplência por faixa de score e resultados por subgrupo para auditoria de fairness. Ele e `feature_reference.json` serão gerados na mesma execução e vinculados à mesma versão do modelo. A redundância parcial é intencional para preservar contratos e responsabilidades independentes.
+Na implementação futura, `monitoring_reference.json` terá outra finalidade: registrar faixas fixas e proporções esperadas para o cálculo de PSI, referências de calibração e inadimplência por faixa de score e resultados por subgrupo para auditoria de fairness. Ele e `feature_reference.json` serão gerados na mesma execução e vinculados à mesma versão do modelo. A redundância parcial é intencional para preservar contratos e responsabilidades independentes.
 
-O arquivo [`monitoring_reference.json`](./monitoring_reference.json) materializa esse
-contrato como documento de referência para a futura implementação. Seus valores
-foram calculados com as tabelas de origem, a ABT, o modelo e a política
-demonstrativa atuais. As referências de drift usam a ABT completa, enquanto
-performance, calibração, inadimplência por faixa de score e fairness usam o mesmo
-holdout estratificado da avaliação. O arquivo ainda não é gerado pelo treinamento
-nem consumido por uma DAG de monitoramento.
+O arquivo [`monitoring_reference.json`](./monitoring_reference.json) é um artefato
+demonstrativo gerado para a versão específica do modelo identificada em seu próprio
+conteúdo. Ele materializa o contrato proposto e facilita a compreensão das informações
+que esse artefato fornecerá e dos benefícios de seu uso no monitoramento futuro. Seus
+valores correspondem à versão registrada no arquivo, e não necessariamente ao bundle
+ativo no momento da leitura da documentação.
+
+As referências de drift usam a ABT completa dessa execução, enquanto performance,
+calibração, inadimplência por faixa de score e fairness usam o holdout estratificado da
+avaliação correspondente. O arquivo ainda não é gerado pelo treinamento nem consumido
+por uma DAG de monitoramento.
 
 Na seção `model`, `bundle_id` identifica o treinamento que produziu os baselines,
 `artifact` registra o caminho versionado do modelo e `manifest` informa o contrato de
