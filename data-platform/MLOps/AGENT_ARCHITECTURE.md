@@ -153,7 +153,7 @@ O agente acelerador de revisão de crédito é um processo independente da API e
 - valida e persiste o conteúdo estruturado produzido;
 - publica no RabbitMQ uma mensagem informando que o relatório está disponível para renderização.
 
-O agente acelerador de revisão de crédito interpreta evidências determinísticas, mas não substitui o modelo, a política nem o analista.
+O agente acelerador de revisão de crédito organiza em linguagem natural os resultados técnicos e as referências estatísticas autorizadas, preservando os valores recebidos, mas não substitui o modelo, a política nem o analista.
 
 ### Catálogo de features
 

@@ -28,6 +28,13 @@ MLOps/
 │       ├── app.py
 │       ├── field_config.py
 │       └── requirements.txt
+├── agent-manual-review/
+│   ├── .env.example
+│   ├── prepare_llm_context.py
+│   ├── invoke_llm.py
+│   ├── process_llm_response.py
+│   ├── render_report_pdf.py
+│   └── README.md
 ├── config/
 │   └── feature_catalog.json
 ├── tests/
@@ -36,6 +43,7 @@ MLOps/
 ├── DEVELOPMENT.md
 ├── AGENT_ARCHITECTURE.md
 ├── MONITORING_ARCHITECTURE.md
+├── monitoring_reference.json
 ├── Dockerfile.api
 ├── Dockerfile.frontend
 ├── pytest.ini

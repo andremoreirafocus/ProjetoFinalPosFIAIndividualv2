@@ -24,6 +24,7 @@ abt.csv
 .coverage
 .coverage.*
 /data-platform/MLOps/agent-manual-review/*.log
+/data-platform/MLOps/agent-manual-review/.env
 /dist
 *TS.md
 *DE.md

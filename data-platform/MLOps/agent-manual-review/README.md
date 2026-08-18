@@ -123,13 +123,21 @@ O arquivo [`agent-requirements.txt`](agent-requirements.txt) fixa as versões de
 ## Configuração local
 
 Os scripts `invoke_llm.py` e `render_report_pdf.py` leem suas respectivas
-configurações em:
+configurações no arquivo local:
 
 ```text
 MLOps/agent-manual-review/.env
 ```
 
-O arquivo já contém a configuração do template atual:
+Crie o arquivo local a partir do exemplo versionado:
+
+```bash
+cp MLOps/agent-manual-review/.env.example MLOps/agent-manual-review/.env
+```
+
+Consulte o arquivo de referência [`.env.example`](.env.example).
+
+O exemplo contém a configuração do template atual:
 
 ```dotenv
 REPORT_TEMPLATE=credit_review_report_v1.html.j2
@@ -140,7 +148,7 @@ do template, que deve existir no mesmo diretório dos scripts. O renderizador n�
 aceita um caminho alternativo e não escolhe outro template quando a configuração está
 ausente ou inválida.
 
-Para executar `invoke_llm.py`, acrescente localmente ao mesmo arquivo:
+Para executar `invoke_llm.py`, substitua localmente o placeholder pelo valor da chave:
 
 ```dotenv
 GROQ_API_KEY=insira_a_chave_aqui
@@ -150,10 +158,8 @@ A chave é lida exclusivamente desse arquivo e passada explicitamente ao `ChatGr
 Uma variável `GROQ_API_KEY` previamente exportada no processo não substitui o valor
 do arquivo.
 
-No estado criado, o `.env` não contém segredo. Depois da inclusão de
-`GROQ_API_KEY`, ele não deve ser versionado. Esse caminho ainda não está protegido
-pelo `.gitignore`; essa proteção deve ser providenciada antes de inserir uma
-credencial real.
+O `.env` é ignorado pelo Git e permanece somente no ambiente local. Assim, a
+configuração do template e a `GROQ_API_KEY` usadas na execução não são versionadas.
 
 ## Execução orquestrada do sample
 
@@ -447,10 +453,14 @@ de entrada, não uma saída a ser regenerada pelos scripts.
 | [`sample_agent_report.json`](archive/sample_agent_report.json) | Relatório consolidado por `process_llm_response.py`. |
 | [`sample_credit_review_report.pdf`](archive/sample_credit_review_report.pdf) | Primeira iteração do PDF. |
 | [`sample_credit_review_report_v2.pdf`](archive/sample_credit_review_report_v2.pdf) | Segunda iteração do PDF. |
-| [`sample_credit_review_report_v3.pdf`](archive/sample_credit_review_report_v3.pdf) | Terceira iteração e último PDF produzido durante a validação. |
+| [`sample_credit_review_report_v3.pdf`](archive/sample_credit_review_report_v3.pdf) | Terceira iteração histórica do PDF. |
 
 Esses outputs são referências históricas imutáveis da execução demonstrativa. Os
 scripts não os usam como fallback e não escrevem no diretório `archive`.
+
+O arquivo [`sample_credit_review_report_v4.pdf`](sample_credit_review_report_v4.pdf),
+mantido na raiz do protótipo, é o resultado demonstrativo atual e corresponde à saída
+produzida pelo fluxo e pelo template vigentes.
 
 ## Testes
 
