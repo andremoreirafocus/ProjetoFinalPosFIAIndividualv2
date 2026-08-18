@@ -167,9 +167,9 @@ O sample da API contém `model_version: "1.0.0"`, correspondente à versão regi
 em `Model/config_model.json`. Portanto, ele atende ao contrato de rastreabilidade e
 pode percorrer o fluxo completo.
 
-Antes da execução, acrescente uma `GROQ_API_KEY` válida ao `.env` e confirme que os
-quatro arquivos de saída ainda não existem no diretório do protótipo. Em seguida,
-execute:
+Antes da execução, substitua no `.env` o placeholder por uma `GROQ_API_KEY` válida e
+confirme que os quatro arquivos de saída ainda não existem no diretório do protótipo. Em
+seguida, execute:
 
 ```bash
 cd data-platform

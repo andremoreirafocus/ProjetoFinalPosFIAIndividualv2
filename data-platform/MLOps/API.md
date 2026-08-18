@@ -156,7 +156,7 @@ Enquanto nenhum bundle válido está ativo:
 {
   "detail": {
     "message": "Modelo e referências ainda não estão disponíveis.",
-    "last_error": "Manifesto não encontrado: /app/Model/artifacts/current_bundle.json"
+    "last_error": "[Errno 2] No such file or directory: '/app/Model/artifacts/current_bundle.json'"
   }
 }
 ```

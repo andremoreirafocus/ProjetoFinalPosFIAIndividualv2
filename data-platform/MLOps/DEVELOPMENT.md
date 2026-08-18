@@ -30,10 +30,16 @@ MLOps/
 │       └── requirements.txt
 ├── agent-manual-review/
 │   ├── .env.example
+│   ├── agent-requirements.txt
+│   ├── agent_report_prompt_v1.json
+│   ├── credit_review_report_v1.html.j2
+│   ├── script_logging.py
 │   ├── prepare_llm_context.py
 │   ├── invoke_llm.py
 │   ├── process_llm_response.py
 │   ├── render_report_pdf.py
+│   ├── run_sample_report_pipeline.sh
+│   ├── cleanup_generated_artifacts.sh
 │   └── README.md
 ├── config/
 │   └── feature_catalog.json
