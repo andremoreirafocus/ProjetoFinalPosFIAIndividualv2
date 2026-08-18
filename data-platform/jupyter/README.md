@@ -17,7 +17,7 @@ Separar esses momentos reduz o risco de misturar exploração com transformaçã
 
 ## Responsabilidade
 
-- disponibilizar um ambiente reproduzível para notebooks;
+- disponibilizar um ambiente padronizado para notebooks;
 - montar os diretórios `infra`, `DataPipeline` e `Model` no workspace;
 - instalar bibliotecas de análise, modelagem e interpretabilidade.
 
@@ -71,20 +71,27 @@ No container, os diretórios são montados em:
 ### Modelagem
 
 - [`validacao_modelos.ipynb`](../Model/validacao_modelos.ipynb): **seleciona o modelo** — compara as famílias de algoritmos sob o mesmo split, com busca de hiperparâmetros e critério de overfitting (treino × CV × teste externo).
-- [`evaluation.ipynb`](../Model/evaluation.ipynb): **avalia o modelo escolhido** no holdout — política de corte por valor esperado, interpretabilidade (permutação/SHAP), fairness e plano de monitoramento.
+- [`evaluation.ipynb`](../Model/evaluation.ipynb): **avalia o modelo escolhido** no holdout — métricas de discriminação, análise operacional de thresholds, interpretabilidade (permutação/SHAP), fairness e plano de monitoramento.
 
 ## Sequência recomendada
 
-Os notebooks leem do PostgreSQL — inclusive o de dados brutos, que consulta as tabelas de origem (`application_train`, `bureau`, `previous_application`, `installments_payments`). Por isso o **pipeline precisa ter ingerido as fontes (e materializado a ABT) antes** de abri-los.
+Os notebooks dependem de etapas diferentes do pipeline: a EDA bruta requer as quatro
+fontes ingeridas; os demais requerem a ABT materializada. A sequência metodológica que
+originou a implementação é:
 
 ```text
-pipeline_orchestration  (ingere as fontes brutas → materializa application_abt → treina o modelo)
-  → exp_analysis_raw.ipynb          (analisa as tabelas brutas no Postgres)
-  → exp_analysis_abt.ipynb          (valida a ABT materializada)
-  → validacao_modelos.ipynb         (compara e seleciona o modelo)
-  → config_model.json + train.py    (registra a seleção e retreina o modelo oficial)
-  → evaluation.ipynb                (avalia o modelo desenvolvido)
+ingestão das fontes
+  → exp_analysis_raw.ipynb
+  → implementação e execução das transformações e da ABT
+  → exp_analysis_abt.ipynb
+  → validacao_modelos.ipynb
+  → registro da configuração + train.py
+  → evaluation.ipynb
 ```
+
+A DAG atual reproduz o fluxo operacional já selecionado, da ingestão ao treinamento,
+usando as configurações vigentes. Ela pode ser executada integralmente antes da análise
+dos notebooks quando o objetivo for apenas reconstruir o estado atual da plataforma.
 
 > As decisões de EDA sobre os dados brutos justificam as regras de `data_sanitization.py` e `abt_transform.py`; ao alterá-las, reexecute o pipeline para reconstruir a ABT antes de seguir para a modelagem.
 

@@ -16,19 +16,13 @@ Produzir um score de propensão à inadimplência que ajude a priorizar clientes
 
 ## O que foi entregue
 
-- pipeline ELT em PostgreSQL para quatro fontes do Home Credit;
-- ABT com uma linha por cliente, consolidando cadastro, bureau, propostas e parcelas;
-- EDA das fontes brutas e da base tratada;
-- comparação entre Regressão Logística, Random Forest, XGBoost e LightGBM;
-- controle de overfitting com validação cruzada e teste externo;
-- LightGBM treinado com categóricas nativas e artefato reproduzível;
-- avaliação com AUC, Gini, KS, Average Precision, Brier, decis e thresholds;
-- interpretabilidade por permutação e SHAP;
-- análise de fairness e proposta de monitoramento;
-- proposta do agente acelerador de revisão de crédito para apoiar a revisão humana;
-- orquestração ponta a ponta com Airflow;
-- API FastAPI, política de crédito configurável e frontend Streamlit;
-- ambientes Docker para banco, Airflow, Jupyter, API e frontend.
+- pipeline ELT orquestrado pelo Airflow, da ingestão à construção da ABT;
+- notebooks de exploração, seleção e avaliação do modelo;
+- treinamento e publicação versionada do LightGBM;
+- API FastAPI com política de crédito separada do modelo;
+- frontend Streamlit para demonstrar as jornadas de inferência;
+- ambiente local integrado por Docker Compose;
+- propostas arquiteturais de monitoramento e apoio à revisão humana.
 
 ## Visão da solução
 
@@ -62,47 +56,15 @@ Esses componentes permanecem propostas arquiteturais. Os documentos distinguem e
 
 ## Resumo da metodologia utilizada
 
-O projeto segue o método **CRISP-DM**, com ênfase na *justificativa* de cada escolha:
-
-1. **Entendimento dos dados (EDA em duas etapas):** diagnóstico das fontes brutas para decidir tratamentos e, depois do pipeline, validação da base limpa. A força de cada variável é **medida** (Pearson, Cramér's V, WOE/IV) e a redundância é checada por multicolinearidade — não presumida.
-2. **Preparação:** limpeza e engenharia por **regras** (imputação por mediana em variáveis assimétricas, winsorização de outliers, isolamento de anomalias em flags, condensação de categorias raras) e consolidação das relações um-para-muitos em uma **ABT** de uma linha por cliente, com **flags de presença** que separam "sem histórico" de "histórico observado".
-3. **Modelagem:** comparação **curada** de quatro famílias (linear regularizado, *bagging*, dois *boostings*) por busca de hiperparâmetros com validação cruzada estratificada, medindo **treino × CV × conjunto externo** e aplicando um filtro de overfitting. A etapa comparativa adota uma representação comum com *one-hot encoding*; após a seleção, o LightGBM oficial utiliza categóricas nativas e é retreinado com toda a ABT.
-4. **Avaliação:** medição da configuração oficial em uma partição não usada no seu ajuste, com métricas de crédito (AUC/KS/Gini/PR-AUC), leitura de negócio por **decis** e **threshold como decisão econômica** (valor esperado, com análise de sensibilidade), **interpretabilidade** (permutação + SHAP) e **governança/fairness** com plano de monitoramento.
-5. **Implantação:** publicação do conjunto versionado de artefatos, com manifesto ativo, e disponibilização por API e interface web, com a **política de crédito separada do modelo**.
+O projeto segue o **CRISP-DM**: entendimento do problema e dos dados, preparação da
+ABT, comparação e seleção do modelo, avaliação e disponibilização da solução. As
+decisões analíticas ficam registradas nos notebooks; os componentes operacionais
+implementam o fluxo selecionado.
 
 O score retornado pelo modelo deve ser tratado como uma **pontuação de ordenação de risco, não como probabilidade calibrada**.
 
-## Por que confiar na solução
-
-Em vez de fixar números que mudam a cada re-treino, a confiança na solução se apoia em **método**:
-
-- **separação entre ajuste e medição**, somada à consistência entre treino, validação cruzada e conjunto externo, como evidência de estabilidade e generalização;
-- **métricas de ordenação** adequadas ao desbalanceamento (AUC/Gini/KS/PR-AUC), em vez de acurácia;
-- **coerência EDA → poder preditivo → modelo** (permutação/SHAP) como argumento contra vazamento;
-- reconhecimento explícito de que o score é **ranking de risco, não probabilidade calibrada** (a calibração fica registrada como próximo passo);
-- **governança** por subgrupo e um **plano de monitoramento** (desempenho, estabilidade/PSI, calibração, fairness).
-
-Os **valores** de cada execução ficam nos notebooks e em `Model/artifacts/bundles/<bundle_id>/eval_model_metrics.json`, no contexto do bundle que os produziu. O manifesto `Model/artifacts/current_bundle.json` identifica o conjunto ativo.
-
-## Implementações críticas
-
-### Engenharia de dados
-
-Os CSVs são lidos em chunks e carregados por `COPY` no PostgreSQL. Limpeza, percentis, agregações e joins são executados em SQL. Antes do join final, bureau, propostas e parcelas são reduzidos a uma linha por cliente, evitando duplicação da aplicação principal.
-
-### Orquestração
-
-A DAG `pipeline_orchestration` usa dynamic task mapping para as quatro fontes, paraleliza limpezas e agregações com pools e só libera o treinamento depois da materialização da ABT.
-
-### Modelagem
-
-O LightGBM foi selecionado após comparação de quatro famílias, busca de hiperparâmetros e filtro de overfitting. As categorias são tratadas nativamente e o modelo final é retreinado com toda a ABT depois da avaliação da configuração.
-
-### Inferência e decisão
-
-A API restaura a ordem, os tipos e as categorias salvas no artefato antes de calcular o score. A política de crédito é separada do modelo e converte faixas configuráveis em aprovação, revisão manual ou rejeição demonstrativa.
-
-Detalhes e justificativas estão nos READMEs de cada componente.
+Os métodos, métricas e contratos vigentes estão documentados nos READMEs de
+`DataPipeline`, `Model` e `MLOps`.
 
 ## Estrutura e documentação
 
@@ -118,20 +80,11 @@ Detalhes e justificativas estão nos READMEs de cada componente.
 
 ## Testes automatizados
 
-Cada componente possui sua própria suíte, e elas fixam o comportamento esperado — não são
-verificação acessória. O que cada uma cobre:
-
-| Suíte | O que fixa | Como executa |
-|---|---|---|
-| [infra](./data-platform/infra/README.md) | A fronteira de banco compartilhada: montagem da string de conexão a partir do ambiente e a exceção do host declarado, a falha nomeada quando falta variável obrigatória, a abertura da conexão e do Engine, e a garantia de que o papel de teste não alcança o banco de produção. | Contra o mesmo PostgreSQL de testes dedicado, com o papel de menor privilégio. |
-| [DataPipeline](./data-platform/DataPipeline/README.md#testes) | Os contratos funcionais de cada etapa do pipeline — ingestão em blocos, índices, regras de sanitização, agregações por cliente, construção da ABT e exportação — mais a fronteira de conexão com o banco. | Contra um PostgreSQL **de testes dedicado**, isolado do banco de produção por um papel de menor privilégio. Sem mocks: as funções recebem a conexão pela mesma fronteira que a tarefa do Airflow usa. |
-| [Model](./data-platform/Model/README.md#testes) | A leitura da ABT com a conversão das categóricas, a composição do treinamento, o cálculo do baseline populacional e a recusa de publicar um conjunto de artefatos que não pertença ao mesmo treino. | Sem PostgreSQL e sem artefato treinado: as conexões chegam injetadas. |
-| [MLOps](./data-platform/MLOps/DEVELOPMENT.md) | Os contratos e erros HTTP da API, a carga do modelo em segundo plano, a política de crédito, a explicabilidade e a inicialização do frontend. | Offline, com fakes injetados por composição; os casos que exigem o artefato treinado são pulados quando ele não existe. |
-
-A regra que atravessa as quatro: nada de mocks ou interceptação de chamadas — colaboradores
-entram por fixtures e fakes explícitos, pelas mesmas fronteiras que a produção usa. As
-suítes de `infra` e `DataPipeline` dividem o mesmo banco de teste, então rodam em sequência,
-não em paralelo.
+As suítes e seus comandos são documentados pelos componentes responsáveis:
+[infra](./data-platform/infra/README.md),
+[DataPipeline](./data-platform/DataPipeline/README.md#testes),
+[Model](./data-platform/Model/README.md#testes) e
+[MLOps](./data-platform/MLOps/DEVELOPMENT.md).
 
 ## Execução rápida
 
@@ -164,25 +117,3 @@ docker compose up -d --build
 - [`exp_analysis_abt.ipynb`](./data-platform/DataPipeline/exp_analysis_abt.ipynb): análise da ABT tratada.
 - [`validacao_modelos.ipynb`](./data-platform/Model/validacao_modelos.ipynb): comparação e seleção do modelo.
 - [`evaluation.ipynb`](./data-platform/Model/evaluation.ipynb): avaliação, threshold, explicabilidade e fairness.
-
-## Treinamento local
-
-Com PostgreSQL e ABT disponíveis:
-
-```bash
-cd data-platform
-python3 -m venv Model/.venv
-Model/.venv/bin/python -m pip install -r Model/requirements.txt
-PYTHONPATH=. Model/.venv/bin/python Model/train.py
-```
-
-Para instruções detalhadas, consulte [Model/README.md](./data-platform/Model/README.md).
-
-## Serviço de predição
-
-```bash
-cd data-platform
-docker compose up -d --build postgres credit-api credit-frontend
-```
-
-Consulte a visão geral e o índice da documentação em [MLOps/README.md](./data-platform/MLOps/README.md). Contratos e endpoints estão em [MLOps/API.md](./data-platform/MLOps/API.md), e os testes estão em [MLOps/DEVELOPMENT.md](./data-platform/MLOps/DEVELOPMENT.md).
