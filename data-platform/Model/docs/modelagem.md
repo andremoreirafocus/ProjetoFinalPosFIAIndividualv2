@@ -90,7 +90,7 @@ O holdout mede generalização e não participa do ajuste final durante a compar
 
 ## Estratégia de regularização (controle de overfitting)
 
-Os hiperparâmetros não foram fixados a priori: saíram da busca descrita em `validacao_modelos.ipynb`, dentro de uma faixa deliberadamente concentrada na **região regularizada**. O objetivo é um modelo que generaliza, não que memoriza o treino. A estratégia combina:
+Os hiperparâmetros não foram fixados a priori: foram selecionados em uma execução de `validacao_modelos.ipynb`, a partir de uma busca dentro de uma faixa deliberadamente concentrada na **região regularizada**. O objetivo é um modelo que generaliza, não que memoriza o treino. A estratégia combina:
 
 - **árvores rasas** (profundidade máxima baixa) — limitam interações espúrias e memorização;
 - **folhas com amostra mínima elevada** — impedem que uma folha se apoie em poucos clientes;
@@ -129,7 +129,7 @@ Os notebooks concentram as **decisões metodológicas** da modelagem. Este docum
 
 - **O que analisa:** um conjunto **curado de quatro famílias** — linear regularizado (Logística L2), *bagging* (Random Forest) e *boosting* (XGBoost e LightGBM) — sobre a ABT, cobrindo as abordagens relevantes para dados tabulares de crédito, em vez de testar muitos algoritmos redundantes.
 - **O que busca estabelecer:** qual família e configuração entregam o melhor **poder de ordenação** com **overfitting controlado**, e quais hiperparâmetros alimentam o treinamento oficial.
-- **Método:** busca de hiperparâmetros por `RandomizedSearchCV` com **validação cruzada estratificada**, medindo cada configuração em **três frentes — treino × teste interno (CV) × teste externo (holdout)** para diagnosticar overfitting sem depender de uma única partição; um **filtro de overfitting** descarta configurações que caem demais do treino para o teste; o modelo escolhido é **retreinado no conjunto de treino completo**. Nesta comparação **todas as famílias** usam padronização + *one-hot* (inclusive o campeão); é o **treinamento oficial** (`train.py`, avaliado em `evaluation.ipynb`) que adota as **categóricas nativas** do LightGBM, com os hiperparâmetros aqui selecionados.
+- **Método:** busca de hiperparâmetros por `RandomizedSearchCV` com **validação cruzada estratificada**, medindo cada configuração em **três frentes — treino × teste interno (CV) × teste externo (holdout)** para diagnosticar overfitting sem depender de uma única partição; um **filtro de overfitting** descarta configurações que caem demais do treino para o teste; o modelo escolhido é **retreinado no conjunto de treino completo**. Nesta comparação **todas as famílias** usam padronização + *one-hot* (inclusive o campeão); é o **treinamento oficial** (`train.py`, avaliado em `evaluation.ipynb`) que adota as **categóricas nativas** do LightGBM, com os hiperparâmetros selecionados em uma execução desse processo.
 - **Dados que cria e apresenta:** tabela de comparação treino/CV/externo por configuração, ranking pós-filtro de overfitting, importância nativa (contagem de *splits*) do modelo final e curvas/decis do candidato.
 
 ### [`evaluation.ipynb`](../evaluation.ipynb) — avaliação do modelo escolhido

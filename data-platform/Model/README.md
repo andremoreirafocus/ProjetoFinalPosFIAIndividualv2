@@ -1,6 +1,8 @@
 # Model
 
-Esta pasta reúne a seleção, o treinamento, a avaliação e a inferência local do modelo de risco de crédito.
+Esta pasta reúne a seleção, o treinamento, a avaliação e a publicação dos artefatos do
+modelo de risco de crédito. A inferência está implementada no componente
+[`MLOps`](../MLOps/README.md).
 
 ## Contexto do problema de modelagem
 
@@ -16,8 +18,7 @@ O modelo oficial é um **LightGBM Classifier** com categóricas nativas e `class
 - avaliar a configuração oficial num holdout estratificado;
 - ajustar o modelo final com toda a ABT;
 - calcular o baseline populacional e a referência TreeSHAP global;
-- publicar o conjunto versionado de artefatos consumido pela API;
-- oferecer inferência local para inspeção de um cliente.
+- publicar o conjunto versionado de artefatos consumido pela API.
 
 ## Fluxo
 
