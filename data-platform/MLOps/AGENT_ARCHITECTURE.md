@@ -169,9 +169,16 @@ O provedor do modelo é uma dependência externa ao domínio de predição. Sua 
 
 ### System prompt
 
-O comportamento do modelo de linguagem será orientado por um *system prompt* versionado. Esse artefato limita o relatório às evidências recebidas, impede o recálculo ou a alteração da recomendação, proíbe interpretações causais das contribuições SHAP, exige uma saída estruturada compatível com o renderizador e reforça que a decisão final permanece humana.
+No protótipo executável, o comportamento do modelo de linguagem é orientado pelo
+*system prompt* versionado em
+[`agent_report_prompt_v1.json`](./agent-manual-review/agent_report_prompt_v1.json). Esse
+artefato limita o relatório às evidências recebidas, impede o recálculo ou a alteração da
+recomendação, proíbe interpretações causais das contribuições SHAP, exige uma saída
+estruturada compatível com o renderizador e reforça que a decisão final permanece humana.
 
-A versão do *system prompt* utilizada deve acompanhar os metadados do relatório para garantir rastreabilidade. O texto completo será definido e mantido junto à implementação do agente acelerador de revisão de crédito, não neste documento arquitetural.
+O protótipo registra `prompt_version` no contexto preparado e a preserva no relatório para
+garantir a rastreabilidade. Na integração produtiva, o *system prompt* e sua versão serão
+persistidos junto aos demais artefatos que produziram cada relatório.
 
 ### Renderizador de relatórios
 
