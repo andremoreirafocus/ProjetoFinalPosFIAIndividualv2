@@ -61,9 +61,12 @@ Na configuração atual do bloco `__main__`, o comando exporta:
 
 Esses arquivos são gravados ao lado dos quatro CSVs brutos usados na ingestão. Assim, o diretório reúne as fontes originais, suas representações tratadas e a ABT final. O caminho é relativo ao diretório de execução; por isso, o comando deve ser iniciado em `data-platform/DataPipeline`.
 
-Os arquivos já foram materializados em `data-platform/airflow/data/csv`, pasta originalmente destinada aos arquivos brutos. Atualmente ela reúne:
+O checkout atual mantém em `data-platform/airflow/data/csv` as quatro fontes brutas:
+`application_train.csv`, `previous_application.csv`, `bureau.csv` e
+`installments_payments.csv`.
 
-- as quatro fontes brutas: `application_train.csv`, `previous_application.csv`, `bureau.csv` e `installments_payments.csv`;
+Depois que o pipeline materializa as tabelas e o utilitário é executado, o mesmo diretório recebe localmente:
+
 - as quatro bases tratadas: `application_clean.csv`, `previous_application_clean.csv`, `bureau_clean.csv` e `installments_clean.csv`;
 - a base analítica final: `application_abt.csv`.
 
@@ -74,7 +77,7 @@ A convivência no mesmo diretório atende à preparação manual da entrega. Os 
 O script expõe uma função reutilizável para chamadas manuais em outro módulo Python:
 
 ```python
-from db import get_db_connection_str_from_env, get_pg_database_connection
+from infra.db import get_db_connection_str_from_env, get_pg_database_connection
 from export_data import run_postgres_to_csv_export
 
 conn = get_pg_database_connection(get_db_connection_str_from_env("localhost"))

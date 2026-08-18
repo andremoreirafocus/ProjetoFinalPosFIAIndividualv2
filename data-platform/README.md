@@ -177,8 +177,7 @@ Essa abordagem reduz divergência entre engenharia de atributos offline e online
 |---|---|---|
 | Fontes e tabelas do pipeline | `DataPipeline/config_pipeline.json` | DAG e módulos de transformação. |
 | Features e hiperparâmetros | `Model/config_model.json` | treinamento, avaliação e validações. |
-| Artefato de inferência | `Model/artifacts/lightgbm_abt.pkl` | script local e API. |
-| Referências estatísticas | `Model/artifacts/feature_reference.json` | API e consumidores de explicações. |
+| Bundle ativo de inferência | `Model/artifacts/current_bundle.json` e `Model/artifacts/bundles/<bundle_id>/` | API, CLI de inferência, avaliação e explicações. |
 | Schema HTTP | `MLOps/app/api/schemas.py` | API e frontend. |
 | Limites da política | variáveis `CREDIT_*` | API e apresentação do resultado. |
 
@@ -401,9 +400,9 @@ O componente `DataPipeline` inclui o utilitário [`export_data.py`](./DataPipeli
 
 O utilitário não integra a DAG e não altera o fluxo operacional da plataforma. Sua execução ocorre somente depois que o pipeline tiver criado as tabelas que serão entregues.
 
-Os arquivos exportados já foram adicionados a `data-platform/airflow/data/csv`, a mesma pasta que contém os arquivos brutos de entrada. O diretório passa a concentrar as quatro fontes originais, suas quatro versões tratadas e `application_abt.csv`, com uma linha por cliente.
+O checkout mantém os quatro arquivos brutos de entrada em `data-platform/airflow/data/csv`. Depois da execução do pipeline e do utilitário, o mesmo diretório recebe localmente as quatro versões tratadas e `application_abt.csv`, com uma linha por cliente.
 
-As dependências, os pré-requisitos, o comando de execução e a forma de selecionar a tabela de origem estão documentados na seção [Exportação de tabelas para CSV](./DataPipeline/README.md#exportação-de-tabelas-para-csv).
+As dependências, os pré-requisitos, o comando de execução e a forma de selecionar a tabela de origem estão documentados em [Exportação de tabelas para CSV](./DataPipeline/docs/exportacao.md).
 
 ## Notebooks oficiais
 

@@ -7,7 +7,9 @@
     "version": "1.0.0",
     "trained_at_utc": "2026-07-23T17:10:46+00:00",
     "algorithm": "LightGBM",
-    "artifact": "Model/artifacts/lightgbm_abt.pkl"
+    "manifest": "Model/artifacts/current_bundle.json",
+    "bundle_id": "model-1.0.0-20260723T171046Z",
+    "artifact": "Model/artifacts/bundles/model-1.0.0-20260723T171046Z/lightgbm_abt.pkl"
   },
   "policy": {
     "version": "demo-v1",

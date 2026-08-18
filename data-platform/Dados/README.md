@@ -30,4 +30,4 @@ Essa organização preserva separadamente as quatro fontes do projeto, em vez de
 |---|---|
 | [`application_abt.csv`](../airflow/data/csv/application_abt.csv) | Analytical Base Table final, com uma linha por cliente e as features utilizadas na modelagem. |
 
-Os arquivos tratados e a ABT são exportados manualmente do PostgreSQL pelo script [`export_data.py`](../DataPipeline/export_data.py). O procedimento de geração está descrito no [README do DataPipeline](../DataPipeline/README.md#exportação-de-tabelas-para-csv).
+Os arquivos tratados e a ABT são exportados manualmente do PostgreSQL pelo script [`export_data.py`](../DataPipeline/export_data.py). O procedimento de geração está descrito em [Exportação de tabelas para CSV](../DataPipeline/docs/exportacao.md).

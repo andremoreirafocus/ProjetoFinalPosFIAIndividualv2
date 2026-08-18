@@ -119,7 +119,7 @@ Restaurar as categorias é indispensável para o LightGBM com categóricas nativ
 
 ## Recuperação do cliente
 
-O `CustomerFeatureService` consulta `application_abt` por `sk_id_curr`. Identificador e target são removidos antes do retorno. O serviço também garante a presença das features de parcelas por compatibilidade com ABTs materializadas anteriormente. Consumir a ABT evita duplicar na API as agregações realizadas pelo pipeline.
+O `CustomerFeatureService` consulta `application_abt` por `sk_id_curr`. Identificador e target são removidos antes do retorno. Consumir a ABT mantém na inferência por cliente as agregações materializadas pelo pipeline.
 
 ## Política de crédito
 

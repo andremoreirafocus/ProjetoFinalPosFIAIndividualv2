@@ -210,7 +210,8 @@ O analista humano consulta o relatório persistido por uma interface de revisão
 
 | Componente | Responsabilidade | Limite |
 |---|---|---|
-| `PredictionService` | Preparar features e calcular score e classe. | Não aplica política nem produz explicação narrativa. |
+| `FeatureInputProcessor` | Aplicar o contrato do bundle: verificar, ordenar e tipar as features e restaurar as categorias do treinamento. | Recebe as features já recuperadas e não executa o modelo. |
+| `PredictionService` | Calcular score e classe sobre a entrada preparada. | Não prepara features, aplica política nem produz explicação narrativa. |
 | `CreditPolicy` | Converter o score em recomendação de negócio. | Não conhece SHAP, catálogo ou modelo de linguagem. |
 | `ExplanationService` | Calcular SHAP local e comparações com o treinamento. | Não interpreta semanticamente nem redige relatório. |
 | API | Expor o contrato e publicar a solicitação de relatório. | Não aguarda nem executa o agente acelerador de revisão de crédito. |
@@ -255,11 +256,17 @@ Já estão implementados os pré-requisitos determinísticos do agente acelerado
 - referências estatísticas geradas no treinamento;
 - catálogo semântico e de governança das 42 features.
 
-Permanecem como proposta arquitetural, ainda não implementada:
+Um exemplo de implementação executável, documentado em
+[`agent-manual-review/README.md`](./agent-manual-review/README.md), materializa a preparação
+governada do contexto, a composição pelo modelo de linguagem via Groq, a validação e a
+reassociação dos dados técnicos, a montagem do JSON final e a renderização determinística
+do PDF. Esse exemplo valida a utilidade do artefato e os contratos entre as etapas.
+
+Permanecem como proposta de integração produtiva:
 
 - inclusão do RabbitMQ na plataforma;
 - publicação das solicitações pela API;
-- processo consumidor do agente acelerador de revisão de crédito e integração com o modelo de linguagem;
-- definição e versionamento do *system prompt*;
-- renderização determinística dos relatórios em PDF;
+- execução do agente como consumidor assíncrono, utilizando em produção as etapas e os contratos validados pelo exemplo;
+- persistência e versionamento produtivos do *system prompt*, do contexto, da resposta e do relatório estruturado;
+- execução do renderizador como consumidor integrado à mensageria e ao armazenamento;
 - persistência e consulta dos relatórios de revisão, com possível adoção de *object storage*, inicialmente MinIO, para o conteúdo estruturado, o PDF ou ambos, conforme o tamanho e o volume acumulado.

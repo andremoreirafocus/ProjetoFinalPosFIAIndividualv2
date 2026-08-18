@@ -32,7 +32,7 @@ Produzir um score de propensão à inadimplência que ajude a priorizar clientes
 
 ## Visão da solução
 
-![Diagrama de arquitetura da plataforma: ingestão dos CSVs do Home Credit no PostgreSQL, orquestração e engenharia de dados com Airflow, treinamento e artefatos do modelo (LightGBM), camada de serviço com FastAPI e Streamlit e infraestrutura em Docker Compose](./arquitetura-plataforma.png)
+![Diagrama de arquitetura da plataforma: ingestão dos CSVs do Home Credit no PostgreSQL, orquestração e engenharia de dados com Airflow, treinamento e artefatos do modelo (LightGBM), camada de serviço com FastAPI e Streamlit e infraestrutura em Docker Compose](./arquitetura-plataforma-v5.png)
 
 *Figura 1 — Arquitetura ponta a ponta, dividida em cinco blocos: (1) origem, ingestão e armazenamento; (2) orquestração e engenharia de dados; (3) treinamento e artefatos do modelo; (4) deploy e camada de serviço; (5) infraestrutura e containers.*
 
@@ -43,7 +43,8 @@ Home Credit CSVs
   → PostgreSQL
   → Airflow + pipeline ELT
   → ABT por cliente
-  → LightGBM
+  → seleção e configuração do LightGBM
+  → treinamento, avaliação e bundle versionado
   → FastAPI + política de crédito
   → Streamlit
 ```
@@ -67,7 +68,7 @@ O projeto segue o método **CRISP-DM**, com ênfase na *justificativa* de cada e
 2. **Preparação:** limpeza e engenharia por **regras** (imputação por mediana em variáveis assimétricas, winsorização de outliers, isolamento de anomalias em flags, condensação de categorias raras) e consolidação das relações um-para-muitos em uma **ABT** de uma linha por cliente, com **flags de presença** que separam "sem histórico" de "histórico observado".
 3. **Modelagem:** comparação **curada** de quatro famílias (linear regularizado, *bagging*, dois *boostings*) por busca de hiperparâmetros com validação cruzada estratificada, medindo **treino × CV × conjunto externo** e aplicando um filtro de overfitting. A etapa comparativa adota uma representação comum com *one-hot encoding*; após a seleção, o LightGBM oficial utiliza categóricas nativas e é retreinado com toda a ABT.
 4. **Avaliação:** medição da configuração oficial em uma partição não usada no seu ajuste, com métricas de crédito (AUC/KS/Gini/PR-AUC), leitura de negócio por **decis** e **threshold como decisão econômica** (valor esperado, com análise de sensibilidade), **interpretabilidade** (permutação + SHAP) e **governança/fairness** com plano de monitoramento.
-5. **Implantação:** persistência do artefato reprodutível e disponibilização por API e interface web, com a **política de crédito separada do modelo**.
+5. **Implantação:** publicação do conjunto versionado de artefatos, com manifesto ativo, e disponibilização por API e interface web, com a **política de crédito separada do modelo**.
 
 O score retornado pelo modelo deve ser tratado como uma **pontuação de ordenação de risco, não como probabilidade calibrada**.
 
@@ -81,7 +82,7 @@ Em vez de fixar números que mudam a cada re-treino, a confiança na solução s
 - reconhecimento explícito de que o score é **ranking de risco, não probabilidade calibrada** (a calibração fica registrada como próximo passo);
 - **governança** por subgrupo e um **plano de monitoramento** (desempenho, estabilidade/PSI, calibração, fairness).
 
-Os **valores** de cada execução ficam nos notebooks e em `Model/artifacts/eval_model_metrics.json`, no contexto da execução que os produziu.
+Os **valores** de cada execução ficam nos notebooks e em `Model/artifacts/bundles/<bundle_id>/eval_model_metrics.json`, no contexto do bundle que os produziu. O manifesto `Model/artifacts/current_bundle.json` identifica o conjunto ativo.
 
 ## Implementações críticas
 

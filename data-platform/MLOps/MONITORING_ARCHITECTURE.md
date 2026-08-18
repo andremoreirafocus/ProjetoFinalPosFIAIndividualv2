@@ -96,6 +96,11 @@ performance, calibração, inadimplência por faixa de score e fairness usam o m
 holdout estratificado da avaliação. O arquivo ainda não é gerado pelo treinamento
 nem consumido por uma DAG de monitoramento.
 
+Na seção `model`, `bundle_id` identifica o treinamento que produziu os baselines,
+`artifact` registra o caminho versionado do modelo e `manifest` informa o contrato de
+publicação usado para localizar o conjunto ativo. Na implementação futura, esses campos
+serão preenchidos a partir do manifesto publicado pelo mesmo treinamento.
+
 O contrato separa dois momentos que não devem ser confundidos:
 
 - `source_data_quality_reference` registra ausência e valores inválidos depois da

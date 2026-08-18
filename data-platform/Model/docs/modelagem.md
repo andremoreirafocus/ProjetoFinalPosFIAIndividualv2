@@ -26,7 +26,7 @@ Essa finalidade orienta a **escolha das métricas de avaliação**, que prioriza
 - **Brier** e a curva de calibração diagnosticam o quanto o score se afasta de uma probabilidade observável;
 - **matriz de confusão, recall e métricas econômicas de corte** traduzem o modelo em decisão de negócio.
 
-Os **valores** de cada execução vivem nos notebooks e em `artifacts/eval_model_metrics.json` — esta documentação descreve o *método*, não os números (que variam a cada re-treino).
+Os **valores** de cada execução vivem nos notebooks e em `artifacts/bundles/<bundle_id>/eval_model_metrics.json` — esta documentação descreve o *método*, não os números (que variam a cada re-treino).
 
 ## Por que LightGBM
 
@@ -110,7 +110,7 @@ Em vez de fixar números aqui (que mudam a cada re-treino), a confiabilidade da 
 - **Coerência EDA → poder preditivo → modelo:** as variáveis mais importantes (permutação/SHAP) coincidem com as apontadas pela EDA e têm sentido de negócio — argumento contra vazamento.
 - **Governança:** desempenho e decisão por subgrupo e um plano de monitoramento (desempenho, estabilidade dos dados/PSI, calibração, fairness) fecham o critério de rastreabilidade e conformidade.
 
-Os **valores** de cada execução ficam em `artifacts/eval_model_metrics.json` e nos notebooks, sempre no contexto da execução que os produziu — os notebooks podem refletir estágios de seleção ou execuções distintas do artefato oficial.
+Os **valores** de cada execução ficam em `artifacts/bundles/<bundle_id>/eval_model_metrics.json` e nos notebooks, sempre no contexto da execução que os produziu — os notebooks podem refletir estágios de seleção ou execuções distintas do artefato oficial.
 
 ## Thresholds e política de crédito
 
