@@ -23,11 +23,11 @@ Todo o pipeline é dirigido por um único arquivo, [`config_pipeline.json`](../c
 
 Cada seção abaixo detalha um desses blocos e mostra apenas o trecho de JSON correspondente — nunca o arquivo inteiro.
 
-A DAG carrega o arquivo com `load_pipeline_config(path)` (`config.py`), que recebe o caminho explicitamente — sem default e sem inferir um arquivo "ao lado" do módulo. Todas as chaves usadas pelo pipeline são obrigatórias: nenhuma tem valor substituto aplicado pelo código, e a ausência de qualquer uma delas falha no carregamento da DAG.
+A DAG carrega o arquivo com `load_pipeline_config(path)` (`config.py`), que recebe o caminho explicitamente — sem default e sem inferir um arquivo "ao lado" do módulo. Essa função realiza a leitura e a decodificação do JSON. As chaves são acessadas pelos respectivos consumidores: a DAG extrai os blocos que distribui às tasks, e cada rotina acessa os campos necessários à sua etapa. Por isso, o ponto em que uma configuração incompleta falha depende da chave utilizada e do consumidor responsável por ela.
 
 ## Nomenclatura das tabelas
 
-O bloco `database` de `config_pipeline.json` nomeia as tabelas brutas (`input_*`), as tratadas (`output_*`) e a ABT (`abt_table`). É a fonte usada pela ingestão, pela indexação raw e clean, pela limpeza e pela construção da ABT.
+Os nomes das tabelas brutas criadas pela ingestão vêm de `ingestion_table.using_csv[].table_name`, junto com o `chunk_size` de cada fonte. O bloco `database` nomeia as tabelas brutas (`input_*`), as tratadas (`output_*`) e a ABT (`abt_table`) referenciadas pela indexação raw e clean, pela limpeza, pelas agregações e pela construção da ABT. No contrato atual, os nomes das tabelas brutas declarados nos dois blocos correspondem entre si e devem permanecer coordenados.
 
 Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
 

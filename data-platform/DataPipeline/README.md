@@ -169,7 +169,8 @@ As funções registram no log:
 - quantidade de registros na entrada e saída;
 - número do chunk durante a ingestão;
 - criação de índices e agregações;
-- conclusão ou rollback em caso de erro.
+- as tasks `ingest_csv_source` e `generate_analytical_base_table` registram a
+  conclusão e executam rollback em caso de erro.
 
 Esses eventos aparecem nos logs das tarefas do Airflow e permitem localizar quedas inesperadas de volumetria entre as camadas.
 

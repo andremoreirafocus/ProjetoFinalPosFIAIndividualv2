@@ -61,9 +61,9 @@ Na configuração atual do bloco `__main__`, o comando exporta:
 
 Esses arquivos são gravados ao lado dos quatro CSVs brutos usados na ingestão. Assim, o diretório reúne as fontes originais, suas representações tratadas e a ABT final. O caminho é relativo ao diretório de execução; por isso, o comando deve ser iniciado em `data-platform/DataPipeline`.
 
-O checkout atual mantém em `data-platform/airflow/data/csv` as quatro fontes brutas:
-`application_train.csv`, `previous_application.csv`, `bureau.csv` e
-`installments_payments.csv`.
+Para que o pipeline execute a ingestão configurada, as quatro fontes brutas devem ser
+disponibilizadas em `data-platform/airflow/data/csv`: `application_train.csv`,
+`previous_application.csv`, `bureau.csv` e `installments_payments.csv`.
 
 Depois que o pipeline materializa as tabelas e o utilitário é executado, o mesmo diretório recebe localmente:
 
