@@ -45,7 +45,7 @@ O fluxo completo, incluindo baselines, Airflow, PostgreSQL, Prometheus, Grafana,
 
 Nos casos em que a API recomendar revisão humana, em vez de aprovação ou rejeição, um agente poderá ser acionado de forma assíncrona para combinar a explicação técnica da API com o catálogo semântico das features e, assim, produzir um relatório sobre o cliente, permitindo que o analista avalie o caso com maior agilidade e tome a decisão final sobre a concessão do crédito.
 
-As referências estatísticas e o enriquecimento explicativo da API já estão implementados. Mensageria, agente, modelo de linguagem, persistência e renderização permanecem propostos em [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md).
+As referências estatísticas e o enriquecimento explicativo da API já estão implementados. O protótipo executável em [`agent-manual-review`](./agent-manual-review/README.md) materializa a preparação governada do contexto, a composição narrativa pelo modelo de linguagem, a validação da resposta, a consolidação do relatório e a renderização do PDF. A integração produtiva com a API, mensageria, execução assíncrona e persistência durável permanece proposta em [AGENT_ARCHITECTURE.md](AGENT_ARCHITECTURE.md).
 
 ## Início rápido
 

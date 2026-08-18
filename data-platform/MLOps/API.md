@@ -6,7 +6,7 @@ Este documento descreve a arquitetura interna, a configuração e os contratos d
 
 | Componente | Responsabilidade | Não é responsabilidade |
 |---|---|---|
-| `feature_service` | Recuperar uma linha da ABT e preparar suas features. | Reexecutar a engenharia de atributos sobre as fontes brutas. |
+| `feature_service` | Recuperar uma linha da ABT, remover identificador e target e normalizar os valores retornados pelo banco. | Reexecutar a engenharia de atributos sobre as fontes brutas ou preparar a entrada conforme o contrato do modelo. |
 | `artifact_bundle_loader` | Ler, conferir e validar o conjunto de artefatos declarado pelo manifesto. | Decidir quando recarregar ou expor predição. |
 | `model_bundle_manager` | Decidir se e quando trocar o bundle ativo, preservando o anterior em qualquer falha do candidato. | Validar o conteúdo do candidato — isso é do loader. |
 | `feature_input_processor` | Alinhar a entrada ao contrato do bundle ativo: ordem, tipos, categorias. | Calcular score ou carregar artefato. |
@@ -42,7 +42,7 @@ FastAPI — contrato e transporte
 - **Consistência treino e inferência pela ABT:** o `feature_service` lê a mesma `application_abt` usada no treinamento. A predição por cliente depende de a ABT estar atualizada.
 - **Modelo e política desacoplados:** `predicted_class` usa o threshold do modelo, enquanto `recommendation` usa os limites configuráveis da política; os resultados podem divergir porque possuem finalidades diferentes.
 - **Contrato dirigido pelo artefato:** features, categorias e threshold acompanham o modelo. A API valida e alinha a entrada contra esse contrato.
-- **Dependências carregadas no startup:** modelo, serviços e engine do banco são criados no `lifespan` e reutilizados pelas requisições.
+- **Inicialização e ativação desacopladas:** serviços e engine do banco são criados no `lifespan`; o laço executado em segundo plano ativa o primeiro bundle válido e verifica novas versões. As requisições reutilizam os serviços e o snapshot ativo.
 - **Núcleo único de predição:** muda apenas a origem das features, que podem ser fornecidas pelo consumidor ou recuperadas da ABT.
 
 ### Fluxo do contrato
@@ -58,14 +58,14 @@ train.py
 
 ## Configuração
 
-| Variável | Finalidade | Padrão no Compose |
+| Variável | Finalidade | Origem no Compose |
 |---|---|---|
-| `MODEL_ARTIFACTS_DIR` | Diretório onde o conjunto de artefatos publicado está visível | Sem padrão |
-| `MODEL_BUNDLE_REFRESH_SECONDS` | Intervalo entre ciclos de verificação do manifesto | Sem padrão |
-| `DATABASE_URL` | Conexão com o banco `data` | PostgreSQL do Compose |
-| `CREDIT_APPROVE_MAX_SCORE` | Limite superior para aprovação | `0.50` |
-| `CREDIT_MANUAL_REVIEW_MAX_SCORE` | Limite superior para revisão manual | `0.60` |
-| `CREDIT_POLICY_VERSION` | Identificador da política | `demo-v1` |
+| `MODEL_ARTIFACTS_DIR` | Diretório onde o conjunto de artefatos publicado está visível | Variável homônima do `.env` |
+| `MODEL_BUNDLE_REFRESH_SECONDS` | Intervalo entre ciclos de verificação do manifesto | Variável homônima do `.env` |
+| `DATABASE_URL` | Conexão com o banco `data` | Composta com as variáveis `POSTGRES_*` do `.env` |
+| `CREDIT_APPROVE_MAX_SCORE` | Limite superior para aprovação | Variável homônima do `.env` |
+| `CREDIT_MANUAL_REVIEW_MAX_SCORE` | Limite superior para revisão manual | Variável homônima do `.env` |
+| `CREDIT_POLICY_VERSION` | Identificador da política | Variável homônima do `.env` |
 
 Os limites são demonstrativos, precisam ser validados com custos e regras reais e devem respeitar:
 
@@ -261,7 +261,7 @@ A resposta explicativa constitui o insumo quantitativo do futuro agente acelerad
 | Manifesto ausente, inválido ou candidato incompatível, sem bundle ativo anterior | API ativa, HTTP `503` nos endpoints dependentes, nova verificação a cada `MODEL_BUNDLE_REFRESH_SECONDS`. |
 | Candidato novo inválido com bundle ativo anterior válido | O manager preserva o bundle ativo; a próxima verificação tenta o candidato de novo. |
 
-As predições são registradas em JSON no stdout para demonstração e diagnóstico. Esse registro não substitui uma trilha de auditoria persistente.
+Para demonstração e diagnóstico, a API registra no stdout o payload da requisição em JSON e uma mensagem textual com o score e a classe calculados. Esses registros operacionais não substituem uma trilha de auditoria persistente.
 
 ## Documentos relacionados
 
