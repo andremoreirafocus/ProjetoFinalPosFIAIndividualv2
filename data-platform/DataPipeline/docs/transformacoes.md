@@ -17,7 +17,8 @@ Essa escolha aproveita o otimizador do PostgreSQL, reduz movimentação de dados
 Todo o pipeline é dirigido por um único arquivo, [`config_pipeline.json`](../config_pipeline.json), com quatro blocos:
 
 - `ingestion_table` — fontes CSV autorizadas para ingestão e o tamanho de chunk de cada uma.
-- `database` — nomes das tabelas brutas, tratadas e da ABT, usados por todas as demais etapas.
+- `database` — nomes das tabelas brutas, tratadas, da ABT e das tabelas que registram a
+  execução das tasks de transformação, usados por todas as demais etapas.
 - `indexes` — índices de banco a criar em cada fase (`raw`, antes da limpeza; `clean`, antes do join da ABT).
 - `sanitization` — parâmetros da limpeza de `application_train`.
 
@@ -27,7 +28,7 @@ A DAG carrega o arquivo com `load_pipeline_config(path)` (`config.py`), que rece
 
 ## Nomenclatura das tabelas
 
-Os nomes das tabelas brutas criadas pela ingestão vêm de `ingestion_table.using_csv[].table_name`, junto com o `chunk_size` de cada fonte. O bloco `database` nomeia as tabelas brutas (`input_*`), as tratadas (`output_*`) e a ABT (`abt_table`) referenciadas pela indexação raw e clean, pela limpeza, pelas agregações e pela construção da ABT. No contrato atual, os nomes das tabelas brutas declarados nos dois blocos correspondem entre si e devem permanecer coordenados.
+Os nomes das tabelas brutas criadas pela ingestão vêm de `ingestion_table.using_csv[].table_name`, junto com o `chunk_size` de cada fonte. O bloco `database` nomeia as tabelas brutas (`input_*`), as tratadas (`output_*`), a ABT (`abt_table`) e as tabelas que registram a execução das tasks de transformação (`sanitization_last_run_table`), referenciadas pela indexação raw e clean, pela limpeza, pelas agregações e pela construção da ABT. No contrato atual, os nomes das tabelas brutas declarados nos dois blocos correspondem entre si e devem permanecer coordenados.
 
 Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
 
@@ -41,7 +42,8 @@ Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
   "output_bureau_table": "bureau_clean",
   "input_installments_table": "installments_payments",
   "output_installments_table": "installments_clean",
-  "abt_table": "application_abt"
+  "abt_table": "application_abt",
+  "sanitization_last_run_table": "application_sanitization_last_run"
 }
 ```
 
@@ -114,7 +116,12 @@ Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
 
 ### `application_train → application_clean`
 
-Uma CTE calcula estatísticas globais uma única vez e as aplica a todos os clientes:
+O SQL vive em dois arquivos versionados, em [`sql/`](../sql):
+`application_sanitization_stats.sql` calcula, uma vez por execução, as estatísticas globais e
+as duas listas de categorias válidas, materializando-as em `application_sanitization_last_run`
+— uma linha, sobrescrita a cada execução, que também registra o digest do arquivo de projeção
+aplicado e o instante da execução (`run_at`). `application_sanitization_projection.sql` lê essa
+tabela e aplica, por registro:
 
 - medianas dos três scores externos e de `ext_source_mean`;
 - medianas de telefone, família, anuidade e renda;

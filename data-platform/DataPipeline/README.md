@@ -60,6 +60,7 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 | [`data_sanitization.py`](./data_sanitization.py) | Aplica limpeza e padronização por SQL. |
 | [`data_sanitization_index.py`](./data_sanitization_index.py) | Recria índices nas tabelas tratadas. |
 | [`abt_transform.py`](./abt_transform.py) | Agrega históricos e constrói a ABT. |
+| [`sql/`](./sql) | SQL versionado das etapas de transformação; as projeções por registro trazem marcadores para o mesmo arquivo servir também a API. |
 | [`export_data.py`](./export_data.py) | Utilitário manual para exportar tabelas do PostgreSQL como arquivos CSV de entrega. |
 | [`config.py`](./config.py) | Carga do `config_pipeline.json`. |
 | [`config_pipeline.json`](./config_pipeline.json) | Define fontes, tabelas, chunks, índices e parâmetros de limpeza. |
@@ -85,7 +86,7 @@ O escopo e o tamanho dos blocos são controlados por [`config_pipeline.json`](./
 | Seção | Função |
 |---|---|
 | `ingestion_table.using_csv` | Fontes autorizadas e tamanho de cada chunk. |
-| `database` | Nomes das tabelas brutas, tratadas e da ABT. |
+| `database` | Nomes das tabelas brutas, tratadas, da ABT e das tabelas que registram a execução das tasks de transformação. |
 | `indexes.raw` | Índices de junção e de filtro criados nas tabelas brutas, antes da limpeza. |
 | `indexes.clean` | Índices em `sk_id_curr` criados nas tabelas tratadas, antes do join da ABT. |
 | `sanitization.cardinalidade_min_freq` | Frequência mínima antes de agrupar categorias raras. |
@@ -113,7 +114,7 @@ Depois, acesse http://localhost:8080, localize `pipeline_orchestration` e inicie
 
 ## Testes
 
-A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks.
+A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks. Para a sanitização, valida também que a execução se registra em tabela — as estatísticas, o digest da projeção aplicada e o instante da execução —, e que essa tabela é sobrescrita, não acumulada, a cada nova execução.
 
 As funções são exercitadas pela mesma fronteira que a produção usa: onde a task da DAG entrega a conexão aberta pelo `PostgresHook`, o teste entrega a do `data_test`. A suíte não escreve em variáveis de ambiente.
 
@@ -156,6 +157,9 @@ Os testes marcados como `integration` exigem o banco `data_test`; os demais roda
 
 - tabelas brutas no banco `data`;
 - tabelas tratadas com sufixo `_clean`;
+- `application_sanitization_last_run`, com as estatísticas, os parâmetros e o digest da
+  execução da sanitização — uma linha, sobrescrita a cada execução, não uma agregação
+  temporária;
 - agregações temporárias por cliente;
 - ABT `application_abt`.
 
