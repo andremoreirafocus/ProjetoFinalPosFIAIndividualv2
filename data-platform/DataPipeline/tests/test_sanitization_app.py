@@ -8,15 +8,22 @@ ownership derived; age in years; missing categoricals → Unknown; identifiers
 preserved. Expected values are derived from the fixture, never hardcoded blindly.
 """
 
+import hashlib
 import statistics
+from pathlib import Path
 
 import pytest
 
 from data_sanitization import run_sanitization
 
+PROJECTION_SQL_PATH = (
+    Path(__file__).resolve().parents[1] / "sql" / "application_sanitization_projection.sql"
+)
+
 
 INPUT_TABLE = "application_train"
 OUTPUT_TABLE = "application_clean"
+LAST_RUN_TABLE = "application_sanitization_last_run"
 
 APPLICATION_SCHEMA = {
     "sk_id_curr": "BIGINT",
@@ -88,7 +95,7 @@ def _row(sk_id_curr: int, **overrides) -> dict:
 def _sanitize(test_db, conexao, rows, min_freq, winsor_q):
     test_db.create_table(INPUT_TABLE, APPLICATION_SCHEMA)
     test_db.insert(INPUT_TABLE, rows)
-    run_sanitization(conexao, INPUT_TABLE, OUTPUT_TABLE, min_freq, winsor_q)
+    run_sanitization(conexao, INPUT_TABLE, OUTPUT_TABLE, LAST_RUN_TABLE, min_freq, winsor_q)
 
 
 def _clean_by_sk(test_db, sk_id_curr: int) -> dict:
@@ -254,3 +261,42 @@ def test_identifier_and_target_are_preserved(test_db, conexao):
     clean = _clean_by_sk(test_db, 700)
     assert clean["sk_id_curr"] == 700
     assert clean["target"] == 1
+
+
+@pytest.mark.integration
+def test_last_run_records_statistics_and_projection_digest(test_db, conexao):
+    rows = [
+        _row(1, ext_source_1=0.2, organization_type="Frequent"),
+        _row(2, ext_source_1=0.4, organization_type="Frequent"),
+        _row(3, ext_source_1=0.6, organization_type="Rare"),
+    ]
+    min_freq = 2  # 'Frequent' count 2 (valid); 'Rare' count 1 (folded)
+    winsor_q = 0.90
+    _sanitize(test_db, conexao, rows, min_freq=min_freq, winsor_q=winsor_q)
+
+    runs = test_db.fetch_dicts(f'SELECT * FROM "{LAST_RUN_TABLE}"')
+    assert len(runs) == 1
+    run = runs[0]
+
+    assert run["median_es1"] == pytest.approx(statistics.median([0.2, 0.4, 0.6]))
+    assert run["cardinalidade_min_freq"] == min_freq
+    assert run["income_winsor_q"] == pytest.approx(winsor_q)
+    assert run["valid_orgs"] == ["Frequent"]
+    assert run["valid_incs"] == ["Working"]
+
+    expected_sha256 = hashlib.sha256(PROJECTION_SQL_PATH.read_bytes()).hexdigest()
+    assert run["application_sanitization_projection_sha256"] == expected_sha256
+
+    assert run["run_at"] is not None
+
+
+@pytest.mark.integration
+def test_last_run_is_overwritten_by_a_second_execution(test_db, conexao):
+    _sanitize(test_db, conexao, [_row(1, ext_source_1=0.2)], min_freq=1, winsor_q=0.99)
+    first_run_at = test_db.fetch_dicts(f'SELECT run_at FROM "{LAST_RUN_TABLE}"')[0]["run_at"]
+
+    _sanitize(test_db, conexao, [_row(1, ext_source_1=0.8)], min_freq=1, winsor_q=0.99)
+    runs = test_db.fetch_dicts(f'SELECT run_at FROM "{LAST_RUN_TABLE}"')
+
+    assert len(runs) == 1
+    assert runs[0]["run_at"] != first_run_at

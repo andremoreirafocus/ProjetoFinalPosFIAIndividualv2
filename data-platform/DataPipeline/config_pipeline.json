@@ -16,7 +16,8 @@
     "output_bureau_table": "bureau_clean",
     "input_installments_table": "installments_payments",
     "output_installments_table": "installments_clean",
-    "abt_table": "application_abt"
+    "abt_table": "application_abt",
+    "sanitization_last_run_table": "application_sanitization_last_run"
   },
   "indexes": {
     "raw": [

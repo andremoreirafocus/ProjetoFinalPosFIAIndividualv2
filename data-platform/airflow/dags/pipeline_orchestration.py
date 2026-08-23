@@ -88,12 +88,16 @@ with DAG(
 
     @task(task_id="task_sanitize_app", pool="pool_sanitization")
     def task_sanitize_app(
-        conn_id: str, input_t: str, output_t: str, min_freq: int, winsor_q: float
+        conn_id: str, input_t: str, output_t: str, sanitization_last_run_table: str,
+        cardinalidade_min_freq: int, income_winsor_q: float,
     ):
         """Sanitiza application_train usando parâmetros explícitos (sem chunk_size)"""
         conn = get_pghook_database_connection(conn_id)
         try:
-            run_sanitization(conn, input_t, output_t, min_freq, winsor_q)
+            run_sanitization(
+                conn, input_t, output_t, sanitization_last_run_table,
+                cardinalidade_min_freq, income_winsor_q,
+            )
         finally:
             conn.close()
 
@@ -179,8 +183,9 @@ with DAG(
         conn_id=CONN_ID,
         input_t=db_config["input_table"],
         output_t=db_config["output_table"],
-        min_freq=sanitization_params["cardinalidade_min_freq"],
-        winsor_q=sanitization_params["income_winsor_q"],
+        sanitization_last_run_table=db_config["sanitization_last_run_table"],
+        cardinalidade_min_freq=sanitization_params["cardinalidade_min_freq"],
+        income_winsor_q=sanitization_params["income_winsor_q"],
     )
 
     limpeza_prev = task_sanitize_prev(

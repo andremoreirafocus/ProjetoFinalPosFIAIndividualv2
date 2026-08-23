@@ -4,7 +4,14 @@ data_sanitization.py — Limpeza e padronização (Home Credit) via ELT (SQL Pur
 Processamento transferido 100% para dentro do PostgreSQL.
 Funções puras: todas as configurações são recebidas por parâmetro via DAG (Airflow).
 """
+import hashlib
+from pathlib import Path
+
 from infra.db import log_row_count
+
+SQL_DIR = Path(__file__).resolve().parent / "sql"
+"""Asset do componente — os `.sql` versionados que este módulo carrega e executa."""
+
 
 def get_table_columns(cursor, table_name: str) -> list:
     """Busca dinamicamente a lista de colunas de uma tabela no PostgreSQL."""
@@ -19,97 +26,59 @@ def get_table_columns(cursor, table_name: str) -> list:
 # ---------------------------------------------------------------------------
 # application_train
 # ---------------------------------------------------------------------------
-def run_sanitization(conn, input_table: str, output_table: str, min_freq: int, winsor_q: float):
-    """Higieniza application_train usando SQL nativo para estatísticas globais e regras lógicas."""
+def run_sanitization(
+    conn, input_table: str, output_table: str, sanitization_last_run_table: str,
+    cardinalidade_min_freq: int, income_winsor_q: float,
+):
+    """Higieniza application_train em duas tabelas: as estatísticas da execução, depois a
+    projeção por registro que as consome. As duas confirmam juntas, num commit só."""
     cursor = conn.cursor()
 
     print(f"Limpando '{input_table}' -> '{output_table}' (ELT via PostgreSQL)...")
-    
+
     log_row_count(cursor, input_table, "Entrada")
-    
-    sql_elt = f"""
-    DROP TABLE IF EXISTS "{output_table}" CASCADE;
-    
-    CREATE TABLE "{output_table}" AS
-    WITH global_stats AS (
-        SELECT
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY ext_source_1) AS median_es1,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY ext_source_2) AS median_es2,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY ext_source_3) AS median_es3,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY (COALESCE(ext_source_1, 0) + COALESCE(ext_source_2, 0) + COALESCE(ext_source_3, 0))/3.0) AS median_es_mean,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY days_last_phone_change) AS median_phone,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY cnt_fam_members) AS median_fam,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY amt_annuity) AS median_annuity,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY NULLIF(amt_income_total, 0)) AS median_income,
-            percentile_cont({winsor_q}) WITHIN GROUP (ORDER BY NULLIF(amt_income_total, 0)) AS p99_income,
-            percentile_cont(0.5) WITHIN GROUP (ORDER BY own_car_age) FILTER (WHERE TRIM(flag_own_car) = 'Y') AS median_car_age
-        FROM "{input_table}"
-    ),
-    valid_orgs AS (
-        SELECT organization_type FROM "{input_table}" GROUP BY 1 HAVING COUNT(*) >= {min_freq}
-    ),
-    valid_incs AS (
-        SELECT name_income_type FROM "{input_table}" GROUP BY 1 HAVING COUNT(*) >= {min_freq}
+
+    projection_path = SQL_DIR / "application_sanitization_projection.sql"
+    projection_sha256 = hashlib.sha256(projection_path.read_bytes()).hexdigest()
+
+    stats_select = (SQL_DIR / "application_sanitization_stats.sql").read_text(
+        encoding="utf-8"
+    ).format(
+        input_table=input_table,
+        cardinalidade_min_freq=cardinalidade_min_freq,
+        income_winsor_q=income_winsor_q,
+        application_sanitization_projection_sha256=projection_sha256,
     )
-    SELECT
-        CAST(app.sk_id_curr AS BIGINT) AS sk_id_curr,
-        CAST(app.target AS BIGINT) AS target,
-
-        COALESCE(app.ext_source_1, stats.median_es1) AS ext_source_1,
-        COALESCE(app.ext_source_2, stats.median_es2) AS ext_source_2,
-        COALESCE(app.ext_source_3, stats.median_es3) AS ext_source_3,
-        
-        COALESCE(
-            (COALESCE(app.ext_source_1, stats.median_es1) + 
-             COALESCE(app.ext_source_2, stats.median_es2) + 
-             COALESCE(app.ext_source_3, stats.median_es3)) / 3.0, 
-        stats.median_es_mean) AS ext_source_mean,
-
-        CAST(app.region_rating_client_w_city AS BIGINT) AS region_rating_client_w_city,
-        COALESCE(app.days_last_phone_change, stats.median_phone) AS days_last_phone_change,
-        app.days_id_publish,
-        app.days_registration,
-
-        COALESCE(app.reg_city_not_work_city, 0) AS reg_city_not_work_city,
-        COALESCE(app.reg_city_not_live_city, 0) AS reg_city_not_live_city,
-        COALESCE(app.live_city_not_work_city, 0) AS live_city_not_work_city,
-
-        CASE WHEN TRIM(app.flag_own_car) = 'Y' THEN 1 ELSE 0 END AS has_car,
-        CASE 
-            WHEN TRIM(app.flag_own_car) = 'Y' THEN COALESCE(app.own_car_age, stats.median_car_age) 
-            ELSE 0 
-        END AS own_car_age,
-
-        COALESCE(app.def_60_cnt_social_circle, 0) AS def_60_cnt_social_circle,
-        COALESCE(app.amt_req_credit_bureau_year, 0) AS amt_req_credit_bureau_year,
-        CAST(COALESCE(app.cnt_children, 0) AS INTEGER) AS cnt_children,
-        COALESCE(app.cnt_fam_members, stats.median_fam) AS cnt_fam_members,
-
-        LEAST(
-            COALESCE(NULLIF(app.amt_income_total, 0), stats.median_income), 
-            stats.p99_income
-        ) AS amt_income_total,
-        
-        app.amt_credit,
-        COALESCE(app.amt_annuity, stats.median_annuity) AS amt_annuity,
-
-        COALESCE(TRIM(app.occupation_type), 'Unknown') AS occupation_type,
-        CASE WHEN o.organization_type IS NOT NULL THEN TRIM(app.organization_type) ELSE 'Other_low_freq' END AS organization_type,
-        CASE WHEN i.name_income_type IS NOT NULL THEN TRIM(app.name_income_type) ELSE 'Other_low_freq' END AS name_income_type,
-        COALESCE(TRIM(app.name_education_type), 'Unknown') AS name_education_type,
-        COALESCE(REPLACE(TRIM(app.code_gender), 'XNA', 'Unknown'), 'Unknown') AS code_gender,
-
-        ABS(app.days_birth) / 365.25 AS age,
-        CASE WHEN app.days_employed = 365243 THEN 0 ELSE ABS(app.days_employed) / 365.25 END AS years_employed,
-        CASE WHEN app.days_employed = 365243 THEN 1 ELSE 0 END AS days_employed_anom
-
-    FROM "{input_table}" app
-    CROSS JOIN global_stats stats
-    LEFT JOIN valid_orgs o ON app.organization_type = o.organization_type
-    LEFT JOIN valid_incs i ON app.name_income_type = i.name_income_type;
+    stats_sql = f"""
+    DROP TABLE IF EXISTS "{sanitization_last_run_table}" CASCADE;
+    CREATE TABLE "{sanitization_last_run_table}" AS
+    {stats_select};
     """
-    
-    cursor.execute(sql_elt)
+    cursor.execute(stats_sql)
+
+    projection_select = projection_path.read_text(encoding="utf-8").format(
+        identity_columns=(
+            "CAST(app.sk_id_curr AS BIGINT) AS sk_id_curr, "
+            "CAST(app.target AS BIGINT) AS target,"
+        ),
+        input_rows=f'"{input_table}" app',
+        stats=f'"{sanitization_last_run_table}" stats',
+        valid_orgs=(
+            f'(SELECT unnest(valid_orgs) FROM "{sanitization_last_run_table}") '
+            "AS o(organization_type)"
+        ),
+        valid_incs=(
+            f'(SELECT unnest(valid_incs) FROM "{sanitization_last_run_table}") '
+            "AS i(name_income_type)"
+        ),
+    )
+    clean_sql = f"""
+    DROP TABLE IF EXISTS "{output_table}" CASCADE;
+    CREATE TABLE "{output_table}" AS
+    {projection_select};
+    """
+    cursor.execute(clean_sql)
+
     conn.commit()
     log_row_count(cursor, output_table, "Saída")
     cursor.close()
