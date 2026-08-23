@@ -105,8 +105,8 @@ def create_agg_installments(conn, output_installments_table: str):
 # --- PIPELINE PRINCIPAL (ELT FINAL) ---
 def run_abt_generation(conn, config: dict):
     """Monta a ABT final via SQL puro unindo a aplicação limpa com os agregados intermediários."""
-    clean_table = config.get("output_table")
-    abt_table = config.get("abt_table")
+    clean_table = config["output_table"]
+    abt_table = config["abt_table"]
     
     cursor = conn.cursor()
 

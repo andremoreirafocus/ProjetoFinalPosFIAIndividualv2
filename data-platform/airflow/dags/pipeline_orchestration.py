@@ -37,8 +37,8 @@ CONFIG_PATH = "/opt/airflow/DataPipeline/config_pipeline.json"
 config = load_pipeline_config(CONFIG_PATH)
 
 # Extração das chaves do JSON para distribuição nas tasks
-tabelas_para_ingerir = config.get("ingestion_table", {}).get("using_csv", [])
-db_config = config.get("database", {})
+tabelas_para_ingerir = config["ingestion_table"]["using_csv"]
+db_config = config["database"]
 sanitization_params = config["sanitization"]
 
 with DAG(
@@ -171,37 +171,37 @@ with DAG(
     
     limpeza_installments = task_sanitize_installments(
         conn_id=CONN_ID,
-        input_t=db_config.get("input_installments_table"),
-        output_t=db_config.get("output_installments_table"),
+        input_t=db_config["input_installments_table"],
+        output_t=db_config["output_installments_table"],
     )
 
     limpeza_app = task_sanitize_app(
         conn_id=CONN_ID,
-        input_t=db_config.get("input_table"),
-        output_t=db_config.get("output_table"),
+        input_t=db_config["input_table"],
+        output_t=db_config["output_table"],
         min_freq=sanitization_params["cardinalidade_min_freq"],
         winsor_q=sanitization_params["income_winsor_q"],
     )
 
     limpeza_prev = task_sanitize_prev(
         conn_id=CONN_ID,
-        input_t=db_config.get("input_prev_table"),
-        output_t=db_config.get("output_prev_table"),
+        input_t=db_config["input_prev_table"],
+        output_t=db_config["output_prev_table"],
     )
 
     limpeza_bureau = task_sanitize_bureau(
         conn_id=CONN_ID,
-        input_t=db_config.get("input_bureau_table"),
-        output_t=db_config.get("output_bureau_table"),
+        input_t=db_config["input_bureau_table"],
+        output_t=db_config["output_bureau_table"],
     )
-    
+
     t_abt_index = task_abt_indexes(CONN_ID, config)
-    t_inst = task_agg_inst(CONN_ID, db_config.get("output_installments_table"))
-    t_prev = task_agg_prev(CONN_ID, db_config.get("output_prev_table"))
-    t_bureau = task_agg_bureau(CONN_ID, db_config.get("output_bureau_table"))
+    t_inst = task_agg_inst(CONN_ID, db_config["output_installments_table"])
+    t_prev = task_agg_prev(CONN_ID, db_config["output_prev_table"])
+    t_bureau = task_agg_bureau(CONN_ID, db_config["output_bureau_table"])
     t_abt_final = task_abt_final_generation(CONN_ID, db_config)
 
-    treino_modelo = task_train(CONN_ID, db_config.get("abt_table"))
+    treino_modelo = task_train(CONN_ID, db_config["abt_table"])
 
     # --- DEFINIÇÃO DO FLUXO (DEPENDÊNCIAS) ---
     (

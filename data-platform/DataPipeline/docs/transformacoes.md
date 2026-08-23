@@ -23,7 +23,7 @@ Todo o pipeline é dirigido por um único arquivo, [`config_pipeline.json`](../c
 
 Cada seção abaixo detalha um desses blocos e mostra apenas o trecho de JSON correspondente — nunca o arquivo inteiro.
 
-A DAG carrega o arquivo com `load_pipeline_config(path)` (`config.py`), que recebe o caminho explicitamente — sem default e sem inferir um arquivo "ao lado" do módulo. Essa função realiza a leitura e a decodificação do JSON. As chaves são acessadas pelos respectivos consumidores: a DAG extrai os blocos que distribui às tasks, e cada rotina acessa os campos necessários à sua etapa. Por isso, o ponto em que uma configuração incompleta falha depende da chave utilizada e do consumidor responsável por ela.
+A DAG carrega o arquivo com `load_pipeline_config(path)` (`config.py`), que recebe o caminho explicitamente — sem default e sem inferir um arquivo "ao lado" do módulo. Essa função realiza a leitura e a decodificação do JSON. As chaves são lidas por indexação direta pelos respectivos consumidores: a DAG extrai os blocos que distribui às tasks (`config["ingestion_table"]`, `config["database"]`), e cada rotina acessa os campos necessários à sua etapa da mesma forma. Uma chave ausente falha com `KeyError` nomeando-a, na fronteira que a lê — na definição da DAG, para os blocos extraídos no carregamento, ou dentro da rotina, para os campos que ela mesma consulta.
 
 ## Nomenclatura das tabelas
 
