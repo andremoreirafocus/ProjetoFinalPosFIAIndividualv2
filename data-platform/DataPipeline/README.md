@@ -114,7 +114,7 @@ Depois, acesse http://localhost:8080, localize `pipeline_orchestration` e inicie
 
 ## Testes
 
-A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks. Para a sanitização, valida também que a execução se registra em tabela — as estatísticas, o digest da projeção aplicada e o instante da execução —, e que essa tabela é sobrescrita, não acumulada, a cada nova execução.
+A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks. Para a sanitização e para a geração da ABT, valida também que a execução se registra em tabela — o digest da projeção aplicada e o instante da execução, mais as estatísticas no caso da sanitização —, e que essa tabela é sobrescrita, não acumulada, a cada nova execução. Para a geração da ABT, valida ainda que a ausência do `.sql` da projeção falha antes de qualquer escrita, sem tabela nova nem registro de execução.
 
 As funções são exercitadas pela mesma fronteira que a produção usa: onde a task da DAG entrega a conexão aberta pelo `PostgresHook`, o teste entrega a do `data_test`. A suíte não escreve em variáveis de ambiente.
 
@@ -161,7 +161,9 @@ Os testes marcados como `integration` exigem o banco `data_test`; os demais roda
   execução da sanitização — uma linha, sobrescrita a cada execução, não uma agregação
   temporária;
 - agregações temporárias por cliente;
-- ABT `application_abt`.
+- ABT `application_abt`;
+- `application_abt_last_run`, com o digest da projeção aplicada e o instante da execução —
+  uma linha, sobrescrita a cada execução, gravada na mesma transação da ABT.
 
 Os arquivos CSV de entrega não fazem parte das saídas automáticas da DAG. Eles são produzidos posteriormente, sob demanda, pelo utilitário manual [`export_data.py`](./export_data.py) — ver [`docs/exportacao.md`](./docs/exportacao.md).
 
