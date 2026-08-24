@@ -80,8 +80,69 @@ def load_training_data(config: dict[str, Any], conn: Any, sample_size: int | Non
     for col in categoricals:
         if col in X.columns:
             X[col] = X[col].astype("category")
-            
+
     return X, y
+
+
+def load_transformation_contract(
+    conn: Any,
+    sanitization_last_run_table: str,
+    abt_last_run_table: str,
+) -> dict[str, Any]:
+    """Lê as duas tabelas `*_last_run` que o pipeline grava e monta o contrato de
+    transformação publicado no bundle. Não calcula nada: transporta o que
+    `run_sanitization` e `run_abt_generation` já registraram.
+
+    `conn` já está aberta, pela mesma conexão que `load_training_data` usa; não é fechada
+    aqui. Tabela ausente falha no driver, que já nomeia a tabela na mensagem. Tabela sem
+    linha falha aqui, nomeando qual — decisão desta função, não do driver.
+    """
+    stats_excluded_columns = {
+        "valid_orgs",
+        "valid_incs",
+        "cardinalidade_min_freq",
+        "income_winsor_q",
+        "application_sanitization_projection_sha256",
+        "run_at",
+    }
+
+    cursor = conn.cursor()
+
+    cursor.execute(f'SELECT * FROM "{sanitization_last_run_table}"')
+    sanitization_columns = [column[0] for column in cursor.description]
+    sanitization_row = cursor.fetchone()
+    if sanitization_row is None:
+        raise ValueError(
+            f"Tabela '{sanitization_last_run_table}' não tem nenhuma execução registrada."
+        )
+    sanitization = dict(zip(sanitization_columns, sanitization_row))
+
+    cursor.execute(f'SELECT * FROM "{abt_last_run_table}"')
+    abt_columns = [column[0] for column in cursor.description]
+    abt_row = cursor.fetchone()
+    if abt_row is None:
+        raise ValueError(f"Tabela '{abt_last_run_table}' não tem nenhuma execução registrada.")
+    abt = dict(zip(abt_columns, abt_row))
+
+    stats = {
+        name: value
+        for name, value in sanitization.items()
+        if name not in stats_excluded_columns
+    }
+
+    return {
+        "stats": stats,
+        "valid_orgs": sanitization["valid_orgs"],
+        "valid_incs": sanitization["valid_incs"],
+        "cardinalidade_min_freq": sanitization["cardinalidade_min_freq"],
+        "income_winsor_q": sanitization["income_winsor_q"],
+        "application_sanitization_projection_sha256": sanitization[
+            "application_sanitization_projection_sha256"
+        ],
+        "application_abt_record_projection_sha256": abt[
+            "application_abt_record_projection_sha256"
+        ],
+    }
 
 
 def build_model(config: dict[str, Any]) -> LGBMClassifier:

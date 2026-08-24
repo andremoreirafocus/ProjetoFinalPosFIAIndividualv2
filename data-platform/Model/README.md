@@ -96,8 +96,9 @@ python3 -m venv .venv
 ```
 
 A suíte fixa a leitura da ABT com a conversão das categóricas e a seleção das features
-configuradas, a composição do treinamento, o cálculo do baseline populacional e a recusa de
-publicar um conjunto de artefatos que não pertença ao mesmo treino.
+configuradas, a composição do treinamento, o cálculo do baseline populacional, a leitura do
+contrato de transformação registrado pelo pipeline e a recusa de publicar um conjunto de
+artefatos que não pertença ao mesmo treino.
 
 `test_artifact_bundle_contract.py` e `test_artifact_bundle_publisher.py` fixam o contrato e
 a publicação atômica do conjunto versionado (manifesto, checksums, diretório `bundles/`);
@@ -105,6 +106,11 @@ a publicação atômica do conjunto versionado (manifesto, checksums, diretório
 esse caminho, com `eval_model_metrics.json` gravado ao lado, fora do manifesto — plano de
 refatoração do carregamento, predição e explicação
 (`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`).
+`test_transformation_contract.py` fixa `load_transformation_contract`: lê
+`application_sanitization_last_run` e `application_abt_last_run` e monta o dicionário com as
+sete chaves de `REQUIRED_TRANSFORMATION_CONTRACT_KEYS`, as dez estatísticas aninhadas em
+`stats`, `run_at` descartado das duas tabelas, e falha nomeando a tabela quando a sanitização
+ou a ABT ainda não têm execução registrada.
 
 Ela roda **sem PostgreSQL e sem artefato treinado**, porque as conexões chegam injetadas: os
 testes entregam uma conexão falsa pela mesma fronteira que a produção usa. A fixture de

@@ -28,6 +28,20 @@ REQUIRED_ARTIFACT_KEYS = frozenset(
 )
 """Chaves que a API consome, conferidas pelo loader antes de montar o bundle."""
 
+REQUIRED_TRANSFORMATION_CONTRACT_KEYS = frozenset(
+    {
+        "stats",
+        "valid_orgs",
+        "valid_incs",
+        "cardinalidade_min_freq",
+        "income_winsor_q",
+        "application_sanitization_projection_sha256",
+        "application_abt_record_projection_sha256",
+    }
+)
+"""Chaves do `transformation_contract.json` publicado no bundle, que a API consome para
+reproduzir a sanitização e a construção da ABT de um cliente novo."""
+
 
 @dataclass(frozen=True)
 class ArtifactDeclaration:
