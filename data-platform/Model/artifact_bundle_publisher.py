@@ -1,8 +1,8 @@
 """Publica atomicamente o conjunto de artefatos de um treino.
 
-Comportamento do produtor: grava modelo e referência num diretório temporário no mesmo
-filesystem, calcula os checksums, publica o diretório versionado e só então o manifesto,
-por último. `train.py` publica por este caminho.
+Comportamento do produtor: grava modelo, referência e contrato de transformação num
+diretório temporário no mesmo filesystem, calcula os checksums, publica o diretório
+versionado e só então o manifesto, por último. `train.py` publica por este caminho.
 """
 from __future__ import annotations
 
@@ -36,12 +36,16 @@ except ImportError:
 def publish_bundle(
     model_artifact: dict[str, Any],
     feature_reference: dict[str, Any],
+    transformation_contract: dict[str, Any],
     artifacts_dir: Path,
 ) -> BundleManifest:
-    """Publica modelo e referência atomicamente, com o manifesto escrito por último.
+    """Publica modelo, referência e contrato de transformação atomicamente, com o
+    manifesto escrito por último.
 
     Recusa publicar um par cujo artefato e referência não pertençam ao mesmo
-    treinamento; nesse caso, nada é escrito.
+    treinamento; nesse caso, nada é escrito. O contrato de transformação não carrega
+    identidade própria — é transporte do que o pipeline já registrou — e por isso não
+    participa dessa checagem.
     """
     config_version = model_artifact["config_version"]
     trained_at_utc = model_artifact["trained_at_utc"]
@@ -63,15 +67,23 @@ def publish_bundle(
     )
     model_path = temporary_directory / "lightgbm_abt.pkl"
     reference_path = temporary_directory / "feature_reference.json"
+    transformation_contract_path = temporary_directory / "transformation_contract.json"
     with model_path.open("wb") as file:
         pickle.dump(model_artifact, file)
     reference_path.write_text(
         json.dumps(feature_reference, ensure_ascii=False, allow_nan=False),
         encoding="utf-8",
     )
+    transformation_contract_path.write_text(
+        json.dumps(transformation_contract, ensure_ascii=False, allow_nan=False),
+        encoding="utf-8",
+    )
 
     model_sha256 = hashlib.sha256(model_path.read_bytes()).hexdigest()
     reference_sha256 = hashlib.sha256(reference_path.read_bytes()).hexdigest()
+    transformation_contract_sha256 = hashlib.sha256(
+        transformation_contract_path.read_bytes()
+    ).hexdigest()
 
     versioned_directory = bundles_dir / bundle_id
     temporary_directory.replace(versioned_directory)
@@ -91,6 +103,10 @@ def publish_bundle(
         feature_reference=ArtifactDeclaration(
             path=f"bundles/{bundle_id}/feature_reference.json",
             sha256=reference_sha256,
+        ),
+        transformation_contract=ArtifactDeclaration(
+            path=f"bundles/{bundle_id}/transformation_contract.json",
+            sha256=transformation_contract_sha256,
         ),
     )
 
@@ -122,5 +138,9 @@ def _manifest_to_dict(manifest: BundleManifest) -> dict[str, Any]:
         "feature_reference": {
             "path": manifest.feature_reference.path,
             "sha256": manifest.feature_reference.sha256,
+        },
+        "transformation_contract": {
+            "path": manifest.transformation_contract.path,
+            "sha256": manifest.transformation_contract.sha256,
         },
     }

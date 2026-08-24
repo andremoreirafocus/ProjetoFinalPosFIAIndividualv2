@@ -195,12 +195,13 @@ Na visualização Grid ou Graph, acompanhe as tarefas paralelas e consulte indiv
 
 Uma execução completa deve produzir:
 
-- tabelas brutas e tratadas no banco `data`;
+- tabelas brutas e tratadas no banco `data`, incluindo `application_sanitization_last_run` e
+  `application_abt_generation_last_run`;
 - tabela `application_abt`;
 - manifesto `Model/artifacts/current_bundle.json` apontando para o conjunto recém-publicado;
-- diretório `Model/artifacts/bundles/<bundle_id>/` com `lightgbm_abt.pkl` e
-  `feature_reference.json` (checksums conferidos pelo manifesto) e
-  `eval_model_metrics.json` ao lado, fora do manifesto.
+- diretório `Model/artifacts/bundles/<bundle_id>/` com `lightgbm_abt.pkl`,
+  `feature_reference.json` e `transformation_contract.json` (checksums conferidos pelo
+  manifesto) e `eval_model_metrics.json` ao lado, fora do manifesto.
 
 Contrato completo em [`Model/docs/artefatos.md`](../Model/docs/artefatos.md).
 

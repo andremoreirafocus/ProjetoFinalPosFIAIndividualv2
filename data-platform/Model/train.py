@@ -87,7 +87,7 @@ def load_training_data(config: dict[str, Any], conn: Any, sample_size: int | Non
 def load_transformation_contract(
     conn: Any,
     sanitization_last_run_table: str,
-    abt_last_run_table: str,
+    abt_generation_last_run_table: str,
 ) -> dict[str, Any]:
     """Lê as duas tabelas `*_last_run` que o pipeline grava e monta o contrato de
     transformação publicado no bundle. Não calcula nada: transporta o que
@@ -117,11 +117,11 @@ def load_transformation_contract(
         )
     sanitization = dict(zip(sanitization_columns, sanitization_row))
 
-    cursor.execute(f'SELECT * FROM "{abt_last_run_table}"')
+    cursor.execute(f'SELECT * FROM "{abt_generation_last_run_table}"')
     abt_columns = [column[0] for column in cursor.description]
     abt_row = cursor.fetchone()
     if abt_row is None:
-        raise ValueError(f"Tabela '{abt_last_run_table}' não tem nenhuma execução registrada.")
+        raise ValueError(f"Tabela '{abt_generation_last_run_table}' não tem nenhuma execução registrada.")
     abt = dict(zip(abt_columns, abt_row))
 
     stats = {
@@ -237,16 +237,20 @@ def save_artifacts(
     model_artifact: dict[str, Any],
     eval_model_metrics: dict[str, float],
     feature_reference: dict[str, Any],
+    transformation_contract: dict[str, Any],
     artifacts_dir: Path,
 ) -> BundleManifest:
     """Publica o conjunto versionado e grava as métricas do modelo de avaliação ao lado.
 
-    Delega a publicação atômica (modelo, referência e manifesto) a ``publish_bundle``, que
-    recusa um par cujo artefato e baseline não pertençam ao mesmo treinamento — nesse caso,
-    nenhum arquivo é gravado, nem as métricas. ``eval_model_metrics.json`` não faz parte do
-    manifesto: é informativo, sem checksum, publicado depois que o bundle já é o ativo.
+    Delega a publicação atômica (modelo, referência, contrato de transformação e
+    manifesto) a ``publish_bundle``, que recusa um par cujo artefato e baseline não
+    pertençam ao mesmo treinamento — nesse caso, nenhum arquivo é gravado, nem as
+    métricas. ``eval_model_metrics.json`` não faz parte do manifesto: é informativo, sem
+    checksum, publicado depois que o bundle já é o ativo.
     """
-    manifest = publish_bundle(model_artifact, feature_reference, artifacts_dir)
+    manifest = publish_bundle(
+        model_artifact, feature_reference, transformation_contract, artifacts_dir
+    )
 
     bundle_directory = artifacts_dir / "bundles" / manifest.bundle_id
     metrics_path = bundle_directory / "eval_model_metrics.json"
@@ -266,11 +270,20 @@ def save_artifacts(
         "[artefato] Referencias salvas em: "
         f"{bundle_directory / manifest.feature_reference.path.split('/')[-1]}"
     )
+    print(
+        "[artefato] Contrato de transformacao salvo em: "
+        f"{bundle_directory / manifest.transformation_contract.path.split('/')[-1]}"
+    )
     return manifest
 
 
 # Esta é a função chamada pelo Airflow através do script de orquestração
-def run_training_pipeline(conn_id: str, abt_table: str):
+def run_training_pipeline(
+    conn_id: str,
+    abt_table: str,
+    sanitization_last_run_table: str,
+    abt_generation_last_run_table: str,
+):
     """Ponto de entrada oficial para a Task da DAG do Airflow."""
     print(f"[AIRFLOW TASK] Iniciando pipeline de treinamento para a tabela: {abt_table}")
     config = load_config(DEFAULT_CONFIG_PATH)
@@ -279,6 +292,9 @@ def run_training_pipeline(conn_id: str, abt_table: str):
     conn = get_pghook_database_connection(conn_id)
     try:
         X, y = load_training_data(config, conn)
+        transformation_contract = load_transformation_contract(
+            conn, sanitization_last_run_table, abt_generation_last_run_table
+        )
     finally:
         conn.close()
     print("\n" + "="*60)
@@ -302,7 +318,9 @@ def run_training_pipeline(conn_id: str, abt_table: str):
     print("[referencias] Baseline calculado com sucesso.")
     artifacts_dir = project_path(config["metadata"]["artifacts_dir"])
     print(f"Publicando bundle em: {artifacts_dir}")
-    save_artifacts(model_artifact, eval_model_metrics, feature_reference, artifacts_dir)
+    save_artifacts(
+        model_artifact, eval_model_metrics, feature_reference, transformation_contract, artifacts_dir
+    )
     print("Artefatos salvos com sucesso.")
     print("[AIRFLOW TASK] Pipeline de treinamento finalizado com sucesso.")
 
@@ -330,6 +348,11 @@ def main() -> None:
     conn = get_pg_database_connection(get_db_connection_str_from_env("localhost"))
     try:
         X, y = load_training_data(config, conn, sample_size=args.sample_size)
+        transformation_contract = load_transformation_contract(
+            conn,
+            config["metadata"]["sanitization_last_run_table"],
+            config["metadata"]["abt_generation_last_run_table"],
+        )
     finally:
         conn.close()
     print("\n" + "="*60)
@@ -355,7 +378,9 @@ def main() -> None:
 
     artifacts_dir = args.artifacts_dir or project_path(config["metadata"]["artifacts_dir"])
     print(f"Publicando bundle em: {artifacts_dir}")
-    save_artifacts(model_artifact, eval_model_metrics, feature_reference, artifacts_dir)
+    save_artifacts(
+        model_artifact, eval_model_metrics, feature_reference, transformation_contract, artifacts_dir
+    )
     print("Artefatos salvos com sucesso.")
     print("[CLI] Pipeline de treinamento finalizado com sucesso.")
 

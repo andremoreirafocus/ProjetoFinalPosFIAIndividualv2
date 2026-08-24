@@ -16,6 +16,18 @@ SHAP_SAMPLE_SIZE = 4
 RANDOM_STATE = 123
 
 
+def _transformation_contract() -> dict:
+    return {
+        "stats": {"median_es1": 0.5052},
+        "valid_orgs": ["Business Entity Type 3"],
+        "valid_incs": ["Working"],
+        "cardinalidade_min_freq": 500,
+        "income_winsor_q": 0.99,
+        "application_sanitization_projection_sha256": "3f7a" + "0" * 60,
+        "application_abt_record_projection_sha256": "9c21" + "0" * 60,
+    }
+
+
 @pytest.fixture
 def X() -> pd.DataFrame:
     return pd.DataFrame(
@@ -156,7 +168,7 @@ def test_save_artifacts_publishes_versioned_bundle_with_metrics_outside_manifest
     eval_model_metrics = {"roc_auc": 0.75}
 
     manifest = save_artifacts(
-        model_artifact, eval_model_metrics, feature_reference, tmp_path
+        model_artifact, eval_model_metrics, feature_reference, _transformation_contract(), tmp_path
     )
 
     saved_manifest = json.loads(
@@ -217,7 +229,9 @@ def test_save_artifacts_rejects_diverging_identity_and_writes_nothing(
     }
 
     with pytest.raises(ValueError):
-        save_artifacts(model_artifact, {"roc_auc": 0.75}, feature_reference, tmp_path)
+        save_artifacts(
+            model_artifact, {"roc_auc": 0.75}, feature_reference, _transformation_contract(), tmp_path
+        )
 
     assert not (tmp_path / "current_bundle.json").exists()
     assert not (tmp_path / "bundles").exists()

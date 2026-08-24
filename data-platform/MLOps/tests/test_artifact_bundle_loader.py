@@ -17,7 +17,11 @@ from Model.artifact_bundle_contract import MANIFEST_FILE_NAME
 from Model.artifact_bundle_publisher import publish_bundle
 from MLOps.app.api.artifact_bundle_loader import ArtifactBundleLoader
 from MLOps.tests.fakes import FakeModel
-from MLOps.tests.fixtures import build_artifact, build_feature_reference
+from MLOps.tests.fixtures import (
+    build_artifact,
+    build_feature_reference,
+    build_transformation_contract,
+)
 
 
 def _write_bundle_files(
@@ -68,7 +72,9 @@ def test_load_returns_bundle_with_all_fields_populated_when_manifest_is_valid(
     artifact = build_artifact()
     reference = build_feature_reference()
 
-    manifest = publish_bundle(artifact, reference, tmp_path)
+    manifest = publish_bundle(
+        artifact, reference, build_transformation_contract(), tmp_path
+    )
     bundle = ArtifactBundleLoader().load(tmp_path / MANIFEST_FILE_NAME)
 
     assert bundle.bundle_id == manifest.bundle_id
@@ -93,7 +99,9 @@ def test_load_raises_when_manifest_file_is_missing(tmp_path: Path) -> None:
 
 
 def test_load_raises_when_declared_artifact_file_is_missing(tmp_path: Path) -> None:
-    manifest = publish_bundle(build_artifact(), build_feature_reference(), tmp_path)
+    manifest = publish_bundle(
+        build_artifact(), build_feature_reference(), build_transformation_contract(), tmp_path
+    )
     (tmp_path / manifest.model.path).unlink()
 
     with pytest.raises(FileNotFoundError):
@@ -101,7 +109,9 @@ def test_load_raises_when_declared_artifact_file_is_missing(tmp_path: Path) -> N
 
 
 def test_load_raises_when_checksum_diverges(tmp_path: Path) -> None:
-    manifest = publish_bundle(build_artifact(), build_feature_reference(), tmp_path)
+    manifest = publish_bundle(
+        build_artifact(), build_feature_reference(), build_transformation_contract(), tmp_path
+    )
     model_path = tmp_path / manifest.model.path
     model_path.write_bytes(model_path.read_bytes() + b"corrupted")
 

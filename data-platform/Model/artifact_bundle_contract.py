@@ -61,3 +61,4 @@ class BundleManifest:
     trained_at_utc: str
     model: ArtifactDeclaration
     feature_reference: ArtifactDeclaration
+    transformation_contract: ArtifactDeclaration

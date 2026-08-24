@@ -8,23 +8,26 @@ mantém o resumo e a regra de versionamento.
 
 Cada execução de `train.py` produz artefatos com a mesma identidade — `config_version` e
 `trained_at_utc` — em um diretório versionado de `Model/artifacts/`. O contrato do bundle
-ativo compreende o modelo e a referência estatística declarados por `current_bundle.json`.
-As métricas da avaliação pertencem à mesma execução, mas são mantidas como informação
-auxiliar fora desse contrato:
+ativo compreende o modelo, a referência estatística e o contrato de transformação
+declarados por `current_bundle.json`. As métricas da avaliação pertencem à mesma execução,
+mas são mantidas como informação auxiliar fora desse contrato:
 
 | Artefato | Conteúdo | Participação na ativação |
 |---|---|---|
 | `bundles/<bundle_id>/lightgbm_abt.pkl` | Modelo LightGBM oficial e os metadados necessários à inferência. | declarado no manifesto, com checksum |
 | `bundles/<bundle_id>/feature_reference.json` | Baseline populacional: distribuições das features e do score, referências por target e importância TreeSHAP global. | declarado no manifesto, com checksum |
+| `bundles/<bundle_id>/transformation_contract.json` | Estatísticas, listas de categorias válidas e digests de projeção que a sanitização e a geração da ABT registraram na execução do pipeline que produziu esses dados — reproduz a transformação de um cliente novo. | declarado no manifesto, com checksum |
 | `bundles/<bundle_id>/eval_model_metrics.json` | Métricas do modelo de avaliação no holdout, com algoritmo, hiperparâmetros e threshold. | informativo; não integra o manifesto nem possui checksum |
-| `current_bundle.json` | Schema, `bundle_id`, identidade e caminhos dos dois artefatos que formam o bundle ativo. | sua substituição ativa a versão |
+| `current_bundle.json` | Schema, `bundle_id`, identidade e caminhos dos três artefatos que formam o bundle ativo. | sua substituição ativa a versão |
 
 `bundle_id` é `model-<config_version>-<trained_at_utc compactado>`. O
 `artifact_bundle_publisher.py` valida primeiro que modelo e referência pertencem ao mesmo
-treinamento. Em seguida, grava os dois arquivos em um diretório temporário no mesmo
-filesystem, calcula seus checksums, publica o diretório versionado por renomeação e, por
-último, substitui atomicamente `current_bundle.json`. Somente essa última operação muda o
-bundle ativo; uma falha anterior preserva o manifesto que já estava em uso.
+treinamento — o contrato de transformação não carrega essa identidade e não participa da
+checagem, porque só transporta o que o pipeline já registrou. Em seguida, grava os três
+arquivos em um diretório temporário no mesmo filesystem, calcula seus checksums, publica o
+diretório versionado por renomeação e, por último, substitui atomicamente
+`current_bundle.json`. Somente essa última operação muda o bundle ativo; uma falha anterior
+preserva o manifesto que já estava em uso.
 
 Depois que o bundle foi ativado, `save_artifacts` grava `eval_model_metrics.json` no mesmo
 diretório versionado. Como esse arquivo não integra o manifesto, sua escrita não participa

@@ -16,6 +16,10 @@ def test_bundle_manifest_exposes_all_its_fields() -> None:
         path="bundles/model-test-v1-20260714T000000Z/feature_reference.json",
         sha256="b" * 64,
     )
+    transformation_contract_declaration = ArtifactDeclaration(
+        path="bundles/model-test-v1-20260714T000000Z/transformation_contract.json",
+        sha256="c" * 64,
+    )
 
     manifest = BundleManifest(
         schema_version=1,
@@ -24,6 +28,7 @@ def test_bundle_manifest_exposes_all_its_fields() -> None:
         trained_at_utc="2026-07-14T00:00:00+00:00",
         model=model_declaration,
         feature_reference=reference_declaration,
+        transformation_contract=transformation_contract_declaration,
     )
 
     assert manifest.schema_version == 1
@@ -32,5 +37,10 @@ def test_bundle_manifest_exposes_all_its_fields() -> None:
     assert manifest.trained_at_utc == "2026-07-14T00:00:00+00:00"
     assert manifest.model is model_declaration
     assert manifest.feature_reference is reference_declaration
+    assert manifest.transformation_contract is transformation_contract_declaration
     assert manifest.model.path == "bundles/model-test-v1-20260714T000000Z/lightgbm_abt.pkl"
     assert manifest.model.sha256 == "a" * 64
+    assert manifest.transformation_contract.path == (
+        "bundles/model-test-v1-20260714T000000Z/transformation_contract.json"
+    )
+    assert manifest.transformation_contract.sha256 == "c" * 64

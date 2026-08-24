@@ -130,6 +130,30 @@ def build_feature_reference() -> dict[str, Any]:
     }
 
 
+def build_transformation_contract() -> dict[str, Any]:
+    """Monta um `transformation_contract.json` coerente com o que o pipeline registra."""
+    return {
+        "stats": {
+            "median_es1": 0.5052,
+            "median_es2": 0.5659,
+            "median_es3": 0.5352,
+            "median_es_mean": 0.4432,
+            "median_phone": -757.0,
+            "median_fam": 2.0,
+            "median_annuity": 24903.0,
+            "median_income": 147150.0,
+            "p_limit_income": 472500.0,
+            "median_car_age": 9.0,
+        },
+        "valid_orgs": ["Business Entity Type 3", "Self-employed"],
+        "valid_incs": ["Working", "Commercial associate"],
+        "cardinalidade_min_freq": 500,
+        "income_winsor_q": 0.99,
+        "application_sanitization_projection_sha256": "3f7a" + "0" * 60,
+        "application_abt_record_projection_sha256": "9c21" + "0" * 60,
+    }
+
+
 @dataclass(frozen=True)
 class CustomerFeatureFixture:
     engine: Engine

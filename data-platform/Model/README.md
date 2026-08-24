@@ -28,7 +28,7 @@ application_abt
   → modelo de avaliação + métricas de crédito
   → modelo final com 100% da ABT
   → baseline populacional e TreeSHAP global
-  → lightgbm_abt.pkl + eval_model_metrics.json + feature_reference.json
+  → lightgbm_abt.pkl + eval_model_metrics.json + feature_reference.json + transformation_contract.json
   → API de inferência
 ```
 
@@ -49,7 +49,7 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 | [`train.py`](./train.py) | Treina, avalia e publica o conjunto de artefatos. |
 | [`feature_reference.py`](./feature_reference.py) | Calcula o baseline populacional e a referência TreeSHAP global. |
 | [`artifact_bundle_contract.py`](./artifact_bundle_contract.py) | Declaração do contrato do manifesto — schema, nome constante e chaves obrigatórias do artefato. Sem I/O nem validação. |
-| [`artifact_bundle_publisher.py`](./artifact_bundle_publisher.py) | Publica modelo e referência atomicamente, com o manifesto escrito por último. |
+| [`artifact_bundle_publisher.py`](./artifact_bundle_publisher.py) | Publica modelo, referência e contrato de transformação atomicamente, com o manifesto escrito por último. |
 | [`validacao_modelos.ipynb`](./validacao_modelos.ipynb) | Compara algoritmos e configurações, controla overfitting e seleciona o modelo. |
 | [`evaluation.ipynb`](./evaluation.ipynb) | Avalia desempenho, threshold, explicabilidade, fairness e monitoramento. |
 | [`requirements.txt`](./requirements.txt) | Dependências da modelagem. |
@@ -64,7 +64,7 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 
 | Seção | Conteúdo |
 |---|---|
-| `metadata` | Projeto, versão, algoritmo, origem, tabela e diretório de artefatos (`artifacts_dir`). |
+| `metadata` | Projeto, versão, algoritmo, origem, tabela, as duas tabelas em que o pipeline registra a sanitização e a geração da ABT, e diretório de artefatos (`artifacts_dir`). |
 | `variables` | Identificador, target, features de entrada e categóricas. |
 | `parameters.split` | Holdout, estratificação e semente. |
 | `parameters.classifier` | Algoritmo e hiperparâmetros do LightGBM. |
@@ -107,7 +107,7 @@ esse caminho, com `eval_model_metrics.json` gravado ao lado, fora do manifesto �
 refatoração do carregamento, predição e explicação
 (`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`).
 `test_transformation_contract.py` fixa `load_transformation_contract`: lê
-`application_sanitization_last_run` e `application_abt_last_run` e monta o dicionário com as
+`application_sanitization_last_run` e `application_abt_generation_last_run` e monta o dicionário com as
 sete chaves de `REQUIRED_TRANSFORMATION_CONTRACT_KEYS`, as dez estatísticas aninhadas em
 `stats`, `run_at` descartado das duas tabelas, e falha nomeando a tabela quando a sanitização
 ou a ABT ainda não têm execução registrada.
@@ -145,7 +145,8 @@ PYTHONPATH=. Model/.venv/bin/python Model/train.py \
 ```
 
 Cada execução publica um conjunto versionado, atomicamente: `current_bundle.json` (o
-manifesto ativo) e `bundles/<bundle_id>/` com o modelo, a referência e seus checksums.
+manifesto ativo) e `bundles/<bundle_id>/` com o modelo, a referência, o contrato de
+transformação e seus checksums.
 `eval_model_metrics.json` é gravado ao lado, no mesmo diretório, mas não entra no
 manifesto — é informativo, sem checksum (decisão 1, seção 11 do plano). Um par cujo
 artefato e referência não pertençam ao mesmo treinamento é recusado antes de qualquer
@@ -171,9 +172,9 @@ configuração e da conexão distintas:
    ABT. Não acessa o banco — recebe os dados já carregados.
 4. `build_feature_reference` calcula o baseline estatístico das features, do score e a
    importância TreeSHAP global sobre o modelo final e a mesma população do ajuste.
-5. `save_artifacts` publica o conjunto versionado — modelo, referência e manifesto,
-   atomicamente — e grava `eval_model_metrics.json` ao lado, fora do manifesto. Contrato
-   completo em [`docs/artefatos.md`](./docs/artefatos.md).
+5. `save_artifacts` publica o conjunto versionado — modelo, referência, contrato de
+   transformação e manifesto, atomicamente — e grava `eval_model_metrics.json` ao lado,
+   fora do manifesto. Contrato completo em [`docs/artefatos.md`](./docs/artefatos.md).
 
 A inferência local — antes `Model/predict.py` e `Model/find_customer_by_score.py` — é
 transporte do serving desde a etapa 9 do plano de bundle: vive em
@@ -183,8 +184,9 @@ a API usa. Não há segunda implementação de inferência neste componente.
 ## Artefatos
 
 Cada treinamento publica um conjunto versionado em `artifacts/bundles/<bundle_id>/`, com
-`artifacts/current_bundle.json` como manifesto ativo — modelo e referência declarados com
-checksum, `eval_model_metrics.json` ao lado, fora do manifesto. O contrato completo, o
+`artifacts/current_bundle.json` como manifesto ativo — modelo, referência e contrato de
+transformação declarados com checksum, `eval_model_metrics.json` ao lado, fora do
+manifesto. O contrato completo, o
 formato do manifesto e a publicação atômica estão em
 [`docs/artefatos.md`](./docs/artefatos.md).
 
@@ -193,10 +195,11 @@ formato do manifesto e a publicação atômica estão em
 | `artifacts/current_bundle.json` | Manifesto do conjunto ativo. | — |
 | `artifacts/bundles/<bundle_id>/lightgbm_abt.pkl` | Modelo LightGBM oficial e metadados necessários à inferência. | sim |
 | `artifacts/bundles/<bundle_id>/feature_reference.json` | Distribuições das features e do score, referências por target e importância TreeSHAP global. | sim |
+| `artifacts/bundles/<bundle_id>/transformation_contract.json` | Estatísticas, listas de categorias válidas e digests de projeção registrados pelo pipeline na execução que produziu a ABT. | sim |
 | `artifacts/bundles/<bundle_id>/eval_model_metrics.json` | Métricas do holdout, algoritmo, hiperparâmetros e threshold da execução. Fora do manifesto. | sim |
 | [`artifacts/model_comparison.csv`](./artifacts/model_comparison.csv) | Resultado histórico de comparação de modelos. | sim |
 
-Nenhum dos quatro primeiros é versionado no git — reproduzíveis por `train.py`, sob
+Nenhum dos cinco primeiros é versionado no git — reproduzíveis por `train.py`, sob
 `bundle_id` diferente a cada execução. Versioná-los faria o clone criá-los com o dono e a
 permissão do usuário local, que o usuário do contêiner do Airflow não consegue
 sobrescrever. Em uma cópia nova do repositório eles só aparecem após um treinamento.

@@ -15,7 +15,11 @@ from MLOps.app.api.main import app
 from MLOps.app.api.model_bundle_manager import ModelBundleManager
 from MLOps.app.api.prediction_service import PredictionService
 from MLOps.tests.fakes import FakeFeatureService, FakeModel
-from MLOps.tests.fixtures import build_artifact, build_feature_reference
+from MLOps.tests.fixtures import (
+    build_artifact,
+    build_feature_reference,
+    build_transformation_contract,
+)
 
 
 def _db_error() -> OperationalError:
@@ -52,6 +56,7 @@ def client_factory(request):
                     threshold=threshold,
                 ),
                 build_feature_reference(),
+                build_transformation_contract(),
                 artifacts_dir,
             )
 

@@ -163,8 +163,18 @@ with DAG(
 
     # --- TASK DE TREINAMENTO ---
     @task(task_id="train_machine_learning_model")
-    def task_train(conn_id: str, abt_table: str):
-        run_training_pipeline(conn_id=conn_id, abt_table=abt_table)
+    def task_train(
+        conn_id: str,
+        abt_table: str,
+        sanitization_last_run_table: str,
+        abt_generation_last_run_table: str,
+    ):
+        run_training_pipeline(
+            conn_id=conn_id,
+            abt_table=abt_table,
+            sanitization_last_run_table=sanitization_last_run_table,
+            abt_generation_last_run_table=abt_generation_last_run_table,
+        )
 
     # --- INSTANCIANDO AS TAREFAS ---
     carga_inicial = task_ingest.partial(
@@ -206,7 +216,12 @@ with DAG(
     t_bureau = task_agg_bureau(CONN_ID, db_config["output_bureau_table"])
     t_abt_final = task_abt_final_generation(CONN_ID, db_config)
 
-    treino_modelo = task_train(CONN_ID, db_config["abt_table"])
+    treino_modelo = task_train(
+        conn_id=CONN_ID,
+        abt_table=db_config["abt_table"],
+        sanitization_last_run_table=db_config["sanitization_last_run_table"],
+        abt_generation_last_run_table=db_config["abt_generation_last_run_table"],
+    )
 
     # --- DEFINIÇÃO DO FLUXO (DEPENDÊNCIAS) ---
     (

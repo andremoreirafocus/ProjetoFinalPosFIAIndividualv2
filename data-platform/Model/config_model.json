@@ -11,6 +11,8 @@
     "positive_class_description": "cliente inadimplente (default)",
     "source": "postgres",
     "abt_table": "application_abt",
+    "sanitization_last_run_table": "application_sanitization_last_run",
+    "abt_generation_last_run_table": "application_abt_generation_last_run",
     "artifacts_dir": "Model/artifacts"
   },
   "variables": {

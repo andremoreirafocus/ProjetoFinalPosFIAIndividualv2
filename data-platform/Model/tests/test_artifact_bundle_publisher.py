@@ -43,8 +43,33 @@ def _feature_reference(
     }
 
 
+def _transformation_contract() -> dict[str, Any]:
+    return {
+        "stats": {
+            "median_es1": 0.5052,
+            "median_es2": 0.5659,
+            "median_es3": 0.5352,
+            "median_es_mean": 0.4432,
+            "median_phone": -757.0,
+            "median_fam": 2.0,
+            "median_annuity": 24903.0,
+            "median_income": 147150.0,
+            "p_limit_income": 472500.0,
+            "median_car_age": 9.0,
+        },
+        "valid_orgs": ["Business Entity Type 3", "Self-employed"],
+        "valid_incs": ["Working", "Commercial associate"],
+        "cardinalidade_min_freq": 500,
+        "income_winsor_q": 0.99,
+        "application_sanitization_projection_sha256": "3f7a" + "0" * 60,
+        "application_abt_record_projection_sha256": "9c21" + "0" * 60,
+    }
+
+
 def test_publish_bundle_writes_schema_valid_manifest(tmp_path: Path) -> None:
-    manifest = publish_bundle(_model_artifact(), _feature_reference(), tmp_path)
+    manifest = publish_bundle(
+        _model_artifact(), _feature_reference(), _transformation_contract(), tmp_path
+    )
 
     saved = json.loads((tmp_path / "current_bundle.json").read_text(encoding="utf-8"))
 
@@ -54,36 +79,54 @@ def test_publish_bundle_writes_schema_valid_manifest(tmp_path: Path) -> None:
     assert saved["trained_at_utc"] == "2026-07-14T00:00:00+00:00"
     assert saved["model"]["path"] and saved["model"]["sha256"]
     assert saved["feature_reference"]["path"] and saved["feature_reference"]["sha256"]
+    assert (
+        saved["transformation_contract"]["path"]
+        and saved["transformation_contract"]["sha256"]
+    )
 
 
 def test_publish_bundle_declares_paths_relative_to_manifest_directory(
     tmp_path: Path,
 ) -> None:
-    manifest = publish_bundle(_model_artifact(), _feature_reference(), tmp_path)
+    manifest = publish_bundle(
+        _model_artifact(), _feature_reference(), _transformation_contract(), tmp_path
+    )
 
     assert (tmp_path / manifest.model.path).is_file()
     assert (tmp_path / manifest.feature_reference.path).is_file()
+    assert (tmp_path / manifest.transformation_contract.path).is_file()
 
 
 def test_publish_bundle_computes_correct_checksums(tmp_path: Path) -> None:
-    manifest = publish_bundle(_model_artifact(), _feature_reference(), tmp_path)
+    manifest = publish_bundle(
+        _model_artifact(), _feature_reference(), _transformation_contract(), tmp_path
+    )
 
     model_bytes = (tmp_path / manifest.model.path).read_bytes()
     reference_bytes = (tmp_path / manifest.feature_reference.path).read_bytes()
+    transformation_contract_bytes = (
+        tmp_path / manifest.transformation_contract.path
+    ).read_bytes()
 
     assert manifest.model.sha256 == hashlib.sha256(model_bytes).hexdigest()
     assert manifest.feature_reference.sha256 == hashlib.sha256(
         reference_bytes
     ).hexdigest()
+    assert manifest.transformation_contract.sha256 == hashlib.sha256(
+        transformation_contract_bytes
+    ).hexdigest()
 
 
 def test_publish_bundle_creates_versioned_directory(tmp_path: Path) -> None:
-    manifest = publish_bundle(_model_artifact(), _feature_reference(), tmp_path)
+    manifest = publish_bundle(
+        _model_artifact(), _feature_reference(), _transformation_contract(), tmp_path
+    )
 
     bundle_directory = tmp_path / "bundles" / manifest.bundle_id
     assert sorted(entry.name for entry in bundle_directory.iterdir()) == [
         "feature_reference.json",
         "lightgbm_abt.pkl",
+        "transformation_contract.json",
     ]
 
 
@@ -96,7 +139,9 @@ def test_publish_bundle_creates_a_directory_readable_by_other_processes(
     modo 0700 por padrão; sem relaxar isso após a publicação, o conteúdo fica
     inacessível para qualquer processo que não seja o que o escreveu.
     """
-    manifest = publish_bundle(_model_artifact(), _feature_reference(), tmp_path)
+    manifest = publish_bundle(
+        _model_artifact(), _feature_reference(), _transformation_contract(), tmp_path
+    )
 
     bundle_directory = tmp_path / "bundles" / manifest.bundle_id
     mode = stat.S_IMODE(bundle_directory.stat().st_mode)
@@ -114,10 +159,14 @@ def test_publish_bundle_creates_a_directory_readable_by_other_processes(
 def test_publish_bundle_rejects_diverging_identity_and_preserves_previous_manifest(
     tmp_path: Path, diverging_feature_reference: dict
 ) -> None:
-    first_manifest = publish_bundle(_model_artifact(), _feature_reference(), tmp_path)
+    first_manifest = publish_bundle(
+        _model_artifact(), _feature_reference(), _transformation_contract(), tmp_path
+    )
 
     with pytest.raises(ValueError):
-        publish_bundle(_model_artifact(), diverging_feature_reference, tmp_path)
+        publish_bundle(
+            _model_artifact(), diverging_feature_reference, _transformation_contract(), tmp_path
+        )
 
     saved = json.loads((tmp_path / "current_bundle.json").read_text(encoding="utf-8"))
     assert saved["bundle_id"] == first_manifest.bundle_id
