@@ -19,6 +19,9 @@ from data_sanitization import run_sanitization
 PROJECTION_SQL_PATH = (
     Path(__file__).resolve().parents[1] / "sql" / "application_sanitization_projection.sql"
 )
+STATS_SQL_PATH = (
+    Path(__file__).resolve().parents[1] / "sql" / "application_sanitization_stats.sql"
+)
 
 
 INPUT_TABLE = "application_train"
@@ -300,3 +303,41 @@ def test_last_run_is_overwritten_by_a_second_execution(test_db, conexao):
 
     assert len(runs) == 1
     assert runs[0]["run_at"] != first_run_at
+
+
+@pytest.mark.integration
+def test_raises_clearly_when_stats_sql_file_is_missing(test_db, conexao):
+    test_db.create_table(INPUT_TABLE, APPLICATION_SCHEMA)
+    test_db.insert(INPUT_TABLE, [_row(1)])
+
+    # Sanity: só faz sentido deslocar o arquivo versionado se ele já existir —
+    # do contrário a ausência testada seria a de setup, não a do contrato.
+    assert STATS_SQL_PATH.exists()
+    displaced_path = STATS_SQL_PATH.with_name(STATS_SQL_PATH.name + ".displaced_by_test")
+    STATS_SQL_PATH.rename(displaced_path)
+    try:
+        with pytest.raises(FileNotFoundError):
+            run_sanitization(conexao, INPUT_TABLE, OUTPUT_TABLE, LAST_RUN_TABLE, 1, 0.99)
+    finally:
+        displaced_path.rename(STATS_SQL_PATH)
+
+    assert not test_db.table_exists(LAST_RUN_TABLE)
+    assert not test_db.table_exists(OUTPUT_TABLE)
+
+
+@pytest.mark.integration
+def test_raises_clearly_when_projection_sql_file_is_missing(test_db, conexao):
+    test_db.create_table(INPUT_TABLE, APPLICATION_SCHEMA)
+    test_db.insert(INPUT_TABLE, [_row(1)])
+
+    assert PROJECTION_SQL_PATH.exists()
+    displaced_path = PROJECTION_SQL_PATH.with_name(PROJECTION_SQL_PATH.name + ".displaced_by_test")
+    PROJECTION_SQL_PATH.rename(displaced_path)
+    try:
+        with pytest.raises(FileNotFoundError):
+            run_sanitization(conexao, INPUT_TABLE, OUTPUT_TABLE, LAST_RUN_TABLE, 1, 0.99)
+    finally:
+        displaced_path.rename(PROJECTION_SQL_PATH)
+
+    assert not test_db.table_exists(LAST_RUN_TABLE)
+    assert not test_db.table_exists(OUTPUT_TABLE)

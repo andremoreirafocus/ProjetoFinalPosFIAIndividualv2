@@ -114,7 +114,7 @@ Depois, acesse http://localhost:8080, localize `pipeline_orchestration` e inicie
 
 ## Testes
 
-A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks. Para a sanitização e para a geração da ABT, valida também que a execução se registra em tabela — o digest da projeção aplicada e o instante da execução, mais as estatísticas no caso da sanitização —, e que essa tabela é sobrescrita, não acumulada, a cada nova execução. Para a geração da ABT, valida ainda que a ausência do `.sql` da projeção falha antes de qualquer escrita, sem tabela nova nem registro de execução.
+A suíte valida os contratos funcionais de cada etapa do pipeline (ingestão, índices, sanitização, agregações e ABT) executando as funções reais contra um banco PostgreSQL **de testes dedicado** (`data_test`), isolado do banco de produção `data`. Não há mocks. Para a sanitização e para a geração da ABT, valida também que a execução se registra em tabela — o digest da projeção aplicada e o instante da execução, mais as estatísticas no caso da sanitização —, que essa tabela é sobrescrita, não acumulada, a cada nova execução, e que a ausência de qualquer um dos `.sql` correspondentes falha antes de qualquer escrita, sem tabela nova nem registro de execução.
 
 As funções são exercitadas pela mesma fronteira que a produção usa: onde a task da DAG entrega a conexão aberta pelo `PostgresHook`, o teste entrega a do `data_test`. A suíte não escreve em variáveis de ambiente.
 
