@@ -33,7 +33,7 @@ PROJECTION_SQL_PATH = (
 
 DEFAULT_SOURCE = "application_clean"
 DEFAULT_ABT = "application_abt"
-DEFAULT_LAST_RUN = "application_abt_last_run"
+DEFAULT_LAST_RUN = "application_abt_generation_last_run"
 
 TMP_AGG_TABLES = ["tmp_prev_application_agg", "tmp_bureau_agg", "tmp_installments_agg"]
 
@@ -118,7 +118,7 @@ EXPECTED_INST_LATE_RATE = sum(
 
 def _generate(
     test_db, conexao, clean_table=DEFAULT_SOURCE, abt_table=DEFAULT_ABT,
-    abt_last_run_table=DEFAULT_LAST_RUN,
+    abt_generation_last_run_table=DEFAULT_LAST_RUN,
 ):
     """Build the four cleaned tables, run the three aggregations, then the ABT ELT."""
     test_db.create_table(clean_table, APP_CLEAN_SCHEMA)
@@ -141,7 +141,7 @@ def _generate(
         {
             "output_table": clean_table,
             "abt_table": abt_table,
-            "abt_last_run_table": abt_last_run_table,
+            "abt_generation_last_run_table": abt_generation_last_run_table,
         },
     )
 
@@ -280,7 +280,7 @@ def test_raises_clearly_when_projection_sql_file_is_missing(test_db, conexao):
                 {
                     "output_table": DEFAULT_SOURCE,
                     "abt_table": DEFAULT_ABT,
-                    "abt_last_run_table": DEFAULT_LAST_RUN,
+                    "abt_generation_last_run_table": DEFAULT_LAST_RUN,
                 },
             )
     finally:

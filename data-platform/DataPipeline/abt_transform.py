@@ -111,10 +111,10 @@ def create_agg_installments(conn, output_installments_table: str):
 # --- PIPELINE PRINCIPAL (ELT FINAL) ---
 def run_abt_generation(conn, config: dict):
     """Monta a ABT final via SQL puro unindo a aplicação limpa com os agregados intermediários.
-    A projeção e o registro da execução em `abt_last_run_table` confirmam juntos, num commit só."""
+    A projeção e o registro da execução em `abt_generation_last_run_table` confirmam juntos, num commit só."""
     clean_table = config["output_table"]
     abt_table = config["abt_table"]
-    abt_last_run_table = config["abt_last_run_table"]
+    abt_generation_last_run_table = config["abt_generation_last_run_table"]
 
     projection_path = SQL_DIR / "application_abt_record_projection.sql"
     projection_sha256 = hashlib.sha256(projection_path.read_bytes()).hexdigest()
@@ -138,8 +138,8 @@ def run_abt_generation(conn, config: dict):
     """
 
     last_run_sql = f"""
-    DROP TABLE IF EXISTS "{abt_last_run_table}" CASCADE;
-    CREATE TABLE "{abt_last_run_table}" AS
+    DROP TABLE IF EXISTS "{abt_generation_last_run_table}" CASCADE;
+    CREATE TABLE "{abt_generation_last_run_table}" AS
     SELECT
         '{projection_sha256}'::text AS application_abt_record_projection_sha256,
         NOW() AS run_at;
@@ -181,7 +181,7 @@ if __name__ == "__main__":
             {
                 "output_table": "application_clean",
                 "abt_table": "application_abt",
-                "abt_last_run_table": "application_abt_last_run",
+                "abt_generation_last_run_table": "application_abt_generation_last_run",
             },
         )
     finally:

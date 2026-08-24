@@ -1,7 +1,7 @@
 """`load_transformation_contract` — leitura das duas tabelas `*_last_run` que o pipeline grava.
 
 A função não calcula nada: transporta o que `run_sanitization` e `run_abt_generation` já
-registraram em `application_sanitization_last_run` e `application_abt_last_run`. O fake de
+registraram em `application_sanitization_last_run` e `application_abt_generation_last_run`. O fake de
 conexão é próprio deste arquivo — diferente de `ConexaoFalsa` em `test_load_training_data.py`,
 que devolve o mesmo conteúdo para qualquer `cursor()`, aqui cada tabela consultada responde com
 suas próprias colunas e sua própria linha, porque a função lê duas tabelas de formas diferentes.
@@ -17,7 +17,7 @@ from train import load_transformation_contract
 
 
 SANITIZATION_TABLE = "application_sanitization_last_run"
-ABT_TABLE = "application_abt_last_run"
+ABT_TABLE = "application_abt_generation_last_run"
 
 SANITIZATION_COLUNAS = [
     "median_es1", "median_es2", "median_es3", "median_es_mean", "median_phone",

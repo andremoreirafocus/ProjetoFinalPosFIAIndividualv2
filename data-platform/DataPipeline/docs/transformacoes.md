@@ -28,7 +28,7 @@ A DAG carrega o arquivo com `load_pipeline_config(path)` (`config.py`), que rece
 
 ## Nomenclatura das tabelas
 
-Os nomes das tabelas brutas criadas pela ingestão vêm de `ingestion_table.using_csv[].table_name`, junto com o `chunk_size` de cada fonte. O bloco `database` nomeia as tabelas brutas (`input_*`), as tratadas (`output_*`), a ABT (`abt_table`) e as tabelas que registram a execução das tasks de transformação (`sanitization_last_run_table`, `abt_last_run_table`), referenciadas pela indexação raw e clean, pela limpeza, pelas agregações e pela construção da ABT. No contrato atual, os nomes das tabelas brutas declarados nos dois blocos correspondem entre si e devem permanecer coordenados.
+Os nomes das tabelas brutas criadas pela ingestão vêm de `ingestion_table.using_csv[].table_name`, junto com o `chunk_size` de cada fonte. O bloco `database` nomeia as tabelas brutas (`input_*`), as tratadas (`output_*`), a ABT (`abt_table`) e as tabelas que registram a execução das tasks de transformação (`sanitization_last_run_table`, `abt_generation_last_run_table`), referenciadas pela indexação raw e clean, pela limpeza, pelas agregações e pela construção da ABT. No contrato atual, os nomes das tabelas brutas declarados nos dois blocos correspondem entre si e devem permanecer coordenados.
 
 Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
 
@@ -44,7 +44,7 @@ Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
   "output_installments_table": "installments_clean",
   "abt_table": "application_abt",
   "sanitization_last_run_table": "application_sanitization_last_run",
-  "abt_last_run_table": "application_abt_last_run"
+  "abt_generation_last_run_table": "application_abt_generation_last_run"
 }
 ```
 
@@ -205,7 +205,7 @@ Cada agregado é salvo temporariamente e indexado por `sk_id_curr`. Depois do jo
 O SQL vive em [`sql/application_abt_record_projection.sql`](../sql/application_abt_record_projection.sql),
 versionado; `run_abt_generation` carrega o arquivo, substitui a origem e as três agregações, e
 materializa o resultado em `application_abt`. A mesma execução registra
-`application_abt_last_run` — uma linha, sobrescrita a cada execução, com o digest do arquivo de
+`application_abt_generation_last_run` — uma linha, sobrescrita a cada execução, com o digest do arquivo de
 projeção aplicado e o instante da execução (`run_at`) —, na mesma transação da ABT: ou as duas
 existem, ou nenhuma.
 

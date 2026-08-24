@@ -162,7 +162,7 @@ Os testes marcados como `integration` exigem o banco `data_test`; os demais roda
   temporária;
 - agregações temporárias por cliente;
 - ABT `application_abt`;
-- `application_abt_last_run`, com o digest da projeção aplicada e o instante da execução —
+- `application_abt_generation_last_run`, com o digest da projeção aplicada e o instante da execução —
   uma linha, sobrescrita a cada execução, gravada na mesma transação da ABT.
 
 Os arquivos CSV de entrega não fazem parte das saídas automáticas da DAG. Eles são produzidos posteriormente, sob demanda, pelo utilitário manual [`export_data.py`](./export_data.py) — ver [`docs/exportacao.md`](./docs/exportacao.md).
