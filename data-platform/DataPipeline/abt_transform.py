@@ -8,7 +8,13 @@ Inclui a criação de índices intermediários e logs de volumetria.
 """
 import os
 import json
+import hashlib
+from pathlib import Path
+
 from infra.db import get_db_connection_str_from_env, get_pg_database_connection, log_row_count
+
+SQL_DIR = Path(__file__).resolve().parent / "sql"
+"""Asset do componente — os `.sql` versionados que este módulo carrega e executa."""
 
 # --- TASKS INTERMEDIÁRIAS (AGREGAÇÕES EM SQL NO BANCO) ---
 def create_agg_previous_application(conn, output_prev_table: str):
@@ -104,54 +110,46 @@ def create_agg_installments(conn, output_installments_table: str):
 
 # --- PIPELINE PRINCIPAL (ELT FINAL) ---
 def run_abt_generation(conn, config: dict):
-    """Monta a ABT final via SQL puro unindo a aplicação limpa com os agregados intermediários."""
+    """Monta a ABT final via SQL puro unindo a aplicação limpa com os agregados intermediários.
+    A projeção e o registro da execução em `abt_last_run_table` confirmam juntos, num commit só."""
     clean_table = config["output_table"]
     abt_table = config["abt_table"]
-    
+    abt_last_run_table = config["abt_last_run_table"]
+
+    projection_path = SQL_DIR / "application_abt_record_projection.sql"
+    projection_sha256 = hashlib.sha256(projection_path.read_bytes()).hexdigest()
+    projection_select = projection_path.read_text(encoding="utf-8").format(
+        input_rows=f'"{clean_table}" a',
+        prev_agg="tmp_prev_application_agg p",
+        bureau_agg="tmp_bureau_agg b",
+        inst_agg="tmp_installments_agg i",
+    )
+
     cursor = conn.cursor()
 
     print(f"[ELT] Construindo a tabela final ABT '{abt_table}' a partir de '{clean_table}'...")
     log_row_count(cursor, clean_table, "Entrada Application Clean")
 
     cursor.execute(f'DROP TABLE IF EXISTS "{abt_table}" CASCADE;')
-    
+
     sql_elt = f"""
     CREATE TABLE "{abt_table}" AS
-    SELECT 
-        a.*,
-        
-        -- 2. Features Derivadas da Renda (Tratando divisão por zero)
-        CASE WHEN COALESCE(a.amt_income_total, 0) > 0 THEN a.amt_credit / a.amt_income_total ELSE NULL END AS fe_credit_income_percent,
-        CASE WHEN COALESCE(a.amt_income_total, 0) > 0 THEN a.amt_annuity / a.amt_income_total ELSE NULL END AS fe_annuity_income_percent,
+    {projection_select};
+    """
 
-        -- 3. Features Agregadas de Previous Application
-        CASE WHEN p.sk_id_curr IS NOT NULL THEN 1 ELSE 0 END AS has_prev_app,
-        COALESCE(p.prev_refused_rate, 0) AS prev_refused_rate,
-        
-        -- 4. Features Agregadas de Bureau
-        CASE WHEN b.sk_id_curr IS NOT NULL THEN 1 ELSE 0 END AS has_bureau,
-        COALESCE(b.bureau_avg_days_credit, 0) AS bureau_avg_days_credit,
-        COALESCE(b.bureau_last_days_credit, 0) AS bureau_last_days_credit,
-        COALESCE(b.bureau_active_rate, 0) AS bureau_active_rate,
-        COALESCE(b.bureau_active_count, 0) AS bureau_active_count,
-        COALESCE(b.bureau_closed_rate, 0) AS bureau_closed_rate,
-        COALESCE(b.bureau_debt_credit_ratio, 0) AS bureau_debt_credit_ratio,
-        COALESCE(b.bureau_overdue_count, 0) AS bureau_overdue_count,
-        
-        -- 5. Features Agregadas de Installments (Parcelas)
-        CASE WHEN i.sk_id_curr IS NOT NULL THEN 1 ELSE 0 END AS has_installments_history,
-        COALESCE(i.inst_late_payment_rate, 0) AS inst_late_payment_rate
-
-    FROM "{clean_table}" a
-    LEFT JOIN tmp_prev_application_agg p ON a.sk_id_curr = p.sk_id_curr
-    LEFT JOIN tmp_bureau_agg b ON a.sk_id_curr = b.sk_id_curr
-    LEFT JOIN tmp_installments_agg i ON a.sk_id_curr = i.sk_id_curr;
+    last_run_sql = f"""
+    DROP TABLE IF EXISTS "{abt_last_run_table}" CASCADE;
+    CREATE TABLE "{abt_last_run_table}" AS
+    SELECT
+        '{projection_sha256}'::text AS application_abt_record_projection_sha256,
+        NOW() AS run_at;
     """
 
     try:
         cursor.execute(sql_elt)
+        cursor.execute(last_run_sql)
         conn.commit()
-        
+
         print("[LIXEIRA] Limpando tabelas temporárias agregadas...")
         cursor.execute("DROP TABLE IF EXISTS tmp_prev_application_agg CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS tmp_bureau_agg CASCADE;")
@@ -172,8 +170,6 @@ if __name__ == "__main__":
     # Execução isolada, fora do Airflow: quem abre a conexão aqui é quem a fecha, e o
     # entrypoint carrega o ambiente. Import local porque a imagem do Airflow nao tem
     # python-dotenv — as tasks recebem ambiente do compose.
-    from pathlib import Path
-
     from dotenv import load_dotenv
 
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
@@ -181,7 +177,12 @@ if __name__ == "__main__":
     conn = get_pg_database_connection(get_db_connection_str_from_env("localhost"))
     try:
         run_abt_generation(
-            conn, {"output_table": "application_clean", "abt_table": "application_abt"}
+            conn,
+            {
+                "output_table": "application_clean",
+                "abt_table": "application_abt",
+                "abt_last_run_table": "application_abt_last_run",
+            },
         )
     finally:
         conn.close()

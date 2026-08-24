@@ -17,7 +17,8 @@
     "input_installments_table": "installments_payments",
     "output_installments_table": "installments_clean",
     "abt_table": "application_abt",
-    "sanitization_last_run_table": "application_sanitization_last_run"
+    "sanitization_last_run_table": "application_sanitization_last_run",
+    "abt_last_run_table": "application_abt_last_run"
   },
   "indexes": {
     "raw": [

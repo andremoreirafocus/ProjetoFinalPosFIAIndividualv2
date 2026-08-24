@@ -13,7 +13,9 @@ are computed when income > 0 and null when income = 0; the temporary aggregation
 tables are dropped at the end.
 """
 
+import hashlib
 import statistics
+from pathlib import Path
 
 import pytest
 
@@ -24,9 +26,14 @@ from abt_transform import (
     run_abt_generation,
 )
 
+PROJECTION_SQL_PATH = (
+    Path(__file__).resolve().parents[1] / "sql" / "application_abt_record_projection.sql"
+)
+
 
 DEFAULT_SOURCE = "application_clean"
 DEFAULT_ABT = "application_abt"
+DEFAULT_LAST_RUN = "application_abt_last_run"
 
 TMP_AGG_TABLES = ["tmp_prev_application_agg", "tmp_bureau_agg", "tmp_installments_agg"]
 
@@ -109,7 +116,10 @@ EXPECTED_INST_LATE_RATE = sum(
 ) / len(INSTALLMENTS_ROWS)
 
 
-def _generate(test_db, conexao, clean_table=DEFAULT_SOURCE, abt_table=DEFAULT_ABT):
+def _generate(
+    test_db, conexao, clean_table=DEFAULT_SOURCE, abt_table=DEFAULT_ABT,
+    abt_last_run_table=DEFAULT_LAST_RUN,
+):
     """Build the four cleaned tables, run the three aggregations, then the ABT ELT."""
     test_db.create_table(clean_table, APP_CLEAN_SCHEMA)
     test_db.insert(clean_table, APP_ROWS)
@@ -126,7 +136,14 @@ def _generate(test_db, conexao, clean_table=DEFAULT_SOURCE, abt_table=DEFAULT_AB
     test_db.insert("installments_clean", INSTALLMENTS_ROWS)
     create_agg_installments(conexao, "installments_clean")
 
-    run_abt_generation(conexao, {"output_table": clean_table, "abt_table": abt_table})
+    run_abt_generation(
+        conexao,
+        {
+            "output_table": clean_table,
+            "abt_table": abt_table,
+            "abt_last_run_table": abt_last_run_table,
+        },
+    )
 
 
 def _abt_by_customer(test_db, abt_table=DEFAULT_ABT):
@@ -208,3 +225,66 @@ def test_temporary_aggregation_tables_are_dropped(test_db, conexao):
 
     for tmp_table in TMP_AGG_TABLES:
         assert not test_db.table_exists(tmp_table)
+
+
+@pytest.mark.integration
+def test_last_run_records_the_applied_projection_digest(test_db, conexao):
+    _generate(test_db, conexao)
+
+    runs = test_db.fetch_dicts(f'SELECT * FROM "{DEFAULT_LAST_RUN}"')
+    assert len(runs) == 1
+
+    expected_sha256 = hashlib.sha256(PROJECTION_SQL_PATH.read_bytes()).hexdigest()
+    assert runs[0]["application_abt_record_projection_sha256"] == expected_sha256
+    assert runs[0]["run_at"] is not None
+
+
+@pytest.mark.integration
+def test_last_run_is_overwritten_by_a_second_execution(test_db, conexao):
+    _generate(test_db, conexao)
+    first_run_at = test_db.fetch_dicts(f'SELECT run_at FROM "{DEFAULT_LAST_RUN}"')[0]["run_at"]
+
+    _generate(test_db, conexao)
+    runs = test_db.fetch_dicts(f'SELECT run_at FROM "{DEFAULT_LAST_RUN}"')
+
+    assert len(runs) == 1
+    assert runs[0]["run_at"] != first_run_at
+
+
+@pytest.mark.integration
+def test_raises_clearly_when_projection_sql_file_is_missing(test_db, conexao):
+    test_db.create_table(DEFAULT_SOURCE, APP_CLEAN_SCHEMA)
+    test_db.insert(DEFAULT_SOURCE, APP_ROWS)
+
+    test_db.create_table("previous_application_clean", PREV_CLEAN_SCHEMA)
+    test_db.insert("previous_application_clean", PREV_ROWS)
+    create_agg_previous_application(conexao, "previous_application_clean")
+
+    test_db.create_table("bureau_clean", BUREAU_CLEAN_SCHEMA)
+    test_db.insert("bureau_clean", BUREAU_ROWS)
+    create_agg_bureau(conexao, "bureau_clean")
+
+    test_db.create_table("installments_clean", INSTALLMENTS_CLEAN_SCHEMA)
+    test_db.insert("installments_clean", INSTALLMENTS_ROWS)
+    create_agg_installments(conexao, "installments_clean")
+
+    # Sanity: só faz sentido deslocar o arquivo versionado se ele já existir —
+    # do contrário a ausência testada seria a de setup, não a do contrato.
+    assert PROJECTION_SQL_PATH.exists()
+    displaced_path = PROJECTION_SQL_PATH.with_name(PROJECTION_SQL_PATH.name + ".displaced_by_test")
+    PROJECTION_SQL_PATH.rename(displaced_path)
+    try:
+        with pytest.raises(FileNotFoundError):
+            run_abt_generation(
+                conexao,
+                {
+                    "output_table": DEFAULT_SOURCE,
+                    "abt_table": DEFAULT_ABT,
+                    "abt_last_run_table": DEFAULT_LAST_RUN,
+                },
+            )
+    finally:
+        displaced_path.rename(PROJECTION_SQL_PATH)
+
+    assert not test_db.table_exists(DEFAULT_ABT)
+    assert not test_db.table_exists(DEFAULT_LAST_RUN)
