@@ -83,7 +83,7 @@ docker compose logs -f credit-api credit-frontend
 
 `Dockerfile.api` instala as dependências da API, copia o código de `MLOps` e inicia Uvicorn na porta 8000.
 
-O artefato não é embutido na imagem. O diretório `./Model/artifacts` é montado como somente leitura em `/app/Model/artifacts`. Um novo treinamento atualiza os arquivos no volume sem exigir novo build ou reinício da API: o modelo e suas referências são recarregados automaticamente quando formam um par compatível.
+O artefato não é embutido na imagem. O diretório `./Model/artifacts` é montado como somente leitura em `/app/Model/artifacts`. Um novo treinamento atualiza os arquivos no volume sem exigir novo build ou reinício da API: o modelo, a referência e o contrato de transformação são recarregados automaticamente quando o manifesto declara os três com identidade e checksums coerentes.
 
 ### Frontend
 
@@ -169,7 +169,7 @@ python3 -m venv .venv
 | `test_prediction_service.py` | `PredictionService.predict` aplica o threshold do bundle recebido — não um valor fixo — e passa a mesma entrada preparada ao estimador, sem cópia. |
 | `test_feature_service.py` | Recuperação da ABT, cliente inexistente e normalização de tipos. |
 | `test_explanation_service.py` | `ExplanationService.explain` reproduz o cálculo TreeSHAP local e a comparação com as referências, recebendo bundle e entrada preparada — sem `PredictionService` nem leitura de referência de arquivo. |
-| `test_artifact_bundle_loader.py` | `ArtifactBundleLoader.load` recusa manifesto ausente, schema inválido, arquivo declarado ausente, checksum divergente, artefato ou referência sem as chaves exigidas e identidade incompatível entre manifesto/artefato/referência; aceita referência que sobra com aviso; devolve `ModelBundle` completo só quando tudo passa. |
+| `test_artifact_bundle_loader.py` | `ArtifactBundleLoader.load` recusa manifesto ausente, schema inválido — incluindo a declaração do contrato de transformação —, arquivo declarado ausente, checksum divergente, artefato ou referência sem as chaves exigidas, identidade incompatível entre manifesto/artefato/referência, e contrato de transformação com forma inválida (chave ausente, estatística não numérica/nula/booleana, lista mal formada ou digest vazio, com os defeitos acumulados num erro só); aceita referência que sobra com aviso e `stats` com estatística a mais; devolve `ModelBundle` completo só quando tudo passa. |
 | `test_model_bundle_manager.py` | `ModelBundleManager` ativa o primeiro candidato válido, ignora manifesto inalterado sem chamar o loader, ativa candidato novo, preserva o bundle anterior e tenta de novo em candidato inválido, recusa conteúdo trocado sob o mesmo `bundle_id` sem chamar o loader, ativa um `bundle_id` anterior sem distinção, recusa `require_active()` antes da primeira ativação, e não expõe bundle corrompido a leituras concorrentes durante a troca. |
 | `test_api_endpoints.py` | Contratos e erros HTTP via `TestClient`, contra um bundle publicado de verdade num diretório temporário. |
 | `test_model_loading.py` | O laço de atualização do `main.py` chama `refresh_if_changed` repetidamente até ser cancelado. |

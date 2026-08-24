@@ -43,6 +43,7 @@ def _bundle(bundle_id: str) -> ModelBundle:
         numeric_references={},
         categorical_references={},
         global_shap={"feature_importance": []},
+        transformation_contract={},
     )
 
 

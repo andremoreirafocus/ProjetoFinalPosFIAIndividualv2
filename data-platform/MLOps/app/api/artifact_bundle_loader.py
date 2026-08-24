@@ -11,7 +11,10 @@ import pickle
 from pathlib import Path
 from typing import Any
 
-from Model.artifact_bundle_contract import REQUIRED_ARTIFACT_KEYS
+from Model.artifact_bundle_contract import (
+    REQUIRED_ARTIFACT_KEYS,
+    REQUIRED_TRANSFORMATION_CONTRACT_KEYS,
+)
 
 from .model_bundle import ModelBundle
 
@@ -27,6 +30,7 @@ REQUIRED_MANIFEST_KEYS = frozenset(
         "trained_at_utc",
         "model",
         "feature_reference",
+        "transformation_contract",
     }
 )
 REQUIRED_ARTIFACT_DECLARATION_KEYS = frozenset({"path", "sha256"})
@@ -56,18 +60,28 @@ class ArtifactBundleLoader:
         reference_path = self._resolve_declared_path(
             manifest_path, manifest["feature_reference"]
         )
+        transformation_contract_path = self._resolve_declared_path(
+            manifest_path, manifest["transformation_contract"]
+        )
 
         self._verify_checksum(model_path, manifest["model"]["sha256"])
         self._verify_checksum(reference_path, manifest["feature_reference"]["sha256"])
+        self._verify_checksum(
+            transformation_contract_path, manifest["transformation_contract"]["sha256"]
+        )
 
         with model_path.open("rb") as file:
             artifact = pickle.load(file)
         reference = json.loads(reference_path.read_text(encoding="utf-8"))
+        transformation_contract = json.loads(
+            transformation_contract_path.read_text(encoding="utf-8")
+        )
 
         self._validate_required_keys(artifact, REQUIRED_ARTIFACT_KEYS, "artefato")
         self._validate_required_keys(reference, REQUIRED_REFERENCE_KEYS, "referência")
         self._validate_identity(manifest, artifact, reference)
         self._validate_feature_coverage(reference, artifact["features"])
+        self._validate_transformation_contract(transformation_contract)
 
         return ModelBundle(
             bundle_id=manifest["bundle_id"],
@@ -84,6 +98,7 @@ class ArtifactBundleLoader:
             numeric_references=reference["numeric_features"],
             categorical_references=reference["categorical_features"],
             global_shap=reference["global_shap"],
+            transformation_contract=transformation_contract,
         )
 
     @staticmethod
@@ -94,7 +109,7 @@ class ArtifactBundleLoader:
         missing = REQUIRED_MANIFEST_KEYS.difference(manifest)
         if missing:
             raise ValueError(f"Manifesto inválido. Chaves ausentes: {sorted(missing)}")
-        for declaration_name in ("model", "feature_reference"):
+        for declaration_name in ("model", "feature_reference", "transformation_contract"):
             declaration_missing = REQUIRED_ARTIFACT_DECLARATION_KEYS.difference(
                 manifest[declaration_name]
             )
@@ -188,3 +203,44 @@ class ArtifactBundleLoader:
                 "Referências sem correspondência no modelo foram ignoradas: %s",
                 sorted(extra_features),
             )
+
+    @staticmethod
+    def _validate_transformation_contract(contract: dict[str, Any]) -> None:
+        """Valida a forma do contrato, sem nomear nenhuma estatística: quais chaves
+        existem dentro de `stats` não é assunto do loader — quem confere cobertura é o
+        serviço de transformação, contra o `.sql` que já lê."""
+        ArtifactBundleLoader._validate_required_keys(
+            contract, REQUIRED_TRANSFORMATION_CONTRACT_KEYS, "contrato de transformação"
+        )
+
+        errors = []
+
+        stats = contract["stats"]
+        if not isinstance(stats, dict):
+            errors.append("'stats' não é um dicionário")
+        else:
+            not_numeric = sorted(
+                name
+                for name, value in stats.items()
+                if isinstance(value, bool) or not isinstance(value, (int, float))
+            )
+            if not_numeric:
+                errors.append(f"estatísticas não numéricas em 'stats': {not_numeric}")
+
+        for key in ("valid_orgs", "valid_incs"):
+            value = contract[key]
+            if not isinstance(value, list) or not all(
+                isinstance(item, str) for item in value
+            ):
+                errors.append(f"'{key}' não é uma lista de strings")
+
+        for key in (
+            "application_sanitization_projection_sha256",
+            "application_abt_record_projection_sha256",
+        ):
+            value = contract[key]
+            if not isinstance(value, str) or not value:
+                errors.append(f"'{key}' vazio ou ausente")
+
+        if errors:
+            raise ValueError("Contrato de transformação inválido: " + "; ".join(errors))

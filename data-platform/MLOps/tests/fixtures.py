@@ -49,6 +49,7 @@ def build_model_bundle(
     numeric_references: dict[str, dict[str, Any]] | None = None,
     categorical_references: dict[str, dict[str, Any]] | None = None,
     global_shap: dict[str, Any] | None = None,
+    transformation_contract: dict[str, Any] | None = None,
 ) -> ModelBundle:
     """Monta um ``ModelBundle`` coerente com o contrato do bundle."""
     return ModelBundle(
@@ -79,6 +80,11 @@ def build_model_bundle(
             categorical_references if categorical_references is not None else {}
         ),
         global_shap=global_shap if global_shap is not None else {"feature_importance": []},
+        transformation_contract=(
+            transformation_contract
+            if transformation_contract is not None
+            else build_transformation_contract()
+        ),
     )
 
 

@@ -30,6 +30,7 @@ class ModelBundle:
     numeric_references: dict[str, dict[str, Any]]
     categorical_references: dict[str, dict[str, Any]]
     global_shap: dict[str, Any]
+    transformation_contract: dict[str, Any]
 
 
 @dataclass(frozen=True)

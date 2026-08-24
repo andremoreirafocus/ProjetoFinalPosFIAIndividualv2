@@ -49,7 +49,7 @@ FastAPI — contrato e transporte
 
 ```text
 train.py
-   → publica o bundle (manifesto, modelo e referência versionados)
+   → publica o bundle (manifesto, modelo, referência e contrato de transformação versionados)
    → ArtifactBundleLoader valida e monta o bundle ativo
    → FeatureInputProcessor alinha a entrada ao contrato do bundle
    → /model/features expõe o contrato
@@ -88,17 +88,21 @@ No startup, o `lifespan`:
 6. no shutdown, cancela o laço e libera o pool de conexões.
 
 O manager lê o manifesto ativo e decide se há candidato novo. Quando há, delega ao loader
-a leitura e a validação completas — schema do manifesto, checksums, chaves obrigatórias do
-artefato e da referência, identidade cruzada entre manifesto/artefato/referência, e
-cobertura estatística e SHAP de cada feature do modelo (referências extras geram um
-warning no log, sem impedir a ativação). Um candidato inválido não substitui o bundle
-ativo, e a próxima verificação tenta de novo. Enquanto nenhum bundle válido estiver ativo,
-`/health` e os endpoints dependentes do modelo respondem `503`, com o último erro
-registrado.
+a leitura e a validação completas — schema do manifesto, checksums dos três artefatos,
+chaves obrigatórias do artefato e da referência, identidade cruzada entre
+manifesto/artefato/referência, cobertura estatística e SHAP de cada feature do modelo
+(referências extras geram um warning no log, sem impedir a ativação), e a forma do
+contrato de transformação — suas sete chaves, os tipos dentro de `stats` e dos dois
+digests. Um candidato inválido não substitui o bundle ativo, e a próxima verificação
+tenta de novo. Enquanto nenhum bundle válido estiver ativo, `/health` e os endpoints
+dependentes do modelo respondem `503`, com o último erro registrado.
 
 O artefato precisa conter modelo, threshold, features, categóricas, categorias e
 identidade de treino — as sete chaves obrigatórias do contrato, declaradas em
-`Model/artifact_bundle_contract.py`.
+`Model/artifact_bundle_contract.py`. O contrato de transformação tem as suas próprias
+sete chaves, declaradas no mesmo módulo como `REQUIRED_TRANSFORMATION_CONTRACT_KEYS`; o
+loader confere sua forma, mas não confere quais estatísticas existem dentro de `stats` —
+isso é do serviço de transformação, contra o `.sql` que ele já lê.
 
 ## Preparação para inferência
 

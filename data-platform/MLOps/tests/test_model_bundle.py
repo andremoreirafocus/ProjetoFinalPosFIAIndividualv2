@@ -27,6 +27,7 @@ def test_model_bundle_exposes_all_its_fields() -> None:
         numeric_references={"ext_source_1": {"mean": 0.5}},
         categorical_references={"occupation_type": {"count": {"Laborers": 60}}},
         global_shap={"feature_importance": []},
+        transformation_contract={"stats": {"median_es1": 0.5}},
     )
 
     assert bundle.bundle_id == "bundle-2026-08-14"
@@ -45,6 +46,7 @@ def test_model_bundle_exposes_all_its_fields() -> None:
         "occupation_type": {"count": {"Laborers": 60}}
     }
     assert bundle.global_shap == {"feature_importance": []}
+    assert bundle.transformation_contract == {"stats": {"median_es1": 0.5}}
 
 
 def test_prepared_model_input_exposes_its_frame() -> None:
