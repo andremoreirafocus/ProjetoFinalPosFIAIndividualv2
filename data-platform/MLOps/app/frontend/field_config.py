@@ -1,7 +1,7 @@
-"""Metadados dos campos enviados ao endpoint POST /predict/features."""
+"""Metadados dos campos enviados a POST /predict/features e a POST /predict/new-customer."""
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 
 @dataclass(frozen=True)
@@ -10,12 +10,17 @@ class FieldConfig:
     label: str
     group: str
     kind: Literal["number", "integer", "category", "boolean"] = "number"
-    default: float | int | str = 0.0
+    default: float | int | str | None = 0.0
     help: str = ""
     options: tuple[str, ...] = ()
     minimum: float | None = None
     maximum: float | None = None
     step: float = 0.01
+    optional: bool = False
+    """Ganha, na tela, o controle "Não disponível" — só os 26 campos brutos usam isto."""
+    boolean_values: tuple[Any, Any] = (1, 0)
+    """(valor de "Sim", valor de "Não") — só `flag_own_car` diverge do padrão `(1, 0)`,
+    porque a coluna bruta é texto ("Y"/"N"), não a flag derivada que o pipeline calcula."""
 
 
 FIELDS = (
@@ -69,3 +74,48 @@ FIELDS = (
 
 FIELD_NAMES = tuple(field.name for field in FIELDS)
 GROUPS = tuple(dict.fromkeys(field.group for field in FIELDS))
+
+
+# Os 26 campos brutos que POST /predict/new-customer recebe — mesmo conjunto e mesmos
+# tipos de `NewCustomerApplication` (MLOps/app/api/schemas.py), verificado por
+# `test_application_fields_match_new_customer_application_fields`. Os domínios das
+# categóricas são os valores brutos: sem `'Unknown'`/`'Other_low_freq'`, que a
+# sanitização produz e o analista nunca informa; `code_gender` inclui `'XNA'`, valor
+# bruto real ausente da lista de `FIELDS`.
+APPLICATION_FIELDS = (
+    # --- Obrigatórios: a sanitização não sabe preenchê-los; propagam NULL. ---
+    FieldConfig("amt_credit", "Valor do crédito", "Valores financeiros", default=None, minimum=0, step=500),
+    FieldConfig("region_rating_client_w_city", "Classificação da região com cidade", "Scores e localização", "integer", None, minimum=1, maximum=3, step=1),
+    FieldConfig("days_id_publish", "Dias desde a emissão do documento", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
+    FieldConfig("days_registration", "Dias desde o registro", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
+    FieldConfig("days_birth", "Dias desde o nascimento", "Perfil pessoal", "integer", None, maximum=0, step=1, help="A base representa a idade em dias, com valores negativos."),
+    FieldConfig("days_employed", "Dias empregado", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
+
+    # --- Opcionais: "Não disponível" é uma resposta válida, distinta de zero. ---
+    FieldConfig("ext_source_1", "Score externo 1", "Scores e localização", default=None, minimum=0, maximum=1, step=0.01, optional=True),
+    FieldConfig("ext_source_2", "Score externo 2", "Scores e localização", default=None, minimum=0, maximum=1, step=0.01, optional=True),
+    FieldConfig("ext_source_3", "Score externo 3", "Scores e localização", default=None, minimum=0, maximum=1, step=0.01, optional=True),
+    FieldConfig("reg_city_not_work_city", "Mora em cidade diferente do trabalho", "Scores e localização", "boolean", None, optional=True),
+    FieldConfig("reg_city_not_live_city", "Registro em cidade diferente da residência", "Scores e localização", "boolean", None, optional=True),
+    FieldConfig("live_city_not_work_city", "Residência em cidade diferente do trabalho", "Scores e localização", "boolean", None, optional=True),
+
+    FieldConfig("cnt_children", "Quantidade de filhos", "Perfil pessoal", "integer", None, minimum=0, maximum=20, step=1, optional=True),
+    FieldConfig("cnt_fam_members", "Membros da família", "Perfil pessoal", default=None, minimum=1, maximum=30, step=1, optional=True),
+    FieldConfig("flag_own_car", "Possui carro", "Perfil pessoal", "boolean", None, boolean_values=("Y", "N"), optional=True),
+    FieldConfig("own_car_age", "Idade do veículo (anos)", "Perfil pessoal", default=None, minimum=0, maximum=100, step=1, optional=True),
+    FieldConfig("occupation_type", "Ocupação", "Perfil pessoal", "category", None, options=("Laborers", "Core staff", "Sales staff", "Managers", "Drivers", "High skill tech staff", "Accountants", "Medicine staff", "Security staff", "Cooking staff", "Cleaning staff", "Private service staff", "Low-skill Laborers", "Waiters/barmen staff", "Secretaries", "Realty agents", "HR staff", "IT staff"), optional=True),
+    FieldConfig("organization_type", "Tipo de organização", "Perfil pessoal", "category", None, options=("Business Entity Type 3", "Agriculture", "Bank", "Business Entity Type 1", "Business Entity Type 2", "Construction", "Electricity", "Emergency", "Government", "Hotel", "Housing", "Industry: type 1", "Industry: type 11", "Industry: type 3", "Industry: type 4", "Industry: type 5", "Industry: type 7", "Industry: type 9", "Insurance", "Kindergarten", "Medicine", "Military", "Other", "Police", "Postal", "Restaurant", "School", "Security", "Security Ministries", "Self-employed", "Services", "Telecom", "Trade: type 2", "Trade: type 3", "Trade: type 6", "Trade: type 7", "Transport: type 2", "Transport: type 3", "Transport: type 4", "University", "XNA"), optional=True),
+    FieldConfig("name_income_type", "Tipo de renda", "Perfil pessoal", "category", None, options=("Working", "Commercial associate", "Pensioner", "State servant"), optional=True),
+    FieldConfig("name_education_type", "Escolaridade", "Perfil pessoal", "category", None, options=("Secondary / secondary special", "Higher education", "Incomplete higher", "Lower secondary", "Academic degree"), optional=True),
+    FieldConfig("code_gender", "Gênero cadastrado", "Perfil pessoal", "category", None, options=("F", "M", "XNA"), optional=True),
+
+    FieldConfig("amt_income_total", "Renda total", "Valores financeiros", default=None, minimum=0, step=500, optional=True),
+    FieldConfig("amt_annuity", "Valor da anuidade/parcela", "Valores financeiros", default=None, minimum=0, step=100, optional=True),
+
+    FieldConfig("days_last_phone_change", "Dias desde a última troca de telefone", "Histórico cadastral", default=None, maximum=0, step=1, help="A base representa eventos passados com valores negativos.", optional=True),
+    FieldConfig("def_60_cnt_social_circle", "Inadimplências em 60 dias no círculo social", "Histórico cadastral", default=None, minimum=0, step=1, optional=True),
+    FieldConfig("amt_req_credit_bureau_year", "Consultas ao bureau no último ano", "Histórico cadastral", default=None, minimum=0, step=1, optional=True),
+)
+
+APPLICATION_FIELD_NAMES = tuple(field.name for field in APPLICATION_FIELDS)
+APPLICATION_GROUPS = tuple(dict.fromkeys(field.group for field in APPLICATION_FIELDS))

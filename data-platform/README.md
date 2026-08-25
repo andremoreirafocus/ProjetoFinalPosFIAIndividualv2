@@ -72,7 +72,7 @@ airflow/data/csv
 - **Configuração separada do código:** tabelas, features e hiperparâmetros ficam em arquivos JSON.
 - **Artefato único de inferência:** o LightGBM e seus metadados são persistidos para consumo pela API.
 - **Modelo e política desacoplados:** o modelo gera score; a política converte faixas em recomendações.
-- **Duas formas de consumo:** predição por features fornecidas ou por cliente recuperado da ABT.
+- **Três formas de consumo:** predição por features fornecidas, por cliente recuperado da ABT, ou por registro bruto de um cliente novo, transformado pela mesma regra do pipeline.
 
 ## Topologia de execução
 
@@ -113,9 +113,12 @@ Cada componente documenta o comportamento coberto e o comando de sua suíte:
 5. O treinamento publica os artefatos versionados do modelo; o manifesto identifica o
    conjunto ativo para inferência.
 6. A API acompanha o manifesto, carrega o bundle ativo e consulta a ABT quando recebe um
-   identificador de cliente.
+   identificador de cliente — ou, para um cliente novo, transforma o registro bruto pela
+   mesma regra de sanitização e construção da ABT do pipeline, executada por `SELECT`
+   sobre `VALUES`.
 7. A política transforma o score em aprovação, revisão manual ou rejeição demonstrativa.
-8. O Streamlit disponibiliza formulário, recuperação editável e consulta direta.
+8. O Streamlit disponibiliza a submissão de um cliente novo, a recuperação editável e a
+   consulta direta.
 
 O fluxo operacional do treinamento está no [README do Airflow](./airflow/README.md) e
 no [README do Model](./Model/README.md). Os cenários e contratos de inferência estão na
@@ -128,6 +131,7 @@ no [README do Model](./Model/README.md). Os cenários e contratos de inferência
 | Fontes e tabelas do pipeline | `DataPipeline/config_pipeline.json` | DAG e módulos de transformação. |
 | Features e hiperparâmetros | `Model/config_model.json` | treinamento, avaliação e validações. |
 | Bundle ativo de inferência | `Model/artifacts/current_bundle.json` e `Model/artifacts/bundles/<bundle_id>/` | Serviços de inferência em `MLOps`. |
+| Regra de transformação por registro | `DataPipeline/sql/application_sanitization_projection.sql` e `application_abt_record_projection.sql`, embutidos na imagem da API | `DataPipeline` (sobre a população) e `NewCustomerFeatureTransformationService` em `MLOps` (sobre um registro). |
 | Schema HTTP | `MLOps/app/api/schemas.py` | API e frontend. |
 | Limites da política | variáveis `CREDIT_*` | API e apresentação do resultado. |
 

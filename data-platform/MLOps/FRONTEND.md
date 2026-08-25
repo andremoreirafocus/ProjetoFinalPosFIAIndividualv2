@@ -21,14 +21,24 @@ Streamlit ── HTTP ──→ FastAPI ──→ modelo, política e explicaç�
 - opções controladas para categóricas;
 - seleção binária para flags;
 - limites e passos para valores numéricos;
+- envio parcial na aba "Novo cliente": cada campo opcional tem um controle "Não
+  disponível", que apaga e desabilita o campo na hora — ausência é uma resposta, não a
+  falta de uma;
 - exibição da requisição e da resposta JSON;
 - aviso de que o score não é uma probabilidade calibrada.
 
 ## Jornadas
 
-### Preencher todos os dados
+### Novo cliente
 
-Renderiza as features descritas em `field_config.py`. O formulário envia todas as entradas para `POST /predict/features`.
+Renderiza os 26 campos brutos de `application_train` descritos em `APPLICATION_FIELDS`
+(`field_config.py`), fora de `st.form` — cada campo opcional pode ser marcado "Não
+disponível" e o efeito é imediato, o que um formulário do Streamlit não permite. Os seis
+campos obrigatórios exigem valor; os vinte opcionais aceitam a marcação, que envia `null`.
+A submissão confere os 26 antes de chamar a API e recusa nomeando os campos sem resposta.
+O corpo enviado a `POST /predict/new-customer` é plano, com as 26 chaves no nível de
+cima — sem a chave `features` que `/predict/features` usa. A API completa os campos
+ausentes com a mesma regra de sanitização aplicada à população de treino.
 
 ### Buscar cliente e editar
 

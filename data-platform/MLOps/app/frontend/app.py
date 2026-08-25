@@ -13,7 +13,13 @@ if str(DATA_PLATFORM_DIR) not in sys.path:
     # O Streamlit executa o arquivo como script e não inclui a raiz do projeto.
     sys.path.insert(0, str(DATA_PLATFORM_DIR))
 
-from MLOps.app.frontend.field_config import FIELDS, GROUPS, FieldConfig
+from MLOps.app.frontend.field_config import (
+    APPLICATION_FIELDS,
+    APPLICATION_GROUPS,
+    FIELDS,
+    GROUPS,
+    FieldConfig,
+)
 
 
 DEFAULT_API_URL = os.getenv("CREDIT_API_URL", "http://localhost:8000")
@@ -23,6 +29,12 @@ RECOMMENDATIONS = {
     "approve": ("Aprovação recomendada", "success", "✅"),
     "manual_review": ("Revisão manual recomendada", "warning", "⚠️"),
     "reject": ("Reprovação recomendada", "error", "⛔"),
+}
+
+SOURCE_LABELS = {
+    "database": "Banco de dados",
+    "provided_features": "Formulário",
+    "new_customer_transformed_application": "Novo cliente",
 }
 
 
@@ -44,36 +56,80 @@ def api_request(method: str, url: str, **kwargs: Any) -> Any:
         raise RuntimeError(f"A API retornou HTTP {response.status_code}: {detail}") from error
 
 
-def render_input(
-    field: FieldConfig,
-    value_override: Any | None = None,
-    key_prefix: str = "feature",
-) -> Any:
-    """Renderiza o componente adequado e devolve um valor serializável em JSON."""
-    key = f"{key_prefix}_{field.name}"
-    default = field.default if value_override is None else value_override
+def _unavailable_checkbox_key(field: FieldConfig, key_prefix: str) -> str:
+    return f"{key_prefix}_{field.name}_unavailable"
 
+
+def _render_field_widget(field: FieldConfig, default: Any, key: str, disabled: bool) -> Any:
     if field.kind == "category":
-        selected = str(default)
-        index = field.options.index(selected) if selected in field.options else 0
-        return st.selectbox(field.label, field.options, index=index, key=key, help=field.help or None)
+        selected = None if default is None else str(default)
+        index = field.options.index(selected) if selected in field.options else None
+        return st.selectbox(
+            field.label, field.options, index=index, key=key,
+            help=field.help or None, disabled=disabled,
+        )
+
     if field.kind == "boolean":
-        value = st.selectbox(field.label, ("Não", "Sim"), index=int(default), key=key)
-        return int(value == "Sim")
+        true_value, false_value = field.boolean_values
+        index = None if default is None else (1 if default == true_value else 0)
+        selected = st.selectbox(
+            field.label, ("Não", "Sim"), index=index, key=key, disabled=disabled,
+        )
+        if selected is None:
+            return None
+        return true_value if selected == "Sim" else false_value
 
     arguments: dict[str, Any] = {
         "label": field.label,
-        "value": int(default) if field.kind == "integer" else float(default),
+        "value": (
+            None if default is None
+            else (int(default) if field.kind == "integer" else float(default))
+        ),
         "step": int(field.step) if field.kind == "integer" else float(field.step),
         "key": key,
         "help": field.help or None,
+        "disabled": disabled,
     }
     if field.minimum is not None:
         arguments["min_value"] = int(field.minimum) if field.kind == "integer" else float(field.minimum)
     if field.maximum is not None:
         arguments["max_value"] = int(field.maximum) if field.kind == "integer" else float(field.maximum)
     value = st.number_input(**arguments)
+    if value is None:
+        return None
     return int(value) if field.kind == "integer" else float(value)
+
+
+def render_input(
+    field: FieldConfig,
+    value_override: Any | None = None,
+    key_prefix: str = "feature",
+) -> Any:
+    """Renderiza o componente adequado e devolve um valor serializável em JSON.
+
+    Campos opcionais (`field.optional`) ganham, ao lado, o controle "Não disponível":
+    marcá-lo apaga e desabilita o campo na hora, escrevendo `None` na própria chave do
+    widget antes de ele renderizar de novo; desmarcá-lo devolve o campo vazio.
+    """
+    key = f"{key_prefix}_{field.name}"
+    default = field.default if value_override is None else value_override
+
+    if not field.optional:
+        return _render_field_widget(field, default, key, disabled=False)
+
+    unavailable_key = _unavailable_checkbox_key(field, key_prefix)
+
+    def _clear_field_on_unavailable(widget_key: str = key, checkbox_key: str = unavailable_key) -> None:
+        if st.session_state[checkbox_key]:
+            st.session_state[widget_key] = None
+
+    field_column, unavailable_column = st.columns([3, 1])
+    with unavailable_column:
+        unavailable = st.checkbox(
+            "Não disponível", key=unavailable_key, on_change=_clear_field_on_unavailable
+        )
+    with field_column:
+        return _render_field_widget(field, default, key, disabled=unavailable)
 
 
 def render_feature_form(
@@ -102,6 +158,32 @@ def render_feature_form(
     return features, submitted
 
 
+def render_new_customer_form(key_prefix: str = "new_customer") -> tuple[dict[str, Any], bool]:
+    """Renderiza os 26 campos brutos **fora** de `st.form`.
+
+    O Streamlit recusa `on_change` em widget dentro de formulário — e mesmo sem
+    callback o form não re-executa até a submissão, então marcar "Não disponível" não
+    apagaria nem desabilitaria o campo na hora. Cada interação aqui re-executa a
+    aplicação; a submissão é um `st.button`, não um `st.form_submit_button`.
+    """
+    application: dict[str, Any] = {}
+    for group in APPLICATION_GROUPS:
+        st.subheader(group)
+        group_fields = [field for field in APPLICATION_FIELDS if field.group == group]
+        columns = st.columns(3)
+        for index, field in enumerate(group_fields):
+            with columns[index % 3]:
+                application[field.name] = render_input(field, key_prefix=key_prefix)
+
+    submitted = st.button(
+        "Analisar crédito",
+        type="primary",
+        use_container_width=True,
+        key=f"{key_prefix}_submit",
+    )
+    return application, submitted
+
+
 def show_result(result: dict[str, Any]) -> None:
     """Apresenta score, classificação do modelo e política de crédito."""
     policy = result["policy"]
@@ -117,7 +199,7 @@ def show_result(result: dict[str, Any]) -> None:
     col_score, col_class, col_source = st.columns(3)
     col_score.metric("Score de risco", f"{score:.2%}")
     col_class.metric("Classe prevista", "Inadimplente" if result["predicted_class"] else "Adimplente")
-    col_source.metric("Origem", "Banco de dados" if result["source"] == "database" else "Formulário")
+    col_source.metric("Origem", SOURCE_LABELS.get(result["source"], result["source"]))
     st.progress(score, text="Posição do cliente na escala de risco do modelo")
 
     st.caption(
@@ -153,32 +235,42 @@ with st.sidebar:
     st.divider()
     st.caption("A interface envia os dados à API. O modelo permanece isolado no backend.")
 
-tab_features, tab_loaded_customer, tab_customer = st.tabs(
+tab_new_customer, tab_loaded_customer, tab_customer = st.tabs(
     (
-        "Preencher todos os dados",
+        "Novo cliente",
         "Buscar cliente e editar",
         "Consultar cliente do banco",
     )
 )
 
-with tab_features:
-    st.write("Preencha as informações esperadas pelo endpoint `POST /predict/features`.")
-    features, submitted = render_feature_form(
-        form_key="credit_features_form",
-        submit_label="Analisar crédito",
-        key_prefix="feature",
+with tab_new_customer:
+    st.write(
+        "Preencha os campos que você tem sobre o cliente. Marque \"Não disponível\" "
+        "nos opcionais sem resposta — a API completa esses com a mesma regra aplicada "
+        "à população de treino."
     )
+    application, new_customer_submitted = render_new_customer_form(key_prefix="new_customer")
 
-    if submitted:
-        payload = {"features": features}
-        with st.expander("JSON enviado à API"):
-            st.json(payload)
-        try:
-            with st.spinner("Calculando o score de risco..."):
-                result = api_request("POST", f"{api_url}/predict/features", json=payload)
-            show_result(result)
-        except RuntimeError as error:
-            st.error(str(error))
+    if new_customer_submitted:
+        missing_labels = [
+            field.label
+            for field in APPLICATION_FIELDS
+            if application[field.name] is None
+            and not st.session_state.get(_unavailable_checkbox_key(field, "new_customer"), False)
+        ]
+        if missing_labels:
+            st.error("Preencha ou marque como \"Não disponível\": " + ", ".join(missing_labels))
+        else:
+            with st.expander("JSON enviado à API"):
+                st.json(application)
+            try:
+                with st.spinner("Transformando o registro e calculando o score..."):
+                    result = api_request(
+                        "POST", f"{api_url}/predict/new-customer", json=application
+                    )
+                show_result(result)
+            except RuntimeError as error:
+                st.error(str(error))
 
 with tab_loaded_customer:
     st.write(
