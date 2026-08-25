@@ -11,13 +11,16 @@ from sqlalchemy.exc import SQLAlchemyError
 from infra.db import get_database_engine
 
 from .artifact_bundle_loader import ArtifactBundleLoader
-from .config import settings
+from .config import DATA_PLATFORM_DIR, settings
 from .credit_policy import CreditPolicy
 from .explanation_service import ExplanationService
 from .feature_input_processor import FeatureInputProcessor, ModelInputError
 from .feature_service import CustomerFeatureService, CustomerNotFoundError
 from .model_bundle import ModelBundle
 from .model_bundle_manager import ModelBundleManager
+from .new_customer_feature_transformation_service import (
+    NewCustomerFeatureTransformationService,
+)
 from .prediction_service import PredictionService
 from .schemas import (
     CustomerFeaturesResponse,
@@ -43,6 +46,9 @@ async def lifespan(app: FastAPI):
         manual_review_max_score=settings.manual_review_max_score,
         version=settings.policy_version,
     )
+    new_customer_feature_transformation_service = NewCustomerFeatureTransformationService(
+        database_engine, DATA_PLATFORM_DIR / "DataPipeline" / "sql"
+    )
 
     app.state.bundle_manager = manager
     app.state.feature_service = feature_service
@@ -50,6 +56,9 @@ async def lifespan(app: FastAPI):
     app.state.prediction_service = PredictionService()
     app.state.explanation_service = ExplanationService()
     app.state.credit_policy = credit_policy
+    app.state.new_customer_feature_transformation_service = (
+        new_customer_feature_transformation_service
+    )
 
     refresh_seconds = float(settings.model_bundle_refresh_seconds)
     refresh_task = asyncio.create_task(_refresh_loop(manager, refresh_seconds))

@@ -7,6 +7,7 @@ Este documento descreve a arquitetura interna, a configuração e os contratos d
 | Componente | Responsabilidade | Não é responsabilidade |
 |---|---|---|
 | `feature_service` | Recuperar uma linha da ABT, remover identificador e target e normalizar os valores retornados pelo banco. | Reexecutar a engenharia de atributos sobre as fontes brutas ou preparar a entrada conforme o contrato do modelo. |
+| `new_customer_feature_transformation_service` | Reproduzir, por registro, a sanitização e a construção da ABT para um cliente sem histórico em nenhuma tabela. | Escrever no banco, decidir a ordem das projeções fora do que a API já conhece, ou preparar a entrada conforme o contrato do modelo. |
 | `artifact_bundle_loader` | Ler, conferir e validar o conjunto de artefatos declarado pelo manifesto. | Decidir quando recarregar ou expor predição. |
 | `model_bundle_manager` | Decidir se e quando trocar o bundle ativo, preservando o anterior em qualquer falha do candidato. | Validar o conteúdo do candidato — isso é do loader. |
 | `feature_input_processor` | Alinhar a entrada ao contrato do bundle ativo: ordem, tipos, categorias. | Calcular score ou carregar artefato. |
@@ -81,8 +82,8 @@ No startup, o `lifespan`:
 2. monta o `ArtifactBundleLoader` e o `ModelBundleManager`, apontado para o manifesto
    composto de `MODEL_ARTIFACTS_DIR`;
 3. cria o engine SQLAlchemy por `infra.db.get_database_engine(..., pool_pre_ping=True)`;
-4. instancia os serviços de preparo de entrada, predição, explicação, features e
-   política, e registra tudo em `app.state`;
+4. instancia os serviços de preparo de entrada, predição, explicação, features, política e
+   transformação de cliente novo, e registra tudo em `app.state`;
 5. inicia em segundo plano um laço único que verifica o manifesto a cada
    `MODEL_BUNDLE_REFRESH_SECONDS`;
 6. no shutdown, cancela o laço e libera o pool de conexões.
@@ -103,6 +104,21 @@ identidade de treino — as sete chaves obrigatórias do contrato, declaradas em
 sete chaves, declaradas no mesmo módulo como `REQUIRED_TRANSFORMATION_CONTRACT_KEYS`; o
 loader confere sua forma, mas não confere quais estatísticas existem dentro de `stats` —
 isso é do serviço de transformação, contra o `.sql` que ele já lê.
+
+## Transformação do registro bruto de um cliente novo
+
+Para um cliente que ainda não existe em nenhuma tabela, a transformação precede a
+preparação: `NewCustomerFeatureTransformationService` aplica as mesmas duas projeções que
+`data_sanitization.py` e `abt_transform.py` aplicam à população inteira — por `SELECT` sobre
+`VALUES`, um registro por vez, sem escrever no banco — e devolve as 42 features que o
+`FeatureInputProcessor` normalmente recebe prontas da ABT ou do formulário. Os dois `.sql`
+das projeções (`application_sanitization_projection.sql` e
+`application_abt_record_projection.sql`) são embutidos na imagem; o serviço confere, a cada
+transformação, que seus hashes ainda batem com os publicados no contrato do bundle ativo —
+divergindo, recusa nomeando o arquivo, o digest calculado e o publicado — e que o contrato
+cobre toda estatística que a projeção referencia, derivada do próprio `.sql`, nunca de uma
+lista mantida à mão. Construído no `lifespan`, junto dos demais serviços. Nenhum endpoint o
+chama ainda.
 
 ## Preparação para inferência
 

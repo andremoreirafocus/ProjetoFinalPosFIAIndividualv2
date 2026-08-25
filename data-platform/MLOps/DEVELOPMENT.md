@@ -19,6 +19,7 @@ MLOps/
 │   │   ├── explanation_service.py
 │   │   ├── feature_service.py
 │   │   ├── credit_policy.py
+│   │   ├── new_customer_feature_transformation_service.py
 │   │   └── requirements.txt
 │   ├── cli/
 │   │   ├── predict.py
@@ -83,7 +84,11 @@ docker compose logs -f credit-api credit-frontend
 
 `Dockerfile.api` instala as dependências da API, copia o código de `MLOps` e inicia Uvicorn na porta 8000.
 
-O artefato não é embutido na imagem. O diretório `./Model/artifacts` é montado como somente leitura em `/app/Model/artifacts`. Um novo treinamento atualiza os arquivos no volume sem exigir novo build ou reinício da API: o modelo, a referência e o contrato de transformação são recarregados automaticamente quando o manifesto declara os três com identidade e checksums coerentes.
+O artefato do treino não é embutido na imagem. O diretório `./Model/artifacts` é montado como somente leitura em `/app/Model/artifacts`. Um novo treinamento atualiza os arquivos no volume sem exigir novo build ou reinício da API: o modelo, a referência e o contrato de transformação são recarregados automaticamente quando o manifesto declara os três com identidade e checksums coerentes.
+
+Os dois `.sql` das projeções compartilhadas com o `DataPipeline` (`application_sanitization_projection.sql` e `application_abt_record_projection.sql`) **são** embutidos na imagem, em `/app/DataPipeline/sql` — código viaja como código. `.sql` ausente na imagem derruba o `lifespan`, e a API não sobe. Mudar a regra de sanitização ou de construção da ABT exige reconstruir a imagem além de rodar o pipeline e retreinar: sem o rebuild, o `NewCustomerFeatureTransformationService` calcularia um hash diferente do publicado no contrato e recusaria a transformação, em vez de aplicar a regra desatualizada.
+
+**Antes de reconstruir a imagem da API, as suítes de `DataPipeline`, `Model` e `MLOps` — incluindo os testes marcados `integration` — precisam estar verdes.** Não há integração contínua; esse portão é manual, e fica registrado aqui.
 
 ### Frontend
 
@@ -158,6 +163,14 @@ python3 -m venv .venv
 
 `requirements-test.txt` inclui as dependências da API e do script de revisão manual assistida (`agent-manual-review`). A instalação dos requisitos do frontend, à parte, permite executar `test_frontend.py`.
 
+Os testes marcados `integration` exigem o banco `data_test`, pela mesma fronteira do
+[`infra`](../infra/README.md) que `DataPipeline` e `Model` já usam:
+
+```bash
+.venv/bin/python -m pytest -m integration        # só os que tocam o banco
+.venv/bin/python -m pytest -m "not integration"  # só os offline
+```
+
 ## Cobertura existente
 
 | Arquivo | Responsabilidade validada |
@@ -177,10 +190,13 @@ python3 -m venv .venv
 | `test_predict.py` | `predict_for_customer` (transporte de CLI) devolve score sem arredondamento e falha em feature ausente — a inferência em si já está coberta por `test_feature_input_processor.py`/`test_prediction_service.py`. |
 | `test_find_customer_by_score.py` | Leitura dos identificadores da ABT: devolve inteiros, respeita a ordenação da consulta e não fecha a conexão recebida. |
 | `test_configuration.py` | Coerência entre configuração e o artefato do bundle ativo. |
+| `test_new_customer_feature_transformation_service.py` | `NewCustomerFeatureTransformationService.transform` reproduz, registro a registro, o mesmo resultado que `data_sanitization.py`/`abt_transform.py` produzem para a população — teste de equivalência contra o banco real, marcado `integration`. Cobre também variações de campo opcional ausente, `flag_own_car` ausente e categoria fora das listas válidas; recusa a transformação nomeando o arquivo quando o hash de um dos dois `.sql` diverge do contrato do bundle, e nomeando a estatística quando a projeção referencia uma que o contrato não cobre — antes de qualquer consulta rodar. |
 | `test_agent_manual_review_scripts.py` | O pipeline de revisão manual assistida em `agent-manual-review`: enriquecimento dos fatores autorizados e registro dos restritos, recusa de fator fora do catálogo, duplicado ou omitido, bloqueio quando a versão do prompt falta ou diverge, montagem e invocação do LLM estruturado por fake, validação da resposta contra o que foi enviado, renderização do PDF pelo template configurado, encadeamento em que a saída de um estágio é a entrada do seguinte, e a recusa de todos os estágios em sobrescrever saída existente. |
 
 Os testes da API e do CLI utilizam fakes e fixtures injetados por composição. A suíte
-principal roda offline, sem PostgreSQL, LightGBM ou artefato treinado.
+principal roda offline, sem PostgreSQL, LightGBM ou artefato treinado — exceto os testes
+marcados `integration`, que exigem o banco `data_test`
+(`test_new_customer_feature_transformation_service.py`).
 
 `ModelBundle`, `PreparedModelInput`, `PredictionResult`, `FeatureInputProcessor`,
 `PredictionService`, `ExplanationService`, `ArtifactBundleLoader` e `ModelBundleManager` são
