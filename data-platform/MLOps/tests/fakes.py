@@ -62,3 +62,28 @@ class FakeFeatureService:
                 f"Cliente {customer_id} não encontrado em application_abt."
             )
         return dict(self._features)
+
+
+class FakeNewCustomerFeatureTransformationService:
+    """Fake de `NewCustomerFeatureTransformationService` para o endpoint de cliente novo.
+
+    Configurável para devolver as features transformadas ou simular a falha injetada —
+    divergência de hash (`TransformationRuleMismatchError`) ou erro de banco. Registra o
+    bundle e o registro bruto recebidos, para as asserções que conferem o que o handler
+    repassa.
+    """
+
+    def __init__(
+        self,
+        features: dict[str, Any] | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self._features = features
+        self._error = error
+        self.received: tuple[Any, dict[str, Any]] | None = None
+
+    def transform(self, bundle: Any, application_record: dict[str, Any]) -> dict[str, Any]:
+        self.received = (bundle, application_record)
+        if self._error is not None:
+            raise self._error
+        return dict(self._features or {})

@@ -16,6 +16,44 @@ class CustomerFeaturesResponse(BaseModel):
     )
 
 
+class NewCustomerApplication(BaseModel):
+    """Registro bruto de um cliente novo, ainda sem histórico em nenhuma tabela.
+
+    Os seis campos abaixo são obrigatórios porque a sanitização não sabe preenchê-los.
+    Os vinte seguintes são `| None` sem valor padrão: omitir a chave é 422, e `null` é a
+    afirmação explícita de "não disponível" — a sanitização completa esses com a mesma
+    regra aplicada à população de treino.
+    """
+
+    amt_credit: float
+    region_rating_client_w_city: int
+    days_id_publish: int
+    days_registration: int
+    days_birth: int
+    days_employed: int
+
+    ext_source_1: float | None
+    ext_source_2: float | None
+    ext_source_3: float | None
+    days_last_phone_change: float | None
+    cnt_fam_members: float | None
+    amt_annuity: float | None
+    amt_income_total: float | None
+    reg_city_not_work_city: int | None
+    reg_city_not_live_city: int | None
+    live_city_not_work_city: int | None
+    def_60_cnt_social_circle: float | None
+    amt_req_credit_bureau_year: float | None
+    cnt_children: int | None
+    flag_own_car: str | None
+    own_car_age: float | None
+    occupation_type: str | None
+    organization_type: str | None
+    name_income_type: str | None
+    name_education_type: str | None
+    code_gender: str | None
+
+
 class CreditPolicyResult(BaseModel):
     recommendation: Literal["approve", "manual_review", "reject"]
     reason: str
@@ -78,7 +116,9 @@ class LocalExplanation(BaseModel):
 
 
 class PredictionResponse(BaseModel):
-    source: Literal["provided_features", "database"]
+    source: Literal[
+        "provided_features", "database", "new_customer_transformed_application"
+    ]
     customer_id: int | None = None
     risk_score: float = Field(ge=0, le=1)
     predicted_class: int = Field(ge=0, le=1)

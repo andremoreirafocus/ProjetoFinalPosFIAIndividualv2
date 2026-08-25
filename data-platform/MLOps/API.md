@@ -165,6 +165,7 @@ A resposta inclui os limites e `policy_version`. O score é uma pontuação de o
 | `GET /customers/{customer_id}/features` | Recupera as features de um cliente para edição. |
 | `POST /predict/features` | Calcula o score a partir das features fornecidas. |
 | `POST /predict/customer/{customer_id}` | Recupera o cliente na ABT e calcula o score. |
+| `POST /predict/new-customer` | Transforma o registro bruto de um cliente novo e calcula o score. |
 
 O Swagger gerado pelos contratos de `schemas.py` está disponível em http://localhost:8000/docs.
 
@@ -192,9 +193,15 @@ versionado:
 }
 ```
 
-## Requisição por features
+## Contratos de entrada
 
-O endpoint recebe um objeto `features` com todas as entradas listadas por `GET /model/features`:
+Há dois contratos de entrada distintos, que não se confundem: features já transformadas
+(a aba de edição, que carrega da ABT) e registro bruto de aplicação (um cliente que ainda
+não existe em nenhuma tabela).
+
+### Requisição por features
+
+`POST /predict/features` recebe um objeto `features` com todas as entradas listadas por `GET /model/features`:
 
 ```json
 {
@@ -210,6 +217,51 @@ O endpoint recebe um objeto `features` com todas as entradas listadas por `GET /
 ```
 
 O exemplo é abreviado; uma chamada válida deve conter todas as features obrigatórias.
+
+### Requisição de cliente novo
+
+`POST /predict/new-customer` recebe `NewCustomerApplication`: um corpo **plano**, com os 26
+campos brutos de `application_train` no nível de cima — sem a chave `features`. Os seis
+obrigatórios (`amt_credit`, `region_rating_client_w_city`, `days_id_publish`,
+`days_registration`, `days_birth`, `days_employed`) exigem valor; os vinte restantes são
+obrigatórios na chave, mas aceitam `null` como afirmação explícita de "não disponível" —
+omitir qualquer uma das 26 chaves é `422`:
+
+```json
+{
+  "amt_credit": 450000.0,
+  "region_rating_client_w_city": 2,
+  "days_id_publish": -2500,
+  "days_registration": -3500,
+  "days_birth": -13000,
+  "days_employed": -1800,
+  "ext_source_1": 0.6,
+  "ext_source_2": null,
+  "ext_source_3": null,
+  "days_last_phone_change": -300.0,
+  "cnt_fam_members": 3.0,
+  "amt_annuity": 28000.0,
+  "amt_income_total": 180000.0,
+  "reg_city_not_work_city": 1,
+  "reg_city_not_live_city": 0,
+  "live_city_not_work_city": 0,
+  "def_60_cnt_social_circle": 1.0,
+  "amt_req_credit_bureau_year": 2.0,
+  "cnt_children": 1,
+  "flag_own_car": null,
+  "own_car_age": null,
+  "occupation_type": "Laborers",
+  "organization_type": "Business Entity Type 3",
+  "name_income_type": "Working",
+  "name_education_type": "Secondary",
+  "code_gender": "F"
+}
+```
+
+O `NewCustomerFeatureTransformationService` aplica a mesma regra de sanitização e
+construção da ABT que o pipeline aplica à população — os campos `null` são preenchidos por
+ela, não pela API — e devolve as 42 features que alimentam a mesma predição dos outros dois
+caminhos.
 
 ## Resposta de predição
 
@@ -263,7 +315,11 @@ O exemplo é abreviado; uma chamada válida deve conter todas as features obriga
 }
 ```
 
-`source` identifica a origem das features e `customer_id` associa resultados provenientes da ABT. `reason` apresenta a justificativa da faixa aplicada pela política.
+`source` identifica a origem das features — `provided_features`, `database` ou
+`new_customer_transformed_application`, este último quando o registro veio de
+`POST /predict/new-customer` e foi completado pela sanitização antes da inferência — e
+`customer_id` associa resultados provenientes da ABT. `reason` apresenta a justificativa da
+faixa aplicada pela política.
 
 Em `manual_review`, o `ExplanationService` calcula TreeSHAP local. Valores positivos aumentam o score de risco e valores negativos o reduzem. `base_value` e `shap_value` estão na escala bruta do modelo, não em pontos percentuais. Nas demais recomendações, `explanation` é `null`.
 
@@ -278,6 +334,9 @@ A resposta explicativa constitui o insumo quantitativo do futuro agente acelerad
 | Cliente inexistente na ABT | HTTP `404`. |
 | Falha ao consultar PostgreSQL | HTTP `503`. |
 | Features obrigatórias ausentes | HTTP `422` com a lista. |
+| Campo obrigatório omitido em `POST /predict/new-customer`, ou os 26 campos incompletos | HTTP `422` nomeando o campo, sem chegar ao serviço de transformação. |
+| Falha de banco na transformação do cliente novo | HTTP `503`, com mensagem própria — distinta da falha ao consultar as fontes do cliente. |
+| Hash de um dos `.sql` divergente do contrato do bundle ativo | HTTP `503`, nomeando o arquivo divergente e os dois digests — nunca um `500` genérico. |
 | Manifesto ausente, inválido ou candidato incompatível, sem bundle ativo anterior | API ativa, HTTP `503` nos endpoints dependentes, nova verificação a cada `MODEL_BUNDLE_REFRESH_SECONDS`. |
 | Candidato novo inválido com bundle ativo anterior válido | O manager preserva o bundle ativo; a próxima verificação tenta o candidato de novo. |
 

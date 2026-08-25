@@ -20,12 +20,14 @@ from .model_bundle import ModelBundle
 from .model_bundle_manager import ModelBundleManager
 from .new_customer_feature_transformation_service import (
     NewCustomerFeatureTransformationService,
+    TransformationRuleMismatchError,
 )
 from .prediction_service import PredictionService
 from .schemas import (
     CustomerFeaturesResponse,
     FeaturePredictionRequest,
     HealthResponse,
+    NewCustomerApplication,
     PredictionResponse,
 )
 
@@ -142,11 +144,13 @@ def customer_features(customer_id: int, request: Request) -> CustomerFeaturesRes
 def predict_from_features(
     payload: FeaturePredictionRequest, request: Request
 ) -> PredictionResponse:
+    bundle = _require_active_bundle(request)
     _log_request_json(
         "POST /predict/features",
         {"features": payload.features},
     )
     return _predict(
+        bundle=bundle,
         features=payload.features,
         source="provided_features",
         request=request,
@@ -155,6 +159,7 @@ def predict_from_features(
 
 @app.post("/predict/customer/{customer_id}", response_model=PredictionResponse)
 def predict_from_database(customer_id: int, request: Request) -> PredictionResponse:
+    bundle = _require_active_bundle(request)
     feature_service: CustomerFeatureService = request.app.state.feature_service
 
     try:
@@ -172,9 +177,40 @@ def predict_from_database(customer_id: int, request: Request) -> PredictionRespo
         {"customer_id": customer_id, "features": features},
     )
     return _predict(
+        bundle=bundle,
         features=features,
         source="database",
         customer_id=customer_id,
+        request=request,
+    )
+
+
+@app.post("/predict/new-customer", response_model=PredictionResponse)
+def predict_from_new_customer(
+    payload: NewCustomerApplication, request: Request
+) -> PredictionResponse:
+    bundle = _require_active_bundle(request)
+    application_record = payload.model_dump()
+
+    _log_request_json("POST /predict/new-customer", application_record)
+
+    transformation_service: NewCustomerFeatureTransformationService = (
+        request.app.state.new_customer_feature_transformation_service
+    )
+    try:
+        features = transformation_service.transform(bundle, application_record)
+    except TransformationRuleMismatchError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except SQLAlchemyError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Não foi possível transformar o registro do cliente novo.",
+        ) from error
+
+    return _predict(
+        bundle=bundle,
+        features=features,
+        source="new_customer_transformed_application",
         request=request,
     )
 
@@ -188,12 +224,12 @@ def _log_request_json(endpoint: str, payload: dict) -> None:
 
 
 def _predict(
+    bundle: ModelBundle,
     features: dict,
     source: str,
     request: Request,
     customer_id: int | None = None,
 ) -> PredictionResponse:
-    bundle = _require_active_bundle(request)
     feature_input_processor: FeatureInputProcessor = (
         request.app.state.feature_input_processor
     )
