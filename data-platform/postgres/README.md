@@ -10,7 +10,8 @@ O banco `data` atende três momentos distintos:
 
 - **engenharia de dados:** recebe fontes e materializa tabelas tratadas;
 - **modelagem:** fornece `application_abt` ao treinamento e aos notebooks;
-- **inferência:** fornece a mesma ABT ao serviço de features da API.
+- **inferência:** fornece a mesma ABT ao serviço de features da API e executa as projeções
+  por registro usadas para transformar clientes novos.
 
 Essa reutilização ajuda a manter consistência entre treino e predição por cliente.
 
@@ -20,6 +21,8 @@ Essa reutilização ajuda a manter consistência entre treino e predição por c
 - criar o banco `data` na primeira inicialização;
 - provisionar o banco de testes `data_test` e o papel de menor privilégio `data_test_user`, isolado do banco `data`;
 - armazenar tabelas brutas, tabelas tratadas e a ABT `application_abt`;
+- registrar as estatísticas e os digests da última sanitização e geração da ABT, usados na
+  publicação do contrato de transformação;
 - atender Airflow, treinamento e API de predição.
 
 ## Estrutura
@@ -60,6 +63,7 @@ As credenciais e os nomes dos bancos do ambiente acadêmico estão definidos no 
 |---|---|---|
 | Bruto | `application_train`, `previous_application`, `bureau`, `installments_payments` | Recriadas pela ingestão a partir dos CSVs. |
 | Tratado | `application_clean`, `previous_application_clean`, `bureau_clean`, `installments_clean` | Recriadas pela sanitização. |
+| Registro das transformações | `application_sanitization_last_run`, `application_abt_generation_last_run` | Uma linha por tabela, substituída a cada execução com estatísticas, parâmetros, digests e instante aplicáveis à etapa. |
 | Agregação | `tmp_prev_application_agg`, `tmp_bureau_agg`, `tmp_installments_agg` | Removidas após a construção da ABT. |
 | Analítico | `application_abt` | Recriada pelo pipeline e consumida por modelo e API. |
 

@@ -11,10 +11,11 @@ A camada MLOps conecta o artefato treinado aos consumidores por meio de um contr
 ```text
 Streamlit e outros consumidores
                │
-               │ features fornecidas ou ID do cliente
+               │ features, ID do cliente ou registro bruto de cliente novo
                ▼
      API de risco de crédito
        ├── consulta à ABT no PostgreSQL quando recebe um ID
+       ├── transforma o registro bruto de um cliente novo pelas regras do pipeline
        ├── usa os artefatos do modelo
        ├── calcula score e classe prevista
        ├── aplica a política de recomendação
@@ -27,7 +28,11 @@ Streamlit e outros consumidores
 
 A API é implementada com FastAPI e executada no container `credit-api`. O framework foi escolhido por integrar naturalmente o ecossistema Python do modelo, validar contratos tipados de entrada e saída e disponibilizar automaticamente documentação OpenAPI aos consumidores.
 
-A API recebe features prontas ou recupera um cliente da ABT, calcula o resultado técnico, aplica a política e acrescenta a explicação local nos casos encaminhados para revisão humana. O score não deve ser interpretado como probabilidade calibrada de inadimplência.
+A API recebe features prontas, recupera um cliente da ABT ou transforma o registro bruto de
+um cliente novo. Os três caminhos convergem para o mesmo preparo de entrada, cálculo do
+resultado técnico e aplicação da política; nos casos encaminhados para revisão humana, a
+resposta também inclui a explicação local. O score não deve ser interpretado como
+probabilidade calibrada de inadimplência.
 
 O frontend é implementado com Streamlit e executado no container `credit-frontend`. O framework foi escolhido por permitir construir rapidamente uma interface interativa em Python, gerar formulários dinâmicos para as features e demonstrar o consumo da API sem introduzir uma stack web adicional no projeto.
 
@@ -72,9 +77,9 @@ Build, execução local e testes estão documentados em [DEVELOPMENT.md](DEVELOP
 ## Artefatos de execução
 
 A API consome o conjunto ativo indicado por `Model/artifacts/current_bundle.json`.
-`Model/train.py` publica e ativa de forma atômica o modelo e suas referências; as métricas
-da avaliação são registradas separadamente no mesmo diretório versionado. A estrutura, os
-checksums e os limites dessa ativação estão definidos no
+`Model/train.py` publica e ativa de forma atômica o modelo, a referência estatística e o
+contrato de transformação; as métricas da avaliação são registradas separadamente no mesmo
+diretório versionado. A estrutura, os checksums e os limites dessa ativação estão definidos no
 [contrato de artefatos do Model](../Model/docs/artefatos.md).
 
 Na execução oficial, o treinamento é a última tarefa da DAG `pipeline_orchestration`.

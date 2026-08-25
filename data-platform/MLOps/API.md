@@ -26,6 +26,7 @@ Consumidor
    ▼
 FastAPI — contrato e transporte
    │
+   ├── NewCustomerFeatureTransformationService → transforma o registro bruto de um cliente novo
    ├── FeatureService ──────────→ recupera as features do cliente na ABT
    ├── FeatureInputProcessor ───→ alinha a entrada ao contrato do bundle ativo
    ├── PredictionService ───────→ calcula score e classe
@@ -40,11 +41,11 @@ FastAPI — contrato e transporte
 
 ## Decisões arquiteturais
 
-- **Consistência treino e inferência pela ABT:** o `feature_service` lê a mesma `application_abt` usada no treinamento. A predição por cliente depende de a ABT estar atualizada.
+- **Consistência treino e inferência:** o `feature_service` lê a mesma `application_abt` usada no treinamento; para um cliente novo, o serviço de transformação reutiliza as projeções SQL do pipeline e os parâmetros registrados no bundle. A predição por cliente depende de a ABT estar atualizada.
 - **Modelo e política desacoplados:** `predicted_class` usa o threshold do modelo, enquanto `recommendation` usa os limites configuráveis da política; os resultados podem divergir porque possuem finalidades diferentes.
 - **Contrato dirigido pelo artefato:** features, categorias e threshold acompanham o modelo. A API valida e alinha a entrada contra esse contrato.
 - **Inicialização e ativação desacopladas:** serviços e engine do banco são criados no `lifespan`; o laço executado em segundo plano ativa o primeiro bundle válido e verifica novas versões. As requisições reutilizam os serviços e o snapshot ativo.
-- **Núcleo único de predição:** muda apenas a origem das features, que podem ser fornecidas pelo consumidor ou recuperadas da ABT.
+- **Núcleo único de predição:** muda apenas a origem das features, que podem ser fornecidas pelo consumidor, recuperadas da ABT ou produzidas pela transformação do registro bruto de um cliente novo.
 
 ### Fluxo do contrato
 
@@ -52,6 +53,7 @@ FastAPI — contrato e transporte
 train.py
    → publica o bundle (manifesto, modelo, referência e contrato de transformação versionados)
    → ArtifactBundleLoader valida e monta o bundle ativo
+   → NewCustomerFeatureTransformationService usa o contrato e as projeções compartilhadas quando a entrada é um registro bruto
    → FeatureInputProcessor alinha a entrada ao contrato do bundle
    → /model/features expõe o contrato
    → Streamlit renderiza os mesmos campos
@@ -110,15 +112,16 @@ isso é do serviço de transformação, contra o `.sql` que ele já lê.
 Para um cliente que ainda não existe em nenhuma tabela, a transformação precede a
 preparação: `NewCustomerFeatureTransformationService` aplica as mesmas duas projeções que
 `data_sanitization.py` e `abt_transform.py` aplicam à população inteira — por `SELECT` sobre
-`VALUES`, um registro por vez, sem escrever no banco — e devolve as 42 features que o
-`FeatureInputProcessor` normalmente recebe prontas da ABT ou do formulário. Os dois `.sql`
+`VALUES`, um registro por vez, sem escrever no banco — e produz uma linha com as 42 features
+do modelo mais um `sk_id_curr` técnico usado para compor a projeção da ABT. O
+`FeatureInputProcessor` seleciona e ordena somente as 42 features declaradas pelo bundle. Os dois `.sql`
 das projeções (`application_sanitization_projection.sql` e
 `application_abt_record_projection.sql`) são embutidos na imagem; o serviço confere, a cada
 transformação, que seus hashes ainda batem com os publicados no contrato do bundle ativo —
 divergindo, recusa nomeando o arquivo, o digest calculado e o publicado — e que o contrato
 cobre toda estatística que a projeção referencia, derivada do próprio `.sql`, nunca de uma
-lista mantida à mão. Construído no `lifespan`, junto dos demais serviços. Nenhum endpoint o
-chama ainda.
+lista mantida à mão. Construído no `lifespan`, junto dos demais serviços, ele atende o
+endpoint `POST /predict/new-customer`.
 
 ## Preparação para inferência
 
@@ -259,9 +262,10 @@ omitir qualquer uma das 26 chaves é `422`:
 ```
 
 O `NewCustomerFeatureTransformationService` aplica a mesma regra de sanitização e
-construção da ABT que o pipeline aplica à população — os campos `null` são preenchidos por
-ela, não pela API — e devolve as 42 features que alimentam a mesma predição dos outros dois
-caminhos.
+construção da ABT que o pipeline aplica à população. Os valores `null` são tratados pelas
+regras de sanitização; a linha transformada contém as 42 features do modelo e um
+`sk_id_curr` técnico, descartado pelo `FeatureInputProcessor` ao alinhar a entrada. As 42
+features resultantes alimentam a mesma predição dos outros dois caminhos.
 
 ## Resposta de predição
 

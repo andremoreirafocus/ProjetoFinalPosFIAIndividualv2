@@ -74,6 +74,29 @@ As métricas não integram o Pickle. Elas medem o **modelo de avaliação** no h
 o modelo final do artefato, e nenhum consumidor da inferência as utiliza — por isso
 vivem apenas em `eval_model_metrics.json`, legível sem carregar o binário.
 
+## Contrato de transformação por registro
+
+`transformation_contract.json` transporta para a API as referências produzidas pela mesma
+execução do pipeline que materializou a ABT usada no treinamento. `train.py` monta o arquivo
+a partir de `application_sanitization_last_run` e
+`application_abt_generation_last_run`, com as seguintes chaves:
+
+| Chave | Conteúdo e origem |
+|---|---|
+| `stats` | Estatísticas calculadas por `application_sanitization_stats.sql` e consumidas pela projeção de sanitização. |
+| `valid_orgs` | Organizações que alcançaram a frequência mínima na população processada. |
+| `valid_incs` | Tipos de renda que alcançaram a frequência mínima na população processada. |
+| `cardinalidade_min_freq` | Frequência mínima aplicada na formação das duas listas de categorias válidas. |
+| `income_winsor_q` | Quantil usado para limitar a renda na sanitização. |
+| `application_sanitization_projection_sha256` | Digest da projeção de sanitização aplicada pelo pipeline. |
+| `application_abt_record_projection_sha256` | Digest da projeção de construção da ABT aplicada pelo pipeline. |
+
+O `ArtifactBundleLoader` confere o checksum declarado no manifesto, a presença dessas sete
+chaves, os tipos de `stats` e das listas de categorias e o preenchimento dos dois digests.
+Ao transformar um cliente novo, `NewCustomerFeatureTransformationService` compara os
+digests com os dois `.sql` embutidos na imagem da API e confirma que `stats` cobre todas as
+referências utilizadas pela projeção antes de executar o `SELECT` sobre `VALUES`.
+
 ## Referências para explicação e para o agente acelerador de revisão de crédito
 
 Após ajustar o modelo final, `train.py` gera `feature_reference.json` com a mesma

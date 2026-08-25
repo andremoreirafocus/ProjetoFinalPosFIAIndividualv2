@@ -72,7 +72,7 @@ A DAG não possui agendamento periódico (`schedule=None`) e deve ser disparada 
 | 5 | `agg_intermediate_bureau` | `create_agg_bureau` | Indicadores agregados de bureau. |
 | 5 | `agg_intermediate_installments` | `create_agg_installments` | Indicadores de atraso em parcelas. |
 | 6 | `generate_analytical_base_table` | `run_abt_generation` | ABT final com uma linha por cliente. |
-| 7 | `train_machine_learning_model` | `run_training_pipeline` | LightGBM, métricas e referências estatísticas persistidos. |
+| 7 | `train_machine_learning_model` | `run_training_pipeline` | Bundle versionado com LightGBM, referência estatística e contrato de transformação publicado; métricas da avaliação persistidas separadamente. |
 
 As tarefas marcadas com a mesma ordem podem executar em paralelo. O treinamento só é liberado após a conclusão da ABT.
 

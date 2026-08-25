@@ -26,7 +26,7 @@ Produzir um score de propensão à inadimplência que ajude a priorizar clientes
 
 ## Visão da solução
 
-![Diagrama de arquitetura da plataforma: ingestão dos CSVs do Home Credit no PostgreSQL, orquestração e engenharia de dados com Airflow, treinamento e artefatos do modelo (LightGBM), camada de serviço com FastAPI e Streamlit e infraestrutura em Docker Compose](./arquitetura-plataforma-v5.png)
+![Diagrama de arquitetura da plataforma: ingestão dos CSVs do Home Credit no PostgreSQL, orquestração e engenharia de dados com Airflow, treinamento e publicação do bundle versionado do LightGBM, inferência por features, cliente na ABT ou registro bruto com FastAPI e Streamlit e infraestrutura em Docker Compose](./arquitetura-plataforma-v6.png)
 
 *Figura 1 — Arquitetura ponta a ponta, dividida em cinco blocos: (1) origem, ingestão e armazenamento; (2) orquestração e engenharia de dados; (3) treinamento e artefatos do modelo; (4) deploy e camada de serviço; (5) infraestrutura e containers.*
 

@@ -48,7 +48,7 @@ A referência aprofundada de cada área fica em documentos dedicados nesta pasta
 | [`config_model.json`](./config_model.json) | Fonte de configuração das features, hiperparâmetros, split, threshold e resultados de referência. |
 | [`train.py`](./train.py) | Treina, avalia e publica o conjunto de artefatos. |
 | [`feature_reference.py`](./feature_reference.py) | Calcula o baseline populacional e a referência TreeSHAP global. |
-| [`artifact_bundle_contract.py`](./artifact_bundle_contract.py) | Declaração do contrato do manifesto — schema, nome constante e chaves obrigatórias do artefato. Sem I/O nem validação. |
+| [`artifact_bundle_contract.py`](./artifact_bundle_contract.py) | Declaração do contrato do manifesto — schema, nome constante e chaves obrigatórias do artefato e do contrato de transformação. Sem I/O nem validação. |
 | [`artifact_bundle_publisher.py`](./artifact_bundle_publisher.py) | Publica modelo, referência e contrato de transformação atomicamente, com o manifesto escrito por último. |
 | [`validacao_modelos.ipynb`](./validacao_modelos.ipynb) | Compara algoritmos e configurações, controla overfitting e seleciona o modelo. |
 | [`evaluation.ipynb`](./evaluation.ipynb) | Avalia desempenho, threshold, explicabilidade, fairness e monitoramento. |

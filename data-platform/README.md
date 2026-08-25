@@ -70,7 +70,7 @@ airflow/data/csv
 - **ELT no PostgreSQL:** limpeza, agregações e joins são executados próximos aos dados.
 - **Airflow como orquestrador:** a DAG coordena funções mantidas nas pastas de pipeline e modelo.
 - **Configuração separada do código:** tabelas, features e hiperparâmetros ficam em arquivos JSON.
-- **Artefato único de inferência:** o LightGBM e seus metadados são persistidos para consumo pela API.
+- **Bundle versionado de inferência:** modelo, referência estatística e contrato de transformação são publicados em conjunto para consumo pela API.
 - **Modelo e política desacoplados:** o modelo gera score; a política converte faixas em recomendações.
 - **Três formas de consumo:** predição por features fornecidas, por cliente recuperado da ABT, ou por registro bruto de um cliente novo, transformado pela mesma regra do pipeline.
 

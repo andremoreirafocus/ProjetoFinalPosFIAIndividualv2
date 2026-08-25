@@ -21,9 +21,8 @@ Streamlit ── HTTP ──→ FastAPI ──→ modelo, política e explicaç�
 - opções controladas para categóricas;
 - seleção binária para flags;
 - limites e passos para valores numéricos;
-- envio parcial na aba "Novo cliente": cada campo opcional tem um controle "Não
-  disponível", que apaga e desabilita o campo na hora — ausência é uma resposta, não a
-  falta de uma;
+- representação explícita de indisponibilidade na aba "Novo cliente": cada campo opcional
+  tem um controle "Não disponível", que apaga e desabilita o campo na hora e envia `null`;
 - exibição da requisição e da resposta JSON;
 - aviso de que o score não é uma probabilidade calibrada.
 
@@ -37,8 +36,9 @@ disponível" e o efeito é imediato, o que um formulário do Streamlit não perm
 campos obrigatórios exigem valor; os vinte opcionais aceitam a marcação, que envia `null`.
 A submissão confere os 26 antes de chamar a API e recusa nomeando os campos sem resposta.
 O corpo enviado a `POST /predict/new-customer` é plano, com as 26 chaves no nível de
-cima — sem a chave `features` que `/predict/features` usa. A API completa os campos
-ausentes com a mesma regra de sanitização aplicada à população de treino.
+cima — sem a chave `features` que `/predict/features` usa. Os campos opcionais marcados
+como indisponíveis seguem com valor `null`; o serviço de transformação aplica a eles a
+mesma regra de sanitização usada na população de treino.
 
 ### Buscar cliente e editar
 

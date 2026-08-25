@@ -88,7 +88,8 @@ async def _refresh_loop(manager: ModelBundleManager, refresh_seconds: float) -> 
 app = FastAPI(
     title="API de Risco de Crédito",
     description=(
-        "Expõe o modelo por features prontas ou por cliente armazenado no banco. "
+        "Expõe o modelo por features prontas, por cliente armazenado no banco ou por "
+        "registro bruto de um cliente novo transformado pelas regras do pipeline. "
         "A recomendação final é produzida por uma política separada do modelo."
     ),
     version="1.0.0",
