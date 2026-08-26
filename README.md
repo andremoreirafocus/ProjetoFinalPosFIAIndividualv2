@@ -18,7 +18,7 @@ Produzir um score de propensão à inadimplência que ajude a priorizar clientes
 
 - pipeline ELT orquestrado pelo Airflow, da ingestão à construção da ABT;
 - notebooks de exploração, seleção e avaliação do modelo;
-- treinamento e publicação versionada do LightGBM;
+- treinamento e publicação versionada do modelo de machine learning escolhido após a avaliação;
 - API FastAPI com política de crédito separada do modelo;
 - frontend Streamlit para demonstrar as jornadas de inferência;
 - ambiente local integrado por Docker Compose;
@@ -26,22 +26,20 @@ Produzir um score de propensão à inadimplência que ajude a priorizar clientes
 
 ## Visão da solução
 
-![Diagrama de arquitetura da plataforma: ingestão dos CSVs do Home Credit no PostgreSQL, orquestração e engenharia de dados com Airflow, treinamento e publicação do bundle versionado do LightGBM, inferência por features, cliente na ABT ou registro bruto com FastAPI e Streamlit e infraestrutura em Docker Compose](./arquitetura-plataforma-v6.png)
+![Diagrama de arquitetura da plataforma: ingestão dos CSVs do Home Credit no PostgreSQL, orquestração e engenharia de dados com Airflow, treinamento e publicação do bundle versionado do modelo de Machine Learning, inferência por features, cliente na ABT ou registro bruto com FastAPI e Streamlit e infraestrutura em Docker Compose](./arquitetura-plataforma-v9.png)
 
-*Figura 1 — Arquitetura ponta a ponta, dividida em cinco blocos: (1) origem, ingestão e armazenamento; (2) orquestração e engenharia de dados; (3) treinamento e artefatos do modelo; (4) deploy e camada de serviço; (5) infraestrutura e containers.*
+*Figura 1 — Arquitetura ponta a ponta da solução implementada.*
 
-Em resumo, o fluxo principal de dados percorre:
-
-```text
-Home Credit CSVs
-  → PostgreSQL
-  → Airflow + pipeline ELT
-  → ABT por cliente
-  → seleção e configuração do LightGBM
-  → treinamento, avaliação e bundle versionado
-  → FastAPI + política de crédito
-  → Streamlit
-```
+O diagrama conecta dois ciclos. No desenvolvimento, o Airflow conduz os dados das
+fontes até a ABT, os notebooks apoiam a exploração e as decisões de modelagem, e o
+treinamento publica um bundle versionado que reúne o modelo de Machine Learning, o
+contrato de transformação e as referências estatísticas. O manifesto
+`current_bundle.json` identifica o conjunto que a FastAPI deve ativar. Na inferência,
+a API recebe features prontas, recupera um cliente da ABT ou transforma um registro
+bruto pelas mesmas regras do pipeline; então prepara a entrada e calcula o score. A
+política transforma o score em recomendação e, nos casos de revisão manual, a API
+produz a explicação. O Streamlit faz a interface com o analista e o Docker Compose
+integra a execução local dos serviços.
 
 A implementação completa e o desenho arquitetural estão documentados em [data-platform/README.md](./data-platform/README.md).
 
