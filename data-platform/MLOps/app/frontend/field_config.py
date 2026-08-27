@@ -83,22 +83,20 @@ GROUPS = tuple(dict.fromkeys(field.group for field in FIELDS))
 # sanitização produz e o analista nunca informa; `code_gender` inclui `'XNA'`, valor
 # bruto real ausente da lista de `FIELDS`.
 APPLICATION_FIELDS = (
-    # --- Obrigatórios: a sanitização não sabe preenchê-los; propagam NULL. ---
-    FieldConfig("amt_credit", "Valor do crédito", "Valores financeiros", default=None, minimum=0, step=500),
-    FieldConfig("region_rating_client_w_city", "Classificação da região com cidade", "Scores e localização", "integer", None, minimum=1, maximum=3, step=1),
-    FieldConfig("days_id_publish", "Dias desde a emissão do documento", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
-    FieldConfig("days_registration", "Dias desde o registro", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
-    FieldConfig("days_birth", "Dias desde o nascimento", "Perfil pessoal", "integer", None, maximum=0, step=1, help="A base representa a idade em dias, com valores negativos."),
-    FieldConfig("days_employed", "Dias empregado", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
-
-    # --- Opcionais: "Não disponível" é uma resposta válida, distinta de zero. ---
+    # Mesma ordem de domínio de GROUPS/FIELDS, para que "Novo cliente" e "Buscar
+    # cliente e editar" apresentem as mesmas seções, na mesma ordem. Obrigatoriedade
+    # é atributo por campo (`optional`), não posição na tupla: os campos sem
+    # `optional=True` são obrigatórios porque a sanitização não sabe preenchê-los —
+    # não têm regra de imputação — e propagam NULL até a fronteira de validação.
     FieldConfig("ext_source_1", "Score externo 1", "Scores e localização", default=None, minimum=0, maximum=1, step=0.01, optional=True),
     FieldConfig("ext_source_2", "Score externo 2", "Scores e localização", default=None, minimum=0, maximum=1, step=0.01, optional=True),
     FieldConfig("ext_source_3", "Score externo 3", "Scores e localização", default=None, minimum=0, maximum=1, step=0.01, optional=True),
+    FieldConfig("region_rating_client_w_city", "Classificação da região com cidade", "Scores e localização", "integer", None, minimum=1, maximum=3, step=1),
     FieldConfig("reg_city_not_work_city", "Mora em cidade diferente do trabalho", "Scores e localização", "boolean", None, optional=True),
     FieldConfig("reg_city_not_live_city", "Registro em cidade diferente da residência", "Scores e localização", "boolean", None, optional=True),
     FieldConfig("live_city_not_work_city", "Residência em cidade diferente do trabalho", "Scores e localização", "boolean", None, optional=True),
 
+    FieldConfig("days_birth", "Dias desde o nascimento", "Perfil pessoal", "integer", None, maximum=0, step=1, help="A base representa a idade em dias, com valores negativos."),
     FieldConfig("cnt_children", "Quantidade de filhos", "Perfil pessoal", "integer", None, minimum=0, maximum=20, step=1, optional=True),
     FieldConfig("cnt_fam_members", "Membros da família", "Perfil pessoal", default=None, minimum=1, maximum=30, step=1, optional=True),
     FieldConfig("flag_own_car", "Possui carro", "Perfil pessoal", "boolean", None, boolean_values=("Y", "N"), optional=True),
@@ -110,9 +108,13 @@ APPLICATION_FIELDS = (
     FieldConfig("code_gender", "Gênero cadastrado", "Perfil pessoal", "category", None, options=("F", "M", "XNA"), optional=True),
 
     FieldConfig("amt_income_total", "Renda total", "Valores financeiros", default=None, minimum=0, step=500, optional=True),
+    FieldConfig("amt_credit", "Valor do crédito", "Valores financeiros", default=None, minimum=0, step=500),
     FieldConfig("amt_annuity", "Valor da anuidade/parcela", "Valores financeiros", default=None, minimum=0, step=100, optional=True),
 
     FieldConfig("days_last_phone_change", "Dias desde a última troca de telefone", "Histórico cadastral", default=None, maximum=0, step=1, help="A base representa eventos passados com valores negativos.", optional=True),
+    FieldConfig("days_id_publish", "Dias desde a emissão do documento", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
+    FieldConfig("days_registration", "Dias desde o registro", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
+    FieldConfig("days_employed", "Dias empregado", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
     FieldConfig("def_60_cnt_social_circle", "Inadimplências em 60 dias no círculo social", "Histórico cadastral", default=None, minimum=0, step=1, optional=True),
     FieldConfig("amt_req_credit_bureau_year", "Consultas ao bureau no último ano", "Histórico cadastral", default=None, minimum=0, step=1, optional=True),
 )
