@@ -42,6 +42,7 @@
   },
   "sanitization": {
     "cardinalidade_min_freq": 500,
-    "income_winsor_q": 0.99
+    "income_winsor_q": 0.99,
+    "employment_days_anomaly_sentinel": 365243
   }
 }

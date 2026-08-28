@@ -135,7 +135,8 @@ Trecho de `config_pipeline.json` — apenas este bloco, não o arquivo completo:
 ```json
 "sanitization": {
   "cardinalidade_min_freq": 500,
-  "income_winsor_q": 0.99
+  "income_winsor_q": 0.99,
+  "employment_days_anomaly_sentinel": 365243
 }
 ```
 
@@ -150,7 +151,7 @@ As principais regras são:
 | Ausências categóricas | Ocupação e educação recebem `Unknown`. |
 | Gênero inválido | `XNA` é convertido em `Unknown`. |
 | Idade | `days_birth` negativo é convertido para anos positivos. |
-| Emprego | O sentinel `365243` vira `years_employed = 0` e ativa `days_employed_anom`. |
+| Emprego | `days_employed` igual ao sentinel configurado (`sanitization.employment_days_anomaly_sentinel`, `365243` no dataset bruto) vira `years_employed = 0` e ativa `days_employed_anom`. |
 | Indicadores binários e contagens | Ausências selecionadas são preenchidas com zero. |
 
 ### Históricos

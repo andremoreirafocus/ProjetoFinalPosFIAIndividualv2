@@ -28,7 +28,7 @@ def get_table_columns(cursor, table_name: str) -> list:
 # ---------------------------------------------------------------------------
 def run_sanitization(
     conn, input_table: str, output_table: str, sanitization_last_run_table: str,
-    cardinalidade_min_freq: int, income_winsor_q: float,
+    cardinalidade_min_freq: int, income_winsor_q: float, employment_days_anomaly_sentinel: int,
 ):
     """Higieniza application_train em duas tabelas: as estatísticas da execução, depois a
     projeção por registro que as consome. As duas confirmam juntas, num commit só."""
@@ -47,6 +47,7 @@ def run_sanitization(
         input_table=input_table,
         cardinalidade_min_freq=cardinalidade_min_freq,
         income_winsor_q=income_winsor_q,
+        employment_days_anomaly_sentinel=employment_days_anomaly_sentinel,
         application_sanitization_projection_sha256=projection_sha256,
     )
     stats_sql = f"""
@@ -71,6 +72,7 @@ def run_sanitization(
             f'(SELECT unnest(valid_incs) FROM "{sanitization_last_run_table}") '
             "AS i(name_income_type)"
         ),
+        employment_days_anomaly_sentinel=employment_days_anomaly_sentinel,
     )
     clean_sql = f"""
     DROP TABLE IF EXISTS "{output_table}" CASCADE;

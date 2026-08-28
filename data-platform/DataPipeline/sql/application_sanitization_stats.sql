@@ -13,6 +13,7 @@ SELECT
     ARRAY(SELECT name_income_type FROM "{input_table}" GROUP BY 1 HAVING COUNT(*) >= {cardinalidade_min_freq}) AS valid_incs,
     {cardinalidade_min_freq}::integer AS cardinalidade_min_freq,
     {income_winsor_q}::double precision AS income_winsor_q,
+    {employment_days_anomaly_sentinel}::bigint AS employment_days_anomaly_sentinel,
     '{application_sanitization_projection_sha256}' AS application_sanitization_projection_sha256,
     NOW() AS run_at
 FROM "{input_table}"

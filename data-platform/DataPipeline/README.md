@@ -91,6 +91,7 @@ O escopo e o tamanho dos blocos são controlados por [`config_pipeline.json`](./
 | `indexes.clean` | Índices em `sk_id_curr` criados nas tabelas tratadas, antes do join da ABT. |
 | `sanitization.cardinalidade_min_freq` | Frequência mínima antes de agrupar categorias raras. |
 | `sanitization.income_winsor_q` | Quantil máximo aplicado à renda. |
+| `sanitization.employment_days_anomaly_sentinel` | Valor de `days_employed` que marca ausência de vínculo empregatício, convenção do dataset bruto. |
 
 O Airflow lê essa configuração no carregamento da DAG, via `load_pipeline_config` (`config.py`), que abre o caminho informado e interpreta o JSON como um objeto de configuração. Durante a definição da DAG, são extraídas as fontes de `ingestion_table`, as tabelas de `database` e as regras de `sanitization`, por indexação direta — uma chave ausente derruba a importação da DAG com `KeyError` nomeando-a, antes de qualquer task rodar. O objeto completo ou os parâmetros correspondentes são distribuídos às tarefas. Na execução, a ingestão resolve cada fonte declarada e as rotinas de indexação relacionam cada `table_ref` ao nome definido em `database`. Alterar nomes de tabela ou regras de sanitização deve ser coordenado com a DAG, notebooks e configuração do modelo.
 

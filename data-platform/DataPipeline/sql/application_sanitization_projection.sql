@@ -45,8 +45,8 @@ SELECT
     COALESCE(REPLACE(TRIM(app.code_gender), 'XNA', 'Unknown'), 'Unknown') AS code_gender,
 
     ABS(app.days_birth) / 365.25 AS age,
-    CASE WHEN app.days_employed = 365243 THEN 0 ELSE ABS(app.days_employed) / 365.25 END AS years_employed,
-    CASE WHEN app.days_employed = 365243 THEN 1 ELSE 0 END AS days_employed_anom
+    CASE WHEN app.days_employed = {employment_days_anomaly_sentinel} THEN 0 ELSE ABS(app.days_employed) / 365.25 END AS years_employed,
+    CASE WHEN app.days_employed = {employment_days_anomaly_sentinel} THEN 1 ELSE 0 END AS days_employed_anom
 
 FROM {input_rows}
 CROSS JOIN {stats}

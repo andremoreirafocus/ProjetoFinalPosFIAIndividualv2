@@ -1,11 +1,11 @@
 """T4 — Application sanitization (`run_sanitization`).
 
-`min_freq`/`winsor_q` are passed as scalars. Contracts: one output row per input
-row; median imputation of external sources and their mean; income winsorized at the
-configured quantile and zero/null income imputed with the median; rare categories
-folded at the `min_freq` boundary; employment anomaly flagged and zeroed; car
-ownership derived; age in years; missing categoricals → Unknown; identifiers
-preserved. Expected values are derived from the fixture, never hardcoded blindly.
+`min_freq`/`winsor_q`/`employment_days_anomaly_sentinel` are passed as scalars. Contracts:
+one output row per input row; median imputation of external sources and their mean; income
+winsorized at the configured quantile and zero/null income imputed with the median; rare
+categories folded at the `min_freq` boundary; employment anomaly flagged and zeroed at a
+configurable sentinel; car ownership derived; age in years; missing categoricals → Unknown;
+identifiers preserved. Expected values are derived from the fixture, never hardcoded blindly.
 """
 
 import hashlib
@@ -27,6 +27,10 @@ STATS_SQL_PATH = (
 INPUT_TABLE = "application_train"
 OUTPUT_TABLE = "application_clean"
 LAST_RUN_TABLE = "application_sanitization_last_run"
+EMPLOYMENT_DAYS_ANOMALY_SENTINEL = 999
+"""Valor de teste arbitrário, deliberadamente diferente do `365243` real de
+`config_pipeline.json` (`sanitization.employment_days_anomaly_sentinel`): prova que a
+detecção de anomalia usa o parâmetro recebido, não um literal preso na produção."""
 
 APPLICATION_SCHEMA = {
     "sk_id_curr": "BIGINT",
@@ -95,10 +99,13 @@ def _row(sk_id_curr: int, **overrides) -> dict:
     return {"sk_id_curr": sk_id_curr, **DEFAULTS, **overrides}
 
 
-def _sanitize(test_db, conexao, rows, min_freq, winsor_q):
+def _sanitize(test_db, conexao, rows, min_freq, winsor_q, employment_days_anomaly_sentinel):
     test_db.create_table(INPUT_TABLE, APPLICATION_SCHEMA)
     test_db.insert(INPUT_TABLE, rows)
-    run_sanitization(conexao, INPUT_TABLE, OUTPUT_TABLE, LAST_RUN_TABLE, min_freq, winsor_q)
+    run_sanitization(
+        conexao, INPUT_TABLE, OUTPUT_TABLE, LAST_RUN_TABLE,
+        min_freq, winsor_q, employment_days_anomaly_sentinel,
+    )
 
 
 def _clean_by_sk(test_db, sk_id_curr: int) -> dict:
@@ -111,7 +118,10 @@ def _clean_by_sk(test_db, sk_id_curr: int) -> dict:
 @pytest.mark.integration
 def test_output_has_one_row_per_input_row(test_db, conexao):
     rows = [_row(1), _row(2), _row(3), _row(4)]
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
     assert test_db.row_count(OUTPUT_TABLE) == len(rows)
 
 
@@ -123,7 +133,10 @@ def test_ext_sources_null_imputed_with_median(test_db, conexao):
         _row(3, ext_source_1=0.6),
         _row(4, ext_source_1=None),
     ]
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     expected_median = statistics.median([0.2, 0.4, 0.6])
     assert _clean_by_sk(test_db, 4)["ext_source_1"] == pytest.approx(expected_median)
@@ -135,7 +148,10 @@ def test_ext_sources_null_imputed_with_median(test_db, conexao):
 @pytest.mark.integration
 def test_ext_source_mean_reflects_imputed_sources(test_db, conexao):
     rows = [_row(1, ext_source_1=0.2, ext_source_2=0.4, ext_source_3=0.6), _row(2), _row(3)]
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     assert _clean_by_sk(test_db, 1)["ext_source_mean"] == pytest.approx((0.2 + 0.4 + 0.6) / 3)
 
@@ -146,7 +162,10 @@ def test_income_is_winsorized_at_configured_quantile(test_db, conexao):
     rows = [_row(index + 1, amt_income_total=value) for index, value in enumerate(incomes)]
     winsor_q = 0.75
 
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=winsor_q)
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=winsor_q,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     position = winsor_q * (len(incomes) - 1)
     assert position == int(position)  # cap lands exactly on a data point
@@ -168,7 +187,10 @@ def test_zero_or_null_income_imputed_with_median(test_db, conexao):
         _row(4, amt_income_total=0),
         _row(5, amt_income_total=None),
     ]
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     expected_median = statistics.median(valid_incomes)
     assert _clean_by_sk(test_db, 4)["amt_income_total"] == pytest.approx(expected_median)
@@ -184,7 +206,10 @@ def test_rare_categories_folded_at_min_freq_boundary(test_db, conexao):
     ]
     min_freq = 2  # 'Frequent' count 2 (kept); 'Rare' count 1 (folded)
 
-    _sanitize(test_db, conexao, rows, min_freq=min_freq, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=min_freq, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     assert _clean_by_sk(test_db, 3)["organization_type"] == "Other_low_freq"
     assert _clean_by_sk(test_db, 1)["organization_type"] == "Frequent"
@@ -193,15 +218,21 @@ def test_rare_categories_folded_at_min_freq_boundary(test_db, conexao):
 @pytest.mark.integration
 def test_frequent_categories_are_preserved(test_db, conexao):
     rows = [_row(1, organization_type="Government"), _row(2, organization_type="Government")]
-    _sanitize(test_db, conexao, rows, min_freq=2, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=2, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     assert _clean_by_sk(test_db, 1)["organization_type"] == "Government"
 
 
 @pytest.mark.integration
 def test_employment_anomaly_sets_flag_and_zeroes_years(test_db, conexao):
-    rows = [_row(1, days_employed=365243), _row(2, days_employed=-3650)]
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=0.99)
+    rows = [_row(1, days_employed=EMPLOYMENT_DAYS_ANOMALY_SENTINEL), _row(2, days_employed=-3650)]
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     anomalous = _clean_by_sk(test_db, 1)
     assert anomalous["days_employed_anom"] == 1
@@ -220,7 +251,10 @@ def test_car_ownership_derives_flag_and_age_imputation(test_db, conexao):
         _row(3, flag_own_car="Y", own_car_age=None),
         _row(4, flag_own_car="N", own_car_age=99),
     ]
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     median_car_age = statistics.median([10, 20])  # over the 'Y' rows with a value
 
@@ -240,7 +274,10 @@ def test_car_ownership_derives_flag_and_age_imputation(test_db, conexao):
 @pytest.mark.integration
 def test_age_is_derived_in_years(test_db, conexao):
     rows = [_row(1, days_birth=-12000)]
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     assert float(_clean_by_sk(test_db, 1)["age"]) == pytest.approx(12000 / 365.25)
 
@@ -248,7 +285,10 @@ def test_age_is_derived_in_years(test_db, conexao):
 @pytest.mark.integration
 def test_missing_categoricals_become_unknown(test_db, conexao):
     rows = [_row(1, occupation_type=None, name_education_type=None, code_gender="XNA")]
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     clean = _clean_by_sk(test_db, 1)
     assert clean["occupation_type"] == "Unknown"
@@ -259,7 +299,10 @@ def test_missing_categoricals_become_unknown(test_db, conexao):
 @pytest.mark.integration
 def test_identifier_and_target_are_preserved(test_db, conexao):
     rows = [_row(700, target=1), _row(701, target=0)]
-    _sanitize(test_db, conexao, rows, min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, rows, min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     clean = _clean_by_sk(test_db, 700)
     assert clean["sk_id_curr"] == 700
@@ -275,7 +318,10 @@ def test_last_run_records_statistics_and_projection_digest(test_db, conexao):
     ]
     min_freq = 2  # 'Frequent' count 2 (valid); 'Rare' count 1 (folded)
     winsor_q = 0.90
-    _sanitize(test_db, conexao, rows, min_freq=min_freq, winsor_q=winsor_q)
+    _sanitize(
+        test_db, conexao, rows, min_freq=min_freq, winsor_q=winsor_q,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
 
     runs = test_db.fetch_dicts(f'SELECT * FROM "{LAST_RUN_TABLE}"')
     assert len(runs) == 1
@@ -284,6 +330,7 @@ def test_last_run_records_statistics_and_projection_digest(test_db, conexao):
     assert run["median_es1"] == pytest.approx(statistics.median([0.2, 0.4, 0.6]))
     assert run["cardinalidade_min_freq"] == min_freq
     assert run["income_winsor_q"] == pytest.approx(winsor_q)
+    assert run["employment_days_anomaly_sentinel"] == EMPLOYMENT_DAYS_ANOMALY_SENTINEL
     assert run["valid_orgs"] == ["Frequent"]
     assert run["valid_incs"] == ["Working"]
 
@@ -295,10 +342,16 @@ def test_last_run_records_statistics_and_projection_digest(test_db, conexao):
 
 @pytest.mark.integration
 def test_last_run_is_overwritten_by_a_second_execution(test_db, conexao):
-    _sanitize(test_db, conexao, [_row(1, ext_source_1=0.2)], min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, [_row(1, ext_source_1=0.2)], min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
     first_run_at = test_db.fetch_dicts(f'SELECT run_at FROM "{LAST_RUN_TABLE}"')[0]["run_at"]
 
-    _sanitize(test_db, conexao, [_row(1, ext_source_1=0.8)], min_freq=1, winsor_q=0.99)
+    _sanitize(
+        test_db, conexao, [_row(1, ext_source_1=0.8)], min_freq=1, winsor_q=0.99,
+        employment_days_anomaly_sentinel=EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+    )
     runs = test_db.fetch_dicts(f'SELECT run_at FROM "{LAST_RUN_TABLE}"')
 
     assert len(runs) == 1
@@ -317,7 +370,10 @@ def test_raises_clearly_when_stats_sql_file_is_missing(test_db, conexao):
     STATS_SQL_PATH.rename(displaced_path)
     try:
         with pytest.raises(FileNotFoundError):
-            run_sanitization(conexao, INPUT_TABLE, OUTPUT_TABLE, LAST_RUN_TABLE, 1, 0.99)
+            run_sanitization(
+                conexao, INPUT_TABLE, OUTPUT_TABLE, LAST_RUN_TABLE,
+                1, 0.99, EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+            )
     finally:
         displaced_path.rename(STATS_SQL_PATH)
 
@@ -335,7 +391,10 @@ def test_raises_clearly_when_projection_sql_file_is_missing(test_db, conexao):
     PROJECTION_SQL_PATH.rename(displaced_path)
     try:
         with pytest.raises(FileNotFoundError):
-            run_sanitization(conexao, INPUT_TABLE, OUTPUT_TABLE, LAST_RUN_TABLE, 1, 0.99)
+            run_sanitization(
+                conexao, INPUT_TABLE, OUTPUT_TABLE, LAST_RUN_TABLE,
+                1, 0.99, EMPLOYMENT_DAYS_ANOMALY_SENTINEL,
+            )
     finally:
         displaced_path.rename(PROJECTION_SQL_PATH)
 
