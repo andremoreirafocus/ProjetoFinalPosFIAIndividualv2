@@ -108,7 +108,7 @@ refatoração do carregamento, predição e explicação
 (`.internal/plano_refatoracao_carregamento_predicao_explicacao.md`).
 `test_transformation_contract.py` fixa `load_transformation_contract`: lê
 `application_sanitization_last_run` e `application_abt_generation_last_run` e monta o dicionário com as
-sete chaves de `REQUIRED_TRANSFORMATION_CONTRACT_KEYS`, as dez estatísticas aninhadas em
+chaves declaradas em `REQUIRED_TRANSFORMATION_CONTRACT_KEYS`, as estatísticas aninhadas em
 `stats`, `run_at` descartado das duas tabelas, e falha nomeando a tabela quando a sanitização
 ou a ABT ainda não têm execução registrada.
 

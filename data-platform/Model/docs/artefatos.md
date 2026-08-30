@@ -88,10 +88,11 @@ a partir de `application_sanitization_last_run` e
 | `valid_incs` | Tipos de renda que alcançaram a frequência mínima na população processada. |
 | `cardinalidade_min_freq` | Frequência mínima aplicada na formação das duas listas de categorias válidas. |
 | `income_winsor_q` | Quantil usado para limitar a renda na sanitização. |
+| `employment_days_anomaly_sentinel` | Valor de `days_employed` que marca ausência de vínculo empregatício, convenção do dataset bruto. |
 | `application_sanitization_projection_sha256` | Digest da projeção de sanitização aplicada pelo pipeline. |
 | `application_abt_record_projection_sha256` | Digest da projeção de construção da ABT aplicada pelo pipeline. |
 
-O `ArtifactBundleLoader` confere o checksum declarado no manifesto, a presença dessas sete
+O `ArtifactBundleLoader` confere o checksum declarado no manifesto, a presença dessas
 chaves, os tipos de `stats` e das listas de categorias e o preenchimento dos dois digests.
 Ao transformar um cliente novo, `NewCustomerFeatureTransformationService` compara os
 digests com os dois `.sql` embutidos na imagem da API e confirma que `stats` cobre todas as

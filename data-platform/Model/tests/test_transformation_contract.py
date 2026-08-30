@@ -23,12 +23,13 @@ SANITIZATION_COLUNAS = [
     "median_es1", "median_es2", "median_es3", "median_es_mean", "median_phone",
     "median_fam", "median_annuity", "median_income", "p_limit_income", "median_car_age",
     "valid_orgs", "valid_incs", "cardinalidade_min_freq", "income_winsor_q",
+    "employment_days_anomaly_sentinel",
     "application_sanitization_projection_sha256", "run_at",
 ]
 SANITIZATION_LINHA = (
     0.5052, 0.5659, 0.5352, 0.4432, -757.0, 2.0, 24903.0, 147150.0, 472500.0, 9.0,
     ["Business Entity Type 3", "Self-employed"], ["Working", "Commercial associate"],
-    500, 0.99, "3f7a" + "0" * 60, "2026-08-24T00:00:00+00:00",
+    500, 0.99, 365243, "3f7a" + "0" * 60, "2026-08-24T00:00:00+00:00",
 )
 
 ABT_COLUNAS = ["application_abt_record_projection_sha256", "run_at"]
@@ -36,6 +37,7 @@ ABT_LINHA = ("9c21" + "0" * 60, "2026-08-24T00:05:00+00:00")
 
 STATS_EXCLUDED_COLUMNS = {
     "valid_orgs", "valid_incs", "cardinalidade_min_freq", "income_winsor_q",
+    "employment_days_anomaly_sentinel",
     "application_sanitization_projection_sha256", "run_at",
 }
 
@@ -98,7 +100,7 @@ def _conexao(**tabelas_sobrepostas):
     return ConexaoFalsa(tabelas)
 
 
-def test_dicionario_tem_exatamente_as_sete_chaves_do_contrato():
+def test_dicionario_tem_exatamente_as_chaves_declaradas_do_contrato():
     contrato = load_transformation_contract(_conexao(), SANITIZATION_TABLE, ABT_TABLE)
 
     assert set(contrato) == REQUIRED_TRANSFORMATION_CONTRACT_KEYS
@@ -114,6 +116,7 @@ def test_valores_vem_das_duas_tabelas_nas_posicoes_declaradas():
     assert contrato["valid_incs"] == san["valid_incs"]
     assert contrato["cardinalidade_min_freq"] == san["cardinalidade_min_freq"]
     assert contrato["income_winsor_q"] == san["income_winsor_q"]
+    assert contrato["employment_days_anomaly_sentinel"] == san["employment_days_anomaly_sentinel"]
     assert contrato["application_sanitization_projection_sha256"] == san[
         "application_sanitization_projection_sha256"
     ]

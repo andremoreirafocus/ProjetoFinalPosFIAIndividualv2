@@ -102,6 +102,7 @@ def load_transformation_contract(
         "valid_incs",
         "cardinalidade_min_freq",
         "income_winsor_q",
+        "employment_days_anomaly_sentinel",
         "application_sanitization_projection_sha256",
         "run_at",
     }
@@ -136,6 +137,7 @@ def load_transformation_contract(
         "valid_incs": sanitization["valid_incs"],
         "cardinalidade_min_freq": sanitization["cardinalidade_min_freq"],
         "income_winsor_q": sanitization["income_winsor_q"],
+        "employment_days_anomaly_sentinel": sanitization["employment_days_anomaly_sentinel"],
         "application_sanitization_projection_sha256": sanitization[
             "application_sanitization_projection_sha256"
         ],

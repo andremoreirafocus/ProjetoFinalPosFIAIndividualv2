@@ -61,6 +61,7 @@ def _transformation_contract() -> dict[str, Any]:
         "valid_incs": ["Working", "Commercial associate"],
         "cardinalidade_min_freq": 500,
         "income_winsor_q": 0.99,
+        "employment_days_anomaly_sentinel": 365243,
         "application_sanitization_projection_sha256": "3f7a" + "0" * 60,
         "application_abt_record_projection_sha256": "9c21" + "0" * 60,
     }

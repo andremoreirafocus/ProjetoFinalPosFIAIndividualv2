@@ -35,6 +35,7 @@ REQUIRED_TRANSFORMATION_CONTRACT_KEYS = frozenset(
         "valid_incs",
         "cardinalidade_min_freq",
         "income_winsor_q",
+        "employment_days_anomaly_sentinel",
         "application_sanitization_projection_sha256",
         "application_abt_record_projection_sha256",
     }
