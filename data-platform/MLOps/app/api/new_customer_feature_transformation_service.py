@@ -149,6 +149,7 @@ class NewCustomerFeatureTransformationService:
             stats=stats_source,
             valid_orgs=orgs_source,
             valid_incs=incs_source,
+            employment_days_anomaly_sentinel=contract["employment_days_anomaly_sentinel"],
         )
 
         abt_select = self._abt_record_projection_text.format(

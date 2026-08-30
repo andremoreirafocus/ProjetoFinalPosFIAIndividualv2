@@ -137,7 +137,16 @@ def build_feature_reference() -> dict[str, Any]:
 
 
 def build_transformation_contract() -> dict[str, Any]:
-    """Monta um `transformation_contract.json` coerente com o que o pipeline registra."""
+    """Monta um `transformation_contract.json` coerente com o que o pipeline registra.
+
+    Os valores são de forma, não de comportamento: nenhum teste que consome esta fixture
+    verifica o número em si, só a presença e a forma de cada chave — `ArtifactBundleLoader`
+    não valida tipo nem valor de `cardinalidade_min_freq`, `income_winsor_q` ou
+    `employment_days_anomaly_sentinel`. Eles seguem os valores reais de
+    `DataPipeline/config_pipeline.json` só por legibilidade; qualquer teste que precise de
+    um valor específico para fazer sua asserção deve construir esse valor no próprio
+    arranjo, não depender do que está hardcoded aqui.
+    """
     return {
         "stats": {
             "median_es1": 0.5052,
@@ -155,6 +164,7 @@ def build_transformation_contract() -> dict[str, Any]:
         "valid_incs": ["Working", "Commercial associate"],
         "cardinalidade_min_freq": 500,
         "income_winsor_q": 0.99,
+        "employment_days_anomaly_sentinel": 365243,
         "application_sanitization_projection_sha256": "3f7a" + "0" * 60,
         "application_abt_record_projection_sha256": "9c21" + "0" * 60,
     }

@@ -101,6 +101,7 @@ RAW_APPLICATION_RECORD = {
 
 TRANSFORMATION_CONTRACT_EXCLUDED_COLUMNS = {
     "valid_orgs", "valid_incs", "cardinalidade_min_freq", "income_winsor_q",
+    "employment_days_anomaly_sentinel",
     "application_sanitization_projection_sha256", "run_at",
 }
 
@@ -115,6 +116,7 @@ def _run_pipeline_for_one_customer(test_db, conexao, sk_id_curr: int, record: di
         conexao, "application_train", "application_clean",
         "application_sanitization_last_run",
         cardinalidade_min_freq=1, income_winsor_q=0.99,
+        employment_days_anomaly_sentinel=365243,
     )
 
     test_db.create_table(
@@ -175,6 +177,7 @@ def _transformation_contract_from_pipeline(test_db) -> dict[str, Any]:
         "valid_incs": sanitization_row["valid_incs"],
         "cardinalidade_min_freq": sanitization_row["cardinalidade_min_freq"],
         "income_winsor_q": sanitization_row["income_winsor_q"],
+        "employment_days_anomaly_sentinel": sanitization_row["employment_days_anomaly_sentinel"],
         "application_sanitization_projection_sha256": sanitization_row[
             "application_sanitization_projection_sha256"
         ],
@@ -231,8 +234,12 @@ def test_service_produces_the_same_features_as_the_pipeline(test_db, conexao, en
         {"ext_source_1": None, "ext_source_2": None, "ext_source_3": None},
         {"flag_own_car": None, "own_car_age": None},
         {"organization_type": "Uma organização qualquer"},
+        {"days_employed": 365243},
     ],
-    ids=["optional_scores_absent", "flag_own_car_absent", "distinct_organization_value"],
+    ids=[
+        "optional_scores_absent", "flag_own_car_absent", "distinct_organization_value",
+        "employment_anomaly",
+    ],
 )
 def test_service_matches_pipeline_with_optional_fields_varied(
     test_db, conexao, engine, overrides
