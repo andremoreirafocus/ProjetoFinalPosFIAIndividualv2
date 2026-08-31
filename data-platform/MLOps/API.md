@@ -224,11 +224,15 @@ O exemplo é abreviado; uma chamada válida deve conter todas as features obriga
 ### Requisição de cliente novo
 
 `POST /predict/new-customer` recebe `NewCustomerApplication`: um corpo **plano**, com os 26
-campos brutos de `application_train` no nível de cima — sem a chave `features`. Os seis
-obrigatórios (`amt_credit`, `region_rating_client_w_city`, `days_id_publish`,
-`days_registration`, `days_birth`, `days_employed`) exigem valor; os vinte restantes são
-obrigatórios na chave, mas aceitam `null` como afirmação explícita de "não disponível" —
-omitir qualquer uma das 26 chaves é `422`:
+campos brutos de `application_train` no nível de cima — sem a chave `features`. Cinco campos
+(`amt_credit`, `region_rating_client_w_city`, `days_id_publish`, `days_registration`,
+`days_birth`) exigem valor, nunca `null`. Os vinte restantes são obrigatórios na chave, mas
+aceitam `null` como afirmação explícita de "não disponível" — a sanitização completa esses
+com a mesma regra aplicada à população de treino. `days_employed` também aceita `null`, mas
+com sentido distinto: "sem vínculo empregatício", não "não disponível" — o endpoint
+substitui `null` pelo sentinela de anomalia de emprego publicado no bundle ativo antes da
+transformação; `0` é uma resposta real (emprego iniciado hoje), nunca tratada como ausência.
+Omitir qualquer uma das 26 chaves é `422`:
 
 ```json
 {

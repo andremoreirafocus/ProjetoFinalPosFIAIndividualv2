@@ -273,6 +273,39 @@ def test_predict_from_new_customer_contract(client_factory) -> None:
     assert fake_service.received[1] == VALID_NEW_CUSTOMER_APPLICATION
 
 
+def test_predict_from_new_customer_missing_employment_is_substituted_with_the_bundles_sentinel(
+    client_factory,
+) -> None:
+    fake_service = FakeNewCustomerFeatureTransformationService(
+        features={"ext_source_1": 0.5, "occupation_type": "Laborers"}
+    )
+    client = client_factory(new_customer_feature_transformation_service=fake_service)
+    payload = {**VALID_NEW_CUSTOMER_APPLICATION, "days_employed": None}
+
+    response = client.post("/predict/new-customer", json=payload)
+
+    assert response.status_code == 200
+    expected_sentinel = build_transformation_contract()["employment_days_anomaly_sentinel"]
+    assert fake_service.received[1]["days_employed"] == expected_sentinel
+
+
+def test_predict_from_new_customer_employment_zero_is_not_confused_with_no_employment(
+    client_factory,
+) -> None:
+    """`0` é uma resposta real (recém-contratado) — não pode ser tratado como `None`
+    (checagem tem que ser `is None`, nunca truthiness)."""
+    fake_service = FakeNewCustomerFeatureTransformationService(
+        features={"ext_source_1": 0.5, "occupation_type": "Laborers"}
+    )
+    client = client_factory(new_customer_feature_transformation_service=fake_service)
+    payload = {**VALID_NEW_CUSTOMER_APPLICATION, "days_employed": 0}
+
+    response = client.post("/predict/new-customer", json=payload)
+
+    assert response.status_code == 200
+    assert fake_service.received[1]["days_employed"] == 0
+
+
 def test_predict_from_new_customer_missing_required_field_returns_422(client_factory) -> None:
     client = client_factory()
     payload = {

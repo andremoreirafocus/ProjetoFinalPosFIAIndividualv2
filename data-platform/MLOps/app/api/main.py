@@ -192,6 +192,10 @@ def predict_from_new_customer(
 ) -> PredictionResponse:
     bundle = _require_active_bundle(request)
     application_record = payload.model_dump()
+    if application_record["days_employed"] is None:
+        application_record["days_employed"] = bundle.transformation_contract[
+            "employment_days_anomaly_sentinel"
+        ]
 
     _log_request_json("POST /predict/new-customer", application_record)
 

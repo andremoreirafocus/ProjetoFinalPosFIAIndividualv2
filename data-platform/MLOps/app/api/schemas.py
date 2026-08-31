@@ -23,6 +23,12 @@ class NewCustomerApplication(BaseModel):
     Os vinte seguintes são `| None` sem valor padrão: omitir a chave é 422, e `null` é a
     afirmação explícita de "não disponível" — a sanitização completa esses com a mesma
     regra aplicada à população de treino.
+
+    `days_employed` é `| None` pelo mesmo contrato de chave obrigatória — omitir é 422 —,
+    mas o sentido do `null` aqui é outro: não é "não disponível", é "sem vínculo
+    empregatício", uma resposta definitiva. O endpoint substitui `null` pelo sentinela de
+    `transformation_contract["employment_days_anomaly_sentinel"]` antes da transformação;
+    `0` é uma resposta real (emprego iniciado hoje) e nunca é tratado como ausência.
     """
 
     amt_credit: float
@@ -30,7 +36,7 @@ class NewCustomerApplication(BaseModel):
     days_id_publish: int
     days_registration: int
     days_birth: int
-    days_employed: int
+    days_employed: int | None
 
     ext_source_1: float | None
     ext_source_2: float | None
