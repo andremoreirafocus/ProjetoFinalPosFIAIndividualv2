@@ -2,6 +2,7 @@
 
 import os
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ from MLOps.app.frontend.field_config import (
     GROUPS,
     FieldConfig,
 )
+from MLOps.app.frontend.signed_days import signed_days_since_today
 
 
 DEFAULT_API_URL = os.getenv("CREDIT_API_URL", "http://localhost:8000")
@@ -61,11 +63,20 @@ def _unavailable_checkbox_key(field: FieldConfig, key_prefix: str) -> str:
 
 
 def _render_field_widget(field: FieldConfig, default: Any, key: str, disabled: bool) -> Any:
+    if field.kind == "date":
+        min_date = date.today() - timedelta(days=round(field.date_max_years_ago * 365.25))
+        picked = st.date_input(
+            field.label, value=default, min_value=min_date, max_value=date.today(),
+            key=key, help=field.help or None, disabled=disabled, format="DD/MM/YYYY",
+        )
+        return signed_days_since_today(picked)
+
     if field.kind == "category":
+        sorted_options = sorted(field.options, key=str.lower)
         selected = None if default is None else str(default)
-        index = field.options.index(selected) if selected in field.options else None
+        index = sorted_options.index(selected) if selected in sorted_options else None
         return st.selectbox(
-            field.label, field.options, index=index, key=key,
+            field.label, sorted_options, index=index, key=key,
             help=field.help or None, disabled=disabled,
         )
 
@@ -107,9 +118,11 @@ def render_input(
 ) -> Any:
     """Renderiza o componente adequado e devolve um valor serializável em JSON.
 
-    Campos opcionais (`field.optional`) ganham, ao lado, o controle "Não disponível":
-    marcá-lo apaga e desabilita o campo na hora, escrevendo `None` na própria chave do
-    widget antes de ele renderizar de novo; desmarcá-lo devolve o campo vazio.
+    Campos opcionais (`field.optional`) ganham, ao lado, o controle de ausência
+    (`field.unavailable_checkbox_label` — "Não disponível" por padrão, próprio só em
+    `days_employed`): marcá-lo apaga e desabilita o campo na hora, escrevendo `None` na
+    própria chave do widget antes de ele renderizar de novo; desmarcá-lo devolve o campo
+    vazio.
     """
     key = f"{key_prefix}_{field.name}"
     default = field.default if value_override is None else value_override
@@ -126,7 +139,8 @@ def render_input(
     field_column, unavailable_column = st.columns([3, 1])
     with unavailable_column:
         unavailable = st.checkbox(
-            "Não disponível", key=unavailable_key, on_change=_clear_field_on_unavailable
+            field.unavailable_checkbox_label, key=unavailable_key,
+            on_change=_clear_field_on_unavailable,
         )
     with field_column:
         return _render_field_widget(field, default, key, disabled=unavailable)
@@ -168,12 +182,17 @@ def render_new_customer_form(key_prefix: str = "new_customer") -> tuple[dict[str
     """
     application: dict[str, Any] = {}
     for group in APPLICATION_GROUPS:
-        st.subheader(group)
+        st.subheader(group, anchor=False)
         group_fields = [field for field in APPLICATION_FIELDS if field.group == group]
-        columns = st.columns(3)
-        for index, field in enumerate(group_fields):
-            with columns[index % 3]:
-                application[field.name] = render_input(field, key_prefix=key_prefix)
+        # st.columns(3) precisa ser recriado a cada linha: reaproveitar o mesmo objeto
+        # entre linhas (como um `index % 3` sobre colunas fixas faria) preenche cada
+        # coluna inteira antes da próxima — ordem de DOM e de tabulação por coluna, não
+        # por linha, mesmo a grade parecendo correta visualmente.
+        for row_start in range(0, len(group_fields), 3):
+            row_columns = st.columns(3)
+            for column, field in zip(row_columns, group_fields[row_start:row_start + 3]):
+                with column:
+                    application[field.name] = render_input(field, key_prefix=key_prefix)
 
     submitted = st.button(
         "Analisar crédito",
@@ -216,9 +235,10 @@ def show_result(result: dict[str, Any]) -> None:
         st.json(result)
 
 
+st.set_option("client.toolbarMode", "minimal")
 st.set_page_config(page_title="Análise de Crédito", page_icon="💳", layout="wide")
-st.title("Análise de risco de crédito")
-st.caption("Simulador para apoio ao analista de crédito · Projeto acadêmico")
+st.title("Análise de risco de crédito", anchor=False)
+st.caption("Simulador para apoio ao analista de crédito")
 
 with st.sidebar:
     st.header("Configuração")
@@ -245,9 +265,9 @@ tab_new_customer, tab_loaded_customer, tab_customer = st.tabs(
 
 with tab_new_customer:
     st.write(
-        "Preencha os campos que você tem sobre o cliente. Marque \"Não disponível\" "
-        "nos opcionais sem resposta — a API completa esses com a mesma regra aplicada "
-        "à população de treino."
+        "Preencha os campos que você tem sobre o cliente. Nos opcionais sem resposta, "
+        "marque o controle de ausência ao lado — a API completa esses com a mesma regra "
+        "aplicada à população de treino."
     )
     application, new_customer_submitted = render_new_customer_form(key_prefix="new_customer")
 
@@ -259,7 +279,7 @@ with tab_new_customer:
             and not st.session_state.get(_unavailable_checkbox_key(field, "new_customer"), False)
         ]
         if missing_labels:
-            st.error("Preencha ou marque como \"Não disponível\": " + ", ".join(missing_labels))
+            st.error("Preencha os campos obrigatórios: " + ", ".join(missing_labels))
         else:
             with st.expander("JSON enviado à API"):
                 st.json(application)

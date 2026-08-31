@@ -187,6 +187,7 @@ Os testes marcados `integration` exigem o banco `data_test`, pela mesma fronteir
 | `test_api_endpoints.py` | Contratos e erros HTTP via `TestClient`, contra um bundle publicado de verdade num diretório temporário. |
 | `test_model_loading.py` | O laço de atualização do `main.py` chama `refresh_if_changed` repetidamente até ser cancelado. |
 | `test_frontend.py` | Inicialização da aplicação Streamlit; e que `APPLICATION_FIELDS` (aba "Novo cliente") coincide exatamente com os campos de `NewCustomerApplication` — este segundo teste não depende de streamlit instalado. |
+| `test_signed_days.py` | `signed_days_since_today` converte a data escolhida no seletor para o dia com sinal que a API espera — `None` permanece `None`, hoje é zero, datas passadas são negativas pelo número exato de dias decorridos. Sem streamlit. |
 | `test_predict.py` | `predict_for_customer` (transporte de CLI) devolve score sem arredondamento e falha em feature ausente — a inferência em si já está coberta por `test_feature_input_processor.py`/`test_prediction_service.py`. |
 | `test_find_customer_by_score.py` | Leitura dos identificadores da ABT: devolve inteiros, respeita a ordenação da consulta e não fecha a conexão recebida. |
 | `test_configuration.py` | Coerência entre configuração e o artefato do bundle ativo. |

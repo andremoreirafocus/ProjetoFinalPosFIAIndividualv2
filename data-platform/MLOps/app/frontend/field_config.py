@@ -9,7 +9,7 @@ class FieldConfig:
     name: str
     label: str
     group: str
-    kind: Literal["number", "integer", "category", "boolean"] = "number"
+    kind: Literal["number", "integer", "category", "boolean", "date"] = "number"
     default: float | int | str | None = 0.0
     help: str = ""
     options: tuple[str, ...] = ()
@@ -21,6 +21,43 @@ class FieldConfig:
     boolean_values: tuple[Any, Any] = (1, 0)
     """(valor de "Sim", valor de "Não") — só `flag_own_car` diverge do padrão `(1, 0)`,
     porque a coluna bruta é texto ("Y"/"N"), não a flag derivada que o pipeline calcula."""
+    date_max_years_ago: float | None = None
+    """Só para kind="date": o máximo de anos que o seletor permite voltar. O limite
+    superior é sempre hoje — nenhum dos campos de data é um evento futuro."""
+    unavailable_checkbox_label: str = "Não disponível"
+    """Texto do controle de ausência, para optional=True. Só diverge do padrão quando o
+    `null` do campo não significa "não sei" — caso de `days_employed`, onde significa uma
+    resposta definitiva ("sem vínculo empregatício")."""
+
+
+# Domínios de categóricas compartilhados entre FIELDS e APPLICATION_FIELDS. Em cada um, a
+# versão de APPLICATION_FIELDS exclui o valor que só a sanitização produz — não é um
+# domínio à parte, é subconjunto do mesmo domínio abaixo.
+OCCUPATION_TYPE_OPTIONS = (
+    "Accountants", "Cleaning staff", "Cooking staff", "Core staff", "Drivers",
+    "High skill tech staff", "HR staff", "IT staff", "Laborers", "Low-skill Laborers",
+    "Managers", "Medicine staff", "Private service staff", "Realty agents",
+    "Sales staff", "Secretaries", "Security staff", "Unknown", "Waiters/barmen staff",
+)
+ORGANIZATION_TYPE_OPTIONS = (
+    "Agriculture", "Bank", "Business Entity Type 1", "Business Entity Type 2",
+    "Business Entity Type 3", "Construction", "Electricity", "Emergency",
+    "Government", "Hotel", "Housing", "Industry: type 1", "Industry: type 11",
+    "Industry: type 3", "Industry: type 4", "Industry: type 5", "Industry: type 7",
+    "Industry: type 9", "Insurance", "Kindergarten", "Medicine", "Military",
+    "Other", "Other_low_freq", "Police", "Postal", "Restaurant", "School",
+    "Security", "Security Ministries", "Self-employed", "Services", "Telecom",
+    "Trade: type 2", "Trade: type 3", "Trade: type 6", "Trade: type 7",
+    "Transport: type 2", "Transport: type 3", "Transport: type 4", "University",
+    "XNA",
+)
+NAME_INCOME_TYPE_OPTIONS = (
+    "Commercial associate", "Other_low_freq", "Pensioner", "State servant", "Working",
+)
+NAME_EDUCATION_TYPE_OPTIONS = (
+    "Academic degree", "Higher education", "Incomplete higher", "Lower secondary",
+    "Secondary / secondary special", "Unknown",
+)
 
 
 FIELDS = (
@@ -39,10 +76,10 @@ FIELDS = (
     FieldConfig("cnt_fam_members", "Membros da família", "Perfil pessoal", default=1.0, minimum=1, maximum=30, step=1),
     FieldConfig("has_car", "Possui carro", "Perfil pessoal", "boolean", 0),
     FieldConfig("own_car_age", "Idade do veículo (anos)", "Perfil pessoal", default=0.0, minimum=0, maximum=100, step=1),
-    FieldConfig("occupation_type", "Ocupação", "Perfil pessoal", "category", "Laborers", options=("Laborers", "Core staff", "Sales staff", "Managers", "Drivers", "High skill tech staff", "Accountants", "Medicine staff", "Security staff", "Cooking staff", "Cleaning staff", "Private service staff", "Low-skill Laborers", "Waiters/barmen staff", "Secretaries", "Realty agents", "HR staff", "IT staff", "Unknown")),
-    FieldConfig("organization_type", "Tipo de organização", "Perfil pessoal", "category", "Business Entity Type 3", options=("Business Entity Type 3", "Agriculture", "Bank", "Business Entity Type 1", "Business Entity Type 2", "Construction", "Electricity", "Emergency", "Government", "Hotel", "Housing", "Industry: type 1", "Industry: type 11", "Industry: type 3", "Industry: type 4", "Industry: type 5", "Industry: type 7", "Industry: type 9", "Insurance", "Kindergarten", "Medicine", "Military", "Other", "Other_low_freq", "Police", "Postal", "Restaurant", "School", "Security", "Security Ministries", "Self-employed", "Services", "Telecom", "Trade: type 2", "Trade: type 3", "Trade: type 6", "Trade: type 7", "Transport: type 2", "Transport: type 3", "Transport: type 4", "University", "XNA")),
-    FieldConfig("name_income_type", "Tipo de renda", "Perfil pessoal", "category", "Working", options=("Working", "Commercial associate", "Pensioner", "State servant", "Other_low_freq")),
-    FieldConfig("name_education_type", "Escolaridade", "Perfil pessoal", "category", "Secondary / secondary special", options=("Secondary / secondary special", "Higher education", "Incomplete higher", "Lower secondary", "Academic degree", "Unknown")),
+    FieldConfig("occupation_type", "Ocupação", "Perfil pessoal", "category", "Laborers", options=OCCUPATION_TYPE_OPTIONS),
+    FieldConfig("organization_type", "Tipo de organização", "Perfil pessoal", "category", "Business Entity Type 3", options=ORGANIZATION_TYPE_OPTIONS),
+    FieldConfig("name_income_type", "Tipo de renda", "Perfil pessoal", "category", "Working", options=NAME_INCOME_TYPE_OPTIONS),
+    FieldConfig("name_education_type", "Escolaridade", "Perfil pessoal", "category", "Secondary / secondary special", options=NAME_EDUCATION_TYPE_OPTIONS),
     FieldConfig("code_gender", "Gênero cadastrado", "Perfil pessoal", "category", "F", options=("F", "M", "Unknown")),
 
     FieldConfig("amt_income_total", "Renda total", "Valores financeiros", default=202_500.0, minimum=0, step=500),
@@ -96,25 +133,25 @@ APPLICATION_FIELDS = (
     FieldConfig("reg_city_not_live_city", "Registro em cidade diferente da residência", "Scores e localização", "boolean", None, optional=True),
     FieldConfig("live_city_not_work_city", "Residência em cidade diferente do trabalho", "Scores e localização", "boolean", None, optional=True),
 
-    FieldConfig("days_birth", "Dias desde o nascimento", "Perfil pessoal", "integer", None, maximum=0, step=1, help="A base representa a idade em dias, com valores negativos."),
+    FieldConfig("days_birth", "Data de nascimento", "Perfil pessoal", "date", None, date_max_years_ago=100.0),
     FieldConfig("cnt_children", "Quantidade de filhos", "Perfil pessoal", "integer", None, minimum=0, maximum=20, step=1, optional=True),
     FieldConfig("cnt_fam_members", "Membros da família", "Perfil pessoal", default=None, minimum=1, maximum=30, step=1, optional=True),
     FieldConfig("flag_own_car", "Possui carro", "Perfil pessoal", "boolean", None, boolean_values=("Y", "N"), optional=True),
     FieldConfig("own_car_age", "Idade do veículo (anos)", "Perfil pessoal", default=None, minimum=0, maximum=100, step=1, optional=True),
-    FieldConfig("occupation_type", "Ocupação", "Perfil pessoal", "category", None, options=("Laborers", "Core staff", "Sales staff", "Managers", "Drivers", "High skill tech staff", "Accountants", "Medicine staff", "Security staff", "Cooking staff", "Cleaning staff", "Private service staff", "Low-skill Laborers", "Waiters/barmen staff", "Secretaries", "Realty agents", "HR staff", "IT staff"), optional=True),
-    FieldConfig("organization_type", "Tipo de organização", "Perfil pessoal", "category", None, options=("Business Entity Type 3", "Agriculture", "Bank", "Business Entity Type 1", "Business Entity Type 2", "Construction", "Electricity", "Emergency", "Government", "Hotel", "Housing", "Industry: type 1", "Industry: type 11", "Industry: type 3", "Industry: type 4", "Industry: type 5", "Industry: type 7", "Industry: type 9", "Insurance", "Kindergarten", "Medicine", "Military", "Other", "Police", "Postal", "Restaurant", "School", "Security", "Security Ministries", "Self-employed", "Services", "Telecom", "Trade: type 2", "Trade: type 3", "Trade: type 6", "Trade: type 7", "Transport: type 2", "Transport: type 3", "Transport: type 4", "University", "XNA"), optional=True),
-    FieldConfig("name_income_type", "Tipo de renda", "Perfil pessoal", "category", None, options=("Working", "Commercial associate", "Pensioner", "State servant"), optional=True),
-    FieldConfig("name_education_type", "Escolaridade", "Perfil pessoal", "category", None, options=("Secondary / secondary special", "Higher education", "Incomplete higher", "Lower secondary", "Academic degree"), optional=True),
+    FieldConfig("occupation_type", "Ocupação", "Perfil pessoal", "category", None, options=tuple(o for o in OCCUPATION_TYPE_OPTIONS if o != "Unknown"), optional=True),
+    FieldConfig("organization_type", "Tipo de organização", "Perfil pessoal", "category", None, options=tuple(o for o in ORGANIZATION_TYPE_OPTIONS if o != "Other_low_freq"), optional=True),
+    FieldConfig("name_income_type", "Tipo de renda", "Perfil pessoal", "category", None, options=tuple(o for o in NAME_INCOME_TYPE_OPTIONS if o != "Other_low_freq"), optional=True),
+    FieldConfig("name_education_type", "Escolaridade", "Perfil pessoal", "category", None, options=tuple(o for o in NAME_EDUCATION_TYPE_OPTIONS if o != "Unknown"), optional=True),
     FieldConfig("code_gender", "Gênero cadastrado", "Perfil pessoal", "category", None, options=("F", "M", "XNA"), optional=True),
 
     FieldConfig("amt_income_total", "Renda total", "Valores financeiros", default=None, minimum=0, step=500, optional=True),
     FieldConfig("amt_credit", "Valor do crédito", "Valores financeiros", default=None, minimum=0, step=500),
     FieldConfig("amt_annuity", "Valor da anuidade/parcela", "Valores financeiros", default=None, minimum=0, step=100, optional=True),
 
-    FieldConfig("days_last_phone_change", "Dias desde a última troca de telefone", "Histórico cadastral", default=None, maximum=0, step=1, help="A base representa eventos passados com valores negativos.", optional=True),
-    FieldConfig("days_id_publish", "Dias desde a emissão do documento", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
-    FieldConfig("days_registration", "Dias desde o registro", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
-    FieldConfig("days_employed", "Dias empregado", "Histórico cadastral", "integer", None, maximum=0, step=1, help="A base representa eventos passados com valores negativos."),
+    FieldConfig("days_last_phone_change", "Data da última troca de telefone", "Histórico cadastral", "date", None, date_max_years_ago=100.0, optional=True),
+    FieldConfig("days_id_publish", "Data de emissão do documento", "Histórico cadastral", "date", None, date_max_years_ago=100.0),
+    FieldConfig("days_registration", "Data de alteração do registro", "Histórico cadastral", "date", None, date_max_years_ago=100.0),
+    FieldConfig("days_employed", "Data de início do emprego", "Histórico cadastral", "date", None, date_max_years_ago=70.0, optional=True, unavailable_checkbox_label="Sem vínculo empregatício"),
     FieldConfig("def_60_cnt_social_circle", "Inadimplências em 60 dias no círculo social", "Histórico cadastral", default=None, minimum=0, step=1, optional=True),
     FieldConfig("amt_req_credit_bureau_year", "Consultas ao bureau no último ano", "Histórico cadastral", default=None, minimum=0, step=1, optional=True),
 )
