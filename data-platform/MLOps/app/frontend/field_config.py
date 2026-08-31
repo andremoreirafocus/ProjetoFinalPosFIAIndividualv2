@@ -134,6 +134,7 @@ APPLICATION_FIELDS = (
     FieldConfig("live_city_not_work_city", "Residência em cidade diferente do trabalho", "Scores e localização", "boolean", None, optional=True),
 
     FieldConfig("days_birth", "Data de nascimento", "Perfil pessoal", "date", None, date_max_years_ago=100.0),
+    FieldConfig("days_employed", "Data de início do emprego", "Perfil pessoal", "date", None, date_max_years_ago=70.0, optional=True, unavailable_checkbox_label="Sem vínculo empregatício"),
     FieldConfig("cnt_children", "Quantidade de filhos", "Perfil pessoal", "integer", None, minimum=0, maximum=20, step=1, optional=True),
     FieldConfig("cnt_fam_members", "Membros da família", "Perfil pessoal", default=None, minimum=1, maximum=30, step=1, optional=True),
     FieldConfig("flag_own_car", "Possui carro", "Perfil pessoal", "boolean", None, boolean_values=("Y", "N"), optional=True),
@@ -151,7 +152,6 @@ APPLICATION_FIELDS = (
     FieldConfig("days_last_phone_change", "Data da última troca de telefone", "Histórico cadastral", "date", None, date_max_years_ago=100.0, optional=True),
     FieldConfig("days_id_publish", "Data de emissão do documento", "Histórico cadastral", "date", None, date_max_years_ago=100.0),
     FieldConfig("days_registration", "Data de alteração do registro", "Histórico cadastral", "date", None, date_max_years_ago=100.0),
-    FieldConfig("days_employed", "Data de início do emprego", "Histórico cadastral", "date", None, date_max_years_ago=70.0, optional=True, unavailable_checkbox_label="Sem vínculo empregatício"),
     FieldConfig("def_60_cnt_social_circle", "Inadimplências em 60 dias no círculo social", "Histórico cadastral", default=None, minimum=0, step=1, optional=True),
     FieldConfig("amt_req_credit_bureau_year", "Consultas ao bureau no último ano", "Histórico cadastral", default=None, minimum=0, step=1, optional=True),
 )
