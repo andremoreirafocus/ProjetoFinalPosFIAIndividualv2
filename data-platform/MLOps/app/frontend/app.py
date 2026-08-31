@@ -156,16 +156,19 @@ def render_feature_form(
     with st.form(form_key):
         features: dict[str, Any] = {}
         for group in GROUPS:
-            st.subheader(group)
+            st.subheader(group, anchor=False)
             group_fields = [field for field in FIELDS if field.group == group]
-            columns = st.columns(3)
-            for index, field in enumerate(group_fields):
-                with columns[index % 3]:
-                    features[field.name] = render_input(
-                        field,
-                        value_override=(loaded_features or {}).get(field.name),
-                        key_prefix=key_prefix,
-                    )
+            # st.columns(3) precisa ser recriado a cada linha: ver o comentário
+            # equivalente em render_new_customer_form.
+            for row_start in range(0, len(group_fields), 3):
+                row_columns = st.columns(3)
+                for column, field in zip(row_columns, group_fields[row_start:row_start + 3]):
+                    with column:
+                        features[field.name] = render_input(
+                            field,
+                            value_override=(loaded_features or {}).get(field.name),
+                            key_prefix=key_prefix,
+                        )
         submitted = st.form_submit_button(
             submit_label, type="primary", use_container_width=True
         )
