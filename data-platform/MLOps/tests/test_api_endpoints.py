@@ -33,8 +33,8 @@ def _db_error() -> OperationalError:
     return OperationalError("SELECT 1", {}, Exception("conexão indisponível"))
 
 
-# Os 26 campos brutos de `NewCustomerApplication` — os seis obrigatórios com valor, os
-# vinte opcionais preenchidos (cada teste sobrescreve o que precisa deixar `null`).
+# Registro bruto completo de `NewCustomerApplication`, com valores representativos;
+# cada teste sobrescreve os campos que precisa deixar como `null`.
 VALID_NEW_CUSTOMER_APPLICATION = {
     "amt_credit": 450000.0,
     "region_rating_client_w_city": 2,

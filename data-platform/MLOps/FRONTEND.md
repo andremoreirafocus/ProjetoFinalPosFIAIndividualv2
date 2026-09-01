@@ -23,8 +23,8 @@ Streamlit ── HTTP ──→ FastAPI ──→ modelo, política e explicaç�
 - limites e passos para valores numéricos;
 - seletor de data para os campos temporais da aba "Novo cliente", convertidos para o dia
   com sinal que a API espera antes do envio;
-- representação explícita de indisponibilidade na aba "Novo cliente": cada campo opcional
-  tem um controle de ausência ao lado, que apaga e desabilita o campo na hora e envia
+- representação explícita de indisponibilidade na aba "Novo cliente": cada campo que
+  aceita ausência tem um controle ao lado, que apaga e desabilita o campo na hora e envia
   `null` — "Não disponível" na maioria, "Sem vínculo empregatício" em `days_employed`,
   onde `null` é uma resposta definitiva, não uma ausência de informação;
 - exibição da requisição e da resposta JSON;
@@ -34,25 +34,26 @@ Streamlit ── HTTP ──→ FastAPI ──→ modelo, política e explicaç�
 
 ### Novo cliente
 
-Renderiza os 26 campos brutos de `application_train` descritos em `APPLICATION_FIELDS`
-(`field_config.py`), fora de `st.form` — cada campo opcional ganha um controle de ausência
-ao lado e o efeito é imediato, o que um formulário do Streamlit não permite. Os seis
-campos obrigatórios exigem valor; os vinte opcionais aceitam a marcação, que envia `null`.
-A submissão confere os 26 antes de chamar a API e recusa nomeando os campos sem resposta.
-O corpo enviado a `POST /predict/new-customer` é plano, com as 26 chaves no nível de
-cima — sem a chave `features` que `/predict/features` usa. Os campos opcionais marcados
-como indisponíveis seguem com valor `null`; o serviço de transformação aplica a eles a
-mesma regra de sanitização usada na população de treino.
+Renderiza os campos brutos de `application_train` descritos em `APPLICATION_FIELDS`
+(`field_config.py`), fora de `st.form` — cada campo que aceita ausência ganha um controle
+ao lado e o efeito é imediato, o que um formulário do Streamlit não permite. Os campos
+que exigem valor são preenchidos diretamente; os que aceitam ausência enviam `null` quando
+o respectivo controle é marcado.
+A submissão confere todos os campos antes de chamar a API e recusa nomeando os que estão
+sem resposta. O corpo enviado a `POST /predict/new-customer` é plano, com todas as chaves
+no nível de cima — sem a chave `features` que `/predict/features` usa. Os campos
+marcados como indisponíveis seguem com valor `null`; o serviço de transformação aplica a
+eles a mesma regra de sanitização usada na população de treino.
 
-Cinco campos temporais (`days_birth`, `days_id_publish`, `days_registration`,
+Os campos temporais (`days_birth`, `days_id_publish`, `days_registration`,
 `days_last_phone_change`, `days_employed`) são apresentados como seletor de data, não
 como número de dias — o analista escolhe a data e `signed_days_since_today`
 (`signed_days.py`) converte para o dia com sinal que a API já espera, sem mudar o
-contrato dela. Nenhum dos cinco começa preenchido; todos bloqueiam a submissão se
+contrato dela. Nenhum deles começa preenchido; todos bloqueiam a submissão se
 deixados vazios, com uma exceção: `days_employed` tem controle próprio, "Sem vínculo
 empregatício", que envia `null` em vez de bloquear — sentido distinto do "não disponível"
-dos demais opcionais, porque afirma uma resposta (ausência de vínculo), não uma
-informação desconhecida. `0` (emprego iniciado hoje) é uma resposta real e nunca é
+dos demais campos que aceitam ausência, porque afirma uma resposta (ausência de vínculo),
+não uma informação desconhecida. `0` (emprego iniciado hoje) é uma resposta real e nunca é
 confundido com essa ausência, nem no frontend nem na API.
 
 ### Buscar cliente e editar

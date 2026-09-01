@@ -19,10 +19,9 @@ class CustomerFeaturesResponse(BaseModel):
 class NewCustomerApplication(BaseModel):
     """Registro bruto de um cliente novo, ainda sem histórico em nenhuma tabela.
 
-    Os seis campos abaixo são obrigatórios porque a sanitização não sabe preenchê-los.
-    Os vinte seguintes são `| None` sem valor padrão: omitir a chave é 422, e `null` é a
-    afirmação explícita de "não disponível" — a sanitização completa esses com a mesma
-    regra aplicada à população de treino.
+    Todas as chaves declaradas abaixo são obrigatórias: omitir uma delas é 422. Os campos
+    `| None` aceitam `null` como afirmação explícita de "não disponível" — a sanitização
+    os completa com a mesma regra aplicada à população de treino.
 
     `days_employed` é `| None` pelo mesmo contrato de chave obrigatória — omitir é 422 —,
     mas o sentido do `null` aqui é outro: não é "não disponível", é "sem vínculo

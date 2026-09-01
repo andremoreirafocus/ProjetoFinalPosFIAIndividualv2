@@ -95,15 +95,15 @@ a leitura e a validação completas — schema do manifesto, checksums dos três
 chaves obrigatórias do artefato e da referência, identidade cruzada entre
 manifesto/artefato/referência, cobertura estatística e SHAP de cada feature do modelo
 (referências extras geram um warning no log, sem impedir a ativação), e a forma do
-contrato de transformação — suas sete chaves, os tipos dentro de `stats` e dos dois
-digests. Um candidato inválido não substitui o bundle ativo, e a próxima verificação
+contrato de transformação — a presença das chaves declaradas, os tipos dentro de `stats`
+e dos dois digests. Um candidato inválido não substitui o bundle ativo, e a próxima verificação
 tenta de novo. Enquanto nenhum bundle válido estiver ativo, `/health` e os endpoints
 dependentes do modelo respondem `503`, com o último erro registrado.
 
 O artefato precisa conter modelo, threshold, features, categóricas, categorias e
 identidade de treino — as sete chaves obrigatórias do contrato, declaradas em
-`Model/artifact_bundle_contract.py`. O contrato de transformação tem as suas próprias
-sete chaves, declaradas no mesmo módulo como `REQUIRED_TRANSFORMATION_CONTRACT_KEYS`; o
+`Model/artifact_bundle_contract.py`. O contrato de transformação tem suas próprias chaves
+obrigatórias, declaradas no mesmo módulo como `REQUIRED_TRANSFORMATION_CONTRACT_KEYS`; o
 loader confere sua forma, mas não confere quais estatísticas existem dentro de `stats` —
 isso é do serviço de transformação, contra o `.sql` que ele já lê.
 
@@ -223,16 +223,16 @@ O exemplo é abreviado; uma chamada válida deve conter todas as features obriga
 
 ### Requisição de cliente novo
 
-`POST /predict/new-customer` recebe `NewCustomerApplication`: um corpo **plano**, com os 26
-campos brutos de `application_train` no nível de cima — sem a chave `features`. Cinco campos
+`POST /predict/new-customer` recebe `NewCustomerApplication`: um corpo **plano**, com os
+campos brutos de `application_train` no nível de cima — sem a chave `features`. Os campos
 (`amt_credit`, `region_rating_client_w_city`, `days_id_publish`, `days_registration`,
-`days_birth`) exigem valor, nunca `null`. Os vinte restantes são obrigatórios na chave, mas
-aceitam `null` como afirmação explícita de "não disponível" — a sanitização completa esses
-com a mesma regra aplicada à população de treino. `days_employed` também aceita `null`, mas
-com sentido distinto: "sem vínculo empregatício", não "não disponível" — o endpoint
+`days_birth`) exigem valor, nunca `null`. As demais chaves também são obrigatórias; os campos
+que representam informação indisponível aceitam `null`, e a sanitização os completa com a
+mesma regra aplicada à população de treino. `days_employed` também aceita `null`, mas com
+sentido distinto: "sem vínculo empregatício", não "não disponível" — o endpoint
 substitui `null` pelo sentinela de anomalia de emprego publicado no bundle ativo antes da
 transformação; `0` é uma resposta real (emprego iniciado hoje), nunca tratada como ausência.
-Omitir qualquer uma das 26 chaves é `422`:
+Omitir uma chave obrigatória é `422`:
 
 ```json
 {
@@ -342,7 +342,7 @@ A resposta explicativa constitui o insumo quantitativo do futuro agente acelerad
 | Cliente inexistente na ABT | HTTP `404`. |
 | Falha ao consultar PostgreSQL | HTTP `503`. |
 | Features obrigatórias ausentes | HTTP `422` com a lista. |
-| Campo obrigatório omitido em `POST /predict/new-customer`, ou os 26 campos incompletos | HTTP `422` nomeando o campo, sem chegar ao serviço de transformação. |
+| Campo obrigatório omitido em `POST /predict/new-customer` | HTTP `422` nomeando o campo, sem chegar ao serviço de transformação. |
 | Falha de banco na transformação do cliente novo | HTTP `503`, com mensagem própria — distinta da falha ao consultar as fontes do cliente. |
 | Hash de um dos `.sql` divergente do contrato do bundle ativo | HTTP `503`, nomeando o arquivo divergente e os dois digests — nunca um `500` genérico. |
 | Manifesto ausente, inválido ou candidato incompatível, sem bundle ativo anterior | API ativa, HTTP `503` nos endpoints dependentes, nova verificação a cada `MODEL_BUNDLE_REFRESH_SECONDS`. |

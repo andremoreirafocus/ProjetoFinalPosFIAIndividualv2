@@ -17,7 +17,8 @@ class FieldConfig:
     maximum: float | None = None
     step: float = 0.01
     optional: bool = False
-    """Ganha, na tela, o controle "Não disponível" — só os 26 campos brutos usam isto."""
+    """Exibe o controle de ausência definido por `unavailable_checkbox_label` — só os
+    campos brutos usam isto."""
     boolean_values: tuple[Any, Any] = (1, 0)
     """(valor de "Sim", valor de "Não") — só `flag_own_car` diverge do padrão `(1, 0)`,
     porque a coluna bruta é texto ("Y"/"N"), não a flag derivada que o pipeline calcula."""
@@ -113,7 +114,7 @@ FIELD_NAMES = tuple(field.name for field in FIELDS)
 GROUPS = tuple(dict.fromkeys(field.group for field in FIELDS))
 
 
-# Os 26 campos brutos que POST /predict/new-customer recebe — mesmo conjunto e mesmos
+# Campos brutos que POST /predict/new-customer recebe — mesmo conjunto e mesmos
 # tipos de `NewCustomerApplication` (MLOps/app/api/schemas.py), verificado por
 # `test_application_fields_match_new_customer_application_fields`. Os domínios das
 # categóricas são os valores brutos: sem `'Unknown'`/`'Other_low_freq'`, que a

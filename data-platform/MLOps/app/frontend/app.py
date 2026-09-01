@@ -176,11 +176,11 @@ def render_feature_form(
 
 
 def render_new_customer_form(key_prefix: str = "new_customer") -> tuple[dict[str, Any], bool]:
-    """Renderiza os 26 campos brutos **fora** de `st.form`.
+    """Renderiza os campos brutos **fora** de `st.form`.
 
     O Streamlit recusa `on_change` em widget dentro de formulário — e mesmo sem
-    callback o form não re-executa até a submissão, então marcar "Não disponível" não
-    apagaria nem desabilitaria o campo na hora. Cada interação aqui re-executa a
+    callback o form não re-executa até a submissão, então acionar o controle de ausência
+    não apagaria nem desabilitaria o campo na hora. Cada interação aqui re-executa a
     aplicação; a submissão é um `st.button`, não um `st.form_submit_button`.
     """
     application: dict[str, Any] = {}

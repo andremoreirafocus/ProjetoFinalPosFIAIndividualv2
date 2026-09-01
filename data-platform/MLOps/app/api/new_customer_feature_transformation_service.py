@@ -24,7 +24,7 @@ class TransformationRuleMismatchError(Exception):
     cobre uma estatística que a projeção referencia."""
 
 
-# Mesmas 26 colunas e tipos de `application_train` que a sanitização lê — a mesma referência
+# Mesmas colunas e tipos de `application_train` que a sanitização lê — a mesma referência
 # de tipos que `DataPipeline/tests/test_sanitization_app.py::APPLICATION_SCHEMA` declara.
 _APPLICATION_COLUMN_TYPES: dict[str, str] = {
     "ext_source_1": "double precision",
